@@ -1,0 +1,53 @@
+package com.fleet.management.controller;
+
+import com.fleet.management.dto.categorialicencia.CategoriaLicenciaRequest;
+import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
+import com.fleet.management.service.CategoriaLicenciaService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/categorias-licencia")
+@RequiredArgsConstructor
+public class CategoriaLicenciaController {
+
+    private final CategoriaLicenciaService service;
+
+    @GetMapping
+    public ResponseEntity<List<CategoriaLicenciaResponse>> findAll() {
+        return ResponseEntity.ok(service.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<CategoriaLicenciaResponse> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(service.findById(id));
+    }
+
+    @GetMapping("/codigo/{codigo}")
+    public ResponseEntity<CategoriaLicenciaResponse> findByCodigo(@PathVariable String codigo) {
+        return ResponseEntity.ok(service.findByCodigo(codigo));
+    }
+
+    @PostMapping
+    public ResponseEntity<CategoriaLicenciaResponse> create(@Valid @RequestBody CategoriaLicenciaRequest request) {
+        CategoriaLicenciaResponse response = service.create(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<CategoriaLicenciaResponse> update(@PathVariable Long id,
+                                                            @Valid @RequestBody CategoriaLicenciaRequest request) {
+        return ResponseEntity.ok(service.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
