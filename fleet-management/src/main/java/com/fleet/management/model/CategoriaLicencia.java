@@ -6,6 +6,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "categorias_licencia", uniqueConstraints = {
         @UniqueConstraint(name = "uk_categoria_licencia_codigo", columnNames = "codigo")
@@ -30,4 +33,8 @@ public class CategoriaLicencia extends BaseEntity {
     @Size(max = 255, message = "La descripcion no puede exceder 255 caracteres")
     @Column(name = "descripcion", length = 255)
     private String descripcion;
+
+    @OneToMany(mappedBy = "categoriaLicencia", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ChoferCategoria> choferes = new ArrayList<>();
 }

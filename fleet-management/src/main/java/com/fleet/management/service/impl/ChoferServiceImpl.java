@@ -3,17 +3,21 @@ package com.fleet.management.service.impl;
 import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
 import com.fleet.management.dto.chofer.ChoferRequest;
 import com.fleet.management.dto.chofer.ChoferResponse;
+import com.fleet.management.dto.chofercategoria.ChoferCategoriaEmbeddedResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.CategoriaLicencia;
 import com.fleet.management.model.Chofer;
+import com.fleet.management.model.ChoferCategoria;
 import com.fleet.management.repository.CategoriaLicenciaRepository;
+import com.fleet.management.repository.ChoferCategoriaRepository;
 import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.service.ChoferService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -22,6 +26,7 @@ public class ChoferServiceImpl implements ChoferService {
 
     private final ChoferRepository choferRepository;
     private final CategoriaLicenciaRepository categoriaLicenciaRepository;
+    private final ChoferCategoriaRepository choferCategoriaRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -44,18 +49,24 @@ public class ChoferServiceImpl implements ChoferService {
     public ChoferResponse create(ChoferRequest request) {
         validateUniqueFields(request, null);
 
-        CategoriaLicencia categoria = categoriaLicenciaRepository.findById(request.getCategoriaLicenciaId())
-                .orElseThrow(() -> new ResourceNotFoundException("CategoriaLicencia", "id", request.getCategoriaLicenciaId()));
-
         Chofer entity = Chofer.builder()
                 .nombre(request.getNombre())
                 .apellidos(request.getApellidos())
                 .carneIdentidad(request.getCarneIdentidad())
                 .numeroLicencia(request.getNumeroLicencia())
                 .fechaNacimiento(request.getFechaNacimiento())
-                .categoriaLicencia(categoria)
+                .categorias(new ArrayList<>())
                 .activo(true)
                 .build();
+
+        choferRepository.save(entity);
+
+        if (request.getCategorias() != null) {
+            for (ChoferRequest.CategoriaConFechaRequest catReq : request.getCategorias()) {
+                addCategoriaToChofer(entity, catReq);
+            }
+        }
+
         return toResponse(choferRepository.save(entity));
     }
 
@@ -67,15 +78,21 @@ public class ChoferServiceImpl implements ChoferService {
 
         validateUniqueFields(request, id);
 
-        CategoriaLicencia categoria = categoriaLicenciaRepository.findById(request.getCategoriaLicenciaId())
-                .orElseThrow(() -> new ResourceNotFoundException("CategoriaLicencia", "id", request.getCategoriaLicenciaId()));
-
         entity.setNombre(request.getNombre());
         entity.setApellidos(request.getApellidos());
         entity.setCarneIdentidad(request.getCarneIdentidad());
         entity.setNumeroLicencia(request.getNumeroLicencia());
         entity.setFechaNacimiento(request.getFechaNacimiento());
-        entity.setCategoriaLicencia(categoria);
+
+        // Reemplazar categorias si se envian
+        if (request.getCategorias() != null) {
+            entity.getCategorias().clear();
+            choferCategoriaRepository.flush();
+            for (ChoferRequest.CategoriaConFechaRequest catReq : request.getCategorias()) {
+                addCategoriaToChofer(entity, catReq);
+            }
+        }
+
         return toResponse(choferRepository.save(entity));
     }
 
@@ -85,7 +102,27 @@ public class ChoferServiceImpl implements ChoferService {
         Chofer entity = choferRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Chofer", "id", id));
         entity.setActivo(false);
+        // Desactivar tambien las categorias del chofer
+        entity.getCategorias().forEach(cc -> cc.setActivo(false));
         choferRepository.save(entity);
+    }
+
+    private void addCategoriaToChofer(Chofer chofer, ChoferRequest.CategoriaConFechaRequest catReq) {
+        CategoriaLicencia categoria = categoriaLicenciaRepository.findById(catReq.getCategoriaLicenciaId())
+                .orElseThrow(() -> new ResourceNotFoundException("CategoriaLicencia", "id", catReq.getCategoriaLicenciaId()));
+
+        if (choferCategoriaRepository.existsByChoferIdAndCategoriaLicenciaId(chofer.getId(), categoria.getId())) {
+            throw new BusinessException("El chofer ya tiene asignada la categoria de licencia: "
+                    + categoria.getCodigo() + " - " + categoria.getDenominacion());
+        }
+
+        ChoferCategoria cc = ChoferCategoria.builder()
+                .chofer(chofer)
+                .categoriaLicencia(categoria)
+                .fechaEmision(catReq.getFechaEmision())
+                .activo(true)
+                .build();
+        chofer.getCategorias().add(cc);
     }
 
     private void validateUniqueFields(ChoferRequest request, Long excludeId) {
@@ -106,18 +143,28 @@ public class ChoferServiceImpl implements ChoferService {
     }
 
     private ChoferResponse toResponse(Chofer entity) {
-        CategoriaLicencia categoria = entity.getCategoriaLicencia();
-        CategoriaLicenciaResponse categoriaResponse = (categoria != null)
-                ? CategoriaLicenciaResponse.builder()
-                    .id(categoria.getId())
-                    .codigo(categoria.getCodigo())
-                    .denominacion(categoria.getDenominacion())
-                    .descripcion(categoria.getDescripcion())
-                    .activo(categoria.getActivo())
-                    .fechaCreacion(categoria.getFechaCreacion())
-                    .fechaActualizacion(categoria.getFechaActualizacion())
-                    .build()
-                : null;
+        List<ChoferCategoriaEmbeddedResponse> categoriasResponse = entity.getCategorias().stream()
+                .map(cc -> {
+                    CategoriaLicencia cat = cc.getCategoriaLicencia();
+                    CategoriaLicenciaResponse catResp = CategoriaLicenciaResponse.builder()
+                            .id(cat.getId())
+                            .codigo(cat.getCodigo())
+                            .denominacion(cat.getDenominacion())
+                            .descripcion(cat.getDescripcion())
+                            .activo(cat.getActivo())
+                            .fechaCreacion(cat.getFechaCreacion())
+                            .fechaActualizacion(cat.getFechaActualizacion())
+                            .build();
+                    return ChoferCategoriaEmbeddedResponse.builder()
+                            .id(cc.getId())
+                            .categoriaLicencia(catResp)
+                            .fechaEmision(cc.getFechaEmision())
+                            .activo(cc.getActivo())
+                            .fechaCreacion(cc.getFechaCreacion())
+                            .fechaActualizacion(cc.getFechaActualizacion())
+                            .build();
+                })
+                .toList();
 
         return ChoferResponse.builder()
                 .id(entity.getId())
@@ -126,7 +173,7 @@ public class ChoferServiceImpl implements ChoferService {
                 .carneIdentidad(entity.getCarneIdentidad())
                 .numeroLicencia(entity.getNumeroLicencia())
                 .fechaNacimiento(entity.getFechaNacimiento())
-                .categoriaLicencia(categoriaResponse)
+                .categorias(categoriasResponse)
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())

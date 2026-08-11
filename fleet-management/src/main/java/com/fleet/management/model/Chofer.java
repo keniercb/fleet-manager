@@ -5,6 +5,8 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "choferes", uniqueConstraints = {
@@ -43,8 +45,7 @@ public class Chofer extends BaseEntity {
     @Column(name = "fecha_nacimiento", nullable = false)
     private LocalDate fechaNacimiento;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "categoria_licencia_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_chofer_categoria_licencia"))
-    private CategoriaLicencia categoriaLicencia;
+    @OneToMany(mappedBy = "chofer", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ChoferCategoria> categorias = new ArrayList<>();
 }

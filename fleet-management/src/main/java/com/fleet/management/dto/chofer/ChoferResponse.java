@@ -1,10 +1,11 @@
 package com.fleet.management.dto.chofer;
 
-import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
+import com.fleet.management.dto.chofercategoria.ChoferCategoriaEmbeddedResponse;
 import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -19,7 +20,7 @@ public class ChoferResponse {
     private String carneIdentidad;
     private String numeroLicencia;
     private LocalDate fechaNacimiento;
-    private CategoriaLicenciaResponse categoriaLicencia;
+    private List<ChoferCategoriaEmbeddedResponse> categorias;
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;

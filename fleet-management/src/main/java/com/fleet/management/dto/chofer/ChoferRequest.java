@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -32,6 +33,25 @@ public class ChoferRequest {
     @Past(message = "La fecha de nacimiento debe ser una fecha pasada")
     private LocalDate fechaNacimiento;
 
-    @NotNull(message = "La categoria de licencia es obligatoria")
-    private Long categoriaLicenciaId;
+    /**
+     * Lista de categorias de licencia con sus fechas de emision.
+     * Se gestiona a traves del endpoint /api/choferes-categorias,
+     * pero se puede usar aqui para crear chofer con categorias en un solo paso.
+     */
+    private List<CategoriaConFechaRequest> categorias;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class CategoriaConFechaRequest {
+
+        @NotNull(message = "La categoria de licencia es obligatoria")
+        private Long categoriaLicenciaId;
+
+        @NotNull(message = "La fecha de emision es obligatoria")
+        @PastOrPresent(message = "La fecha de emision no puede ser futura")
+        private LocalDate fechaEmision;
+    }
 }
