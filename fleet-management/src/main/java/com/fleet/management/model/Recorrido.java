@@ -1,0 +1,41 @@
+package com.fleet.management.model;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
+
+import java.math.BigInteger;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "recorridos", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_recorrido_vehiculo_fecha", columnNames = {"vehiculo_id", "fecha"})
+})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Recorrido extends BaseEntity {
+
+    @NotNull(message = "El vehiculo es obligatorio")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehiculo_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_recorrido_vehiculo"))
+    private Vehiculo vehiculo;
+
+    @NotNull(message = "La fecha es obligatoria")
+    @PastOrPresent(message = "La fecha no puede ser futura")
+    @Column(name = "fecha", nullable = false)
+    private LocalDate fecha;
+
+    @NotNull(message = "Los kilometros son obligatorios")
+    @Min(value = 1, message = "Los kilometros deben ser mayor a 0")
+    @Column(name = "kilometros", nullable = false)
+    private Integer kilometros;
+
+    @NotNull(message = "El odometro inicial es obligatorio")
+    @Min(value = 0, message = "El odometro inicial no puede ser negativo")
+    @Column(name = "odometro_inicial", nullable = false)
+    private BigInteger odometroInicial;
+}
