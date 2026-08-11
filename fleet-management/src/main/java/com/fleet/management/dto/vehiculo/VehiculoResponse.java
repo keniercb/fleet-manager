@@ -1,6 +1,7 @@
 package com.fleet.management.dto.vehiculo;
 
 import com.fleet.management.dto.chofer.ChoferResponse;
+import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.marca.MarcaResponse;
 import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 public class VehiculoResponse {
 
     private Long id;
+    private EmpresaResponse empresa;
     private TipoVehiculoResponse tipoVehiculo;
     private MarcaResponse marca;
     private ChoferResponse chofer;

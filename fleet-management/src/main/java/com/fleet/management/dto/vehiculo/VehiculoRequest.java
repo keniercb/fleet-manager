@@ -13,6 +13,9 @@ import java.time.LocalDate;
 @Builder
 public class VehiculoRequest {
 
+    @NotNull(message = "La empresa es obligatoria")
+    private Long empresaId;
+
     @NotNull(message = "El tipo de vehiculo es obligatorio")
     private Long tipoVehiculoId;
 

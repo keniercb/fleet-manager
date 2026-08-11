@@ -2,6 +2,7 @@ package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
 import com.fleet.management.dto.chofer.ChoferResponse;
+import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaRequest;
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaResponse;
 import com.fleet.management.exception.BusinessException;
@@ -9,6 +10,7 @@ import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.CategoriaLicencia;
 import com.fleet.management.model.Chofer;
 import com.fleet.management.model.ChoferCategoria;
+import com.fleet.management.model.Empresa;
 import com.fleet.management.repository.CategoriaLicenciaRepository;
 import com.fleet.management.repository.ChoferCategoriaRepository;
 import com.fleet.management.repository.ChoferRepository;
@@ -120,8 +122,22 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
 
     private ChoferCategoriaResponse toResponse(ChoferCategoria entity) {
         Chofer chofer = entity.getChofer();
+        Empresa emp = chofer.getEmpresa();
+        EmpresaResponse empresaResp = EmpresaResponse.builder()
+                .id(emp.getId())
+                .codigo(emp.getCodigo())
+                .nombre(emp.getNombre())
+                .direccion(emp.getDireccion())
+                .telefono(emp.getTelefono())
+                .email(emp.getEmail())
+                .activo(emp.getActivo())
+                .fechaCreacion(emp.getFechaCreacion())
+                .fechaActualizacion(emp.getFechaActualizacion())
+                .build();
+
         ChoferResponse choferResponse = ChoferResponse.builder()
                 .id(chofer.getId())
+                .empresa(empresaResp)
                 .nombre(chofer.getNombre())
                 .apellidos(chofer.getApellidos())
                 .carneIdentidad(chofer.getCarneIdentidad())

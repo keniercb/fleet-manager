@@ -19,6 +19,12 @@ import java.time.LocalDate;
 @Builder
 public class Vehiculo extends BaseEntity {
 
+    @NotNull(message = "La empresa es obligatoria")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empresa_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_vehiculo_empresa"))
+    private Empresa empresa;
+
     @NotNull(message = "El tipo de vehiculo es obligatorio")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tipo_vehiculo_id", nullable = false,

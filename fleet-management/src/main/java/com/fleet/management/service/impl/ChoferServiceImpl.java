@@ -4,14 +4,17 @@ import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
 import com.fleet.management.dto.chofer.ChoferRequest;
 import com.fleet.management.dto.chofer.ChoferResponse;
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaEmbeddedResponse;
+import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.CategoriaLicencia;
 import com.fleet.management.model.Chofer;
 import com.fleet.management.model.ChoferCategoria;
+import com.fleet.management.model.Empresa;
 import com.fleet.management.repository.CategoriaLicenciaRepository;
 import com.fleet.management.repository.ChoferCategoriaRepository;
 import com.fleet.management.repository.ChoferRepository;
+import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.service.ChoferService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +30,7 @@ public class ChoferServiceImpl implements ChoferService {
     private final ChoferRepository choferRepository;
     private final CategoriaLicenciaRepository categoriaLicenciaRepository;
     private final ChoferCategoriaRepository choferCategoriaRepository;
+    private final EmpresaRepository empresaRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -49,7 +53,11 @@ public class ChoferServiceImpl implements ChoferService {
     public ChoferResponse create(ChoferRequest request) {
         validateUniqueFields(request, null);
 
+        Empresa empresa = empresaRepository.findById(request.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", request.getEmpresaId()));
+
         Chofer entity = Chofer.builder()
+                .empresa(empresa)
                 .nombre(request.getNombre())
                 .apellidos(request.getApellidos())
                 .carneIdentidad(request.getCarneIdentidad())
@@ -78,6 +86,10 @@ public class ChoferServiceImpl implements ChoferService {
 
         validateUniqueFields(request, id);
 
+        Empresa empresa = empresaRepository.findById(request.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", request.getEmpresaId()));
+
+        entity.setEmpresa(empresa);
         entity.setNombre(request.getNombre());
         entity.setApellidos(request.getApellidos());
         entity.setCarneIdentidad(request.getCarneIdentidad());
@@ -142,6 +154,20 @@ public class ChoferServiceImpl implements ChoferService {
         }
     }
 
+    private EmpresaResponse toEmpresaResponse(Empresa empresa) {
+        return EmpresaResponse.builder()
+                .id(empresa.getId())
+                .codigo(empresa.getCodigo())
+                .nombre(empresa.getNombre())
+                .direccion(empresa.getDireccion())
+                .telefono(empresa.getTelefono())
+                .email(empresa.getEmail())
+                .activo(empresa.getActivo())
+                .fechaCreacion(empresa.getFechaCreacion())
+                .fechaActualizacion(empresa.getFechaActualizacion())
+                .build();
+    }
+
     private ChoferResponse toResponse(Chofer entity) {
         List<ChoferCategoriaEmbeddedResponse> categoriasResponse = entity.getCategorias().stream()
                 .map(cc -> {
@@ -168,6 +194,7 @@ public class ChoferServiceImpl implements ChoferService {
 
         return ChoferResponse.builder()
                 .id(entity.getId())
+                .empresa(toEmpresaResponse(entity.getEmpresa()))
                 .nombre(entity.getNombre())
                 .apellidos(entity.getApellidos())
                 .carneIdentidad(entity.getCarneIdentidad())

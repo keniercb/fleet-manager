@@ -1,6 +1,7 @@
 package com.fleet.management.dto.chofer;
 
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaEmbeddedResponse;
+import com.fleet.management.dto.empresa.EmpresaResponse;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -15,6 +16,7 @@ import java.util.List;
 public class ChoferResponse {
 
     private Long id;
+    private EmpresaResponse empresa;
     private String nombre;
     private String apellidos;
     private String carneIdentidad;

@@ -20,6 +20,12 @@ import java.util.List;
 @Builder
 public class Chofer extends BaseEntity {
 
+    @NotNull(message = "La empresa es obligatoria")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empresa_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_chofer_empresa"))
+    private Empresa empresa;
+
     @NotBlank(message = "El nombre es obligatorio")
     @Size(max = 50, message = "El nombre no puede exceder 50 caracteres")
     @Column(name = "nombre", nullable = false, length = 50)

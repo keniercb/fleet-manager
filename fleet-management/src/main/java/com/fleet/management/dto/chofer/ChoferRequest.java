@@ -13,6 +13,9 @@ import java.util.List;
 @Builder
 public class ChoferRequest {
 
+    @NotNull(message = "La empresa es obligatoria")
+    private Long empresaId;
+
     @NotBlank(message = "El nombre es obligatorio")
     @Size(max = 50, message = "El nombre no puede exceder 50 caracteres")
     private String nombre;
