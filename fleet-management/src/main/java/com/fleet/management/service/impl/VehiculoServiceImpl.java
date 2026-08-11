@@ -1,6 +1,7 @@
 package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.chofer.ChoferResponse;
+import com.fleet.management.dto.marca.MarcaResponse;
 import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
 import com.fleet.management.dto.vehiculo.VehiculoRequest;
@@ -8,10 +9,12 @@ import com.fleet.management.dto.vehiculo.VehiculoResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.Chofer;
+import com.fleet.management.model.Marca;
 import com.fleet.management.model.TipoCombustible;
 import com.fleet.management.model.TipoVehiculo;
 import com.fleet.management.model.Vehiculo;
 import com.fleet.management.repository.ChoferRepository;
+import com.fleet.management.repository.MarcaRepository;
 import com.fleet.management.repository.TipoCombustibleRepository;
 import com.fleet.management.repository.TipoVehiculoRepository;
 import com.fleet.management.repository.VehiculoRepository;
@@ -28,6 +31,7 @@ public class VehiculoServiceImpl implements VehiculoService {
 
     private final VehiculoRepository vehiculoRepository;
     private final TipoVehiculoRepository tipoVehiculoRepository;
+    private final MarcaRepository marcaRepository;
     private final TipoCombustibleRepository tipoCombustibleRepository;
     private final ChoferRepository choferRepository;
 
@@ -96,9 +100,12 @@ public class VehiculoServiceImpl implements VehiculoService {
                     .orElseThrow(() -> new ResourceNotFoundException("Chofer", "id", request.getChoferId()));
         }
 
+        Marca marca = marcaRepository.findById(request.getMarcaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Marca", "id", request.getMarcaId()));
+
         Vehiculo entity = Vehiculo.builder()
                 .tipoVehiculo(tipoVehiculo)
-                .marca(request.getMarca())
+                .marca(marca)
                 .chofer(chofer)
                 .tipoCombustible(tipoCombustible)
                 .matricula(request.getMatricula())
@@ -132,8 +139,11 @@ public class VehiculoServiceImpl implements VehiculoService {
                     .orElseThrow(() -> new ResourceNotFoundException("Chofer", "id", request.getChoferId()));
         }
 
+        Marca marca = marcaRepository.findById(request.getMarcaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Marca", "id", request.getMarcaId()));
+
         entity.setTipoVehiculo(tipoVehiculo);
-        entity.setMarca(request.getMarca());
+        entity.setMarca(marca);
         entity.setChofer(chofer);
         entity.setTipoCombustible(tipoCombustible);
         entity.setMatricula(request.getMatricula());
@@ -209,10 +219,21 @@ public class VehiculoServiceImpl implements VehiculoService {
                     .build();
         }
 
+        Marca m = entity.getMarca();
+        MarcaResponse marcaResp = MarcaResponse.builder()
+                .id(m.getId())
+                .nombre(m.getNombre())
+                .descripcion(m.getDescripcion())
+                .paisOrigen(m.getPaisOrigen())
+                .activo(m.getActivo())
+                .fechaCreacion(m.getFechaCreacion())
+                .fechaActualizacion(m.getFechaActualizacion())
+                .build();
+
         return VehiculoResponse.builder()
                 .id(entity.getId())
                 .tipoVehiculo(tipoVehiculoResp)
-                .marca(entity.getMarca())
+                .marca(marcaResp)
                 .chofer(choferResp)
                 .tipoCombustible(tipoCombustibleResp)
                 .matricula(entity.getMatricula())

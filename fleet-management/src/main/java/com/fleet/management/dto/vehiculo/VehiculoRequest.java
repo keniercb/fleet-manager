@@ -16,9 +16,8 @@ public class VehiculoRequest {
     @NotNull(message = "El tipo de vehiculo es obligatorio")
     private Long tipoVehiculoId;
 
-    @NotBlank(message = "La marca es obligatoria")
-    @Size(max = 100, message = "La marca no puede exceder 100 caracteres")
-    private String marca;
+    @NotNull(message = "La marca es obligatoria")
+    private Long marcaId;
 
     private Long choferId;
 

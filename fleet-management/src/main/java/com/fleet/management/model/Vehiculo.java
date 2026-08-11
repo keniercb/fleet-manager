@@ -25,10 +25,11 @@ public class Vehiculo extends BaseEntity {
             foreignKey = @ForeignKey(name = "fk_vehiculo_tipo_vehiculo"))
     private TipoVehiculo tipoVehiculo;
 
-    @NotBlank(message = "La marca es obligatoria")
-    @Size(max = 100, message = "La marca no puede exceder 100 caracteres")
-    @Column(name = "marca", nullable = false, length = 100)
-    private String marca;
+    @NotNull(message = "La marca es obligatoria")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "marca_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_vehiculo_marca"))
+    private Marca marca;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chofer_id",
