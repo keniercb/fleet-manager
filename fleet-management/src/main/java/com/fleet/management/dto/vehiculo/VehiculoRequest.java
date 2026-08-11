@@ -1,0 +1,49 @@
+package com.fleet.management.dto.vehiculo;
+
+import jakarta.validation.constraints.*;
+import lombok.*;
+
+import java.math.BigInteger;
+import java.time.LocalDate;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class VehiculoRequest {
+
+    @NotNull(message = "El tipo de vehiculo es obligatorio")
+    private Long tipoVehiculoId;
+
+    @NotBlank(message = "La marca es obligatoria")
+    @Size(max = 100, message = "La marca no puede exceder 100 caracteres")
+    private String marca;
+
+    private Long choferId;
+
+    @NotNull(message = "El tipo de combustible es obligatorio")
+    private Long tipoCombustibleId;
+
+    @NotBlank(message = "La matricula es obligatoria")
+    @Size(max = 20, message = "La matricula no puede exceder 20 caracteres")
+    private String matricula;
+
+    @NotBlank(message = "El numero de motor es obligatorio")
+    @Size(max = 50, message = "El numero de motor no puede exceder 50 caracteres")
+    private String numeroMotor;
+
+    @NotNull(message = "El odometro es obligatorio")
+    @Min(value = 0, message = "El odometro no puede ser negativo")
+    private BigInteger odometro;
+
+    @NotNull(message = "El nivel de combustible es obligatorio")
+    @DecimalMin(value = "0.0", message = "El nivel de combustible no puede ser negativo")
+    private Double combustible;
+
+    @PastOrPresent(message = "La fecha del ultimo mantenimiento no puede ser futura")
+    private LocalDate ultimoMantenimiento;
+
+    @Min(value = 0, message = "El odometro del ultimo mantenimiento no puede ser negativo")
+    private BigInteger odometroUltimoMantenimiento;
+}
