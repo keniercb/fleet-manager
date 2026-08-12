@@ -75,4 +75,8 @@ public class Vehiculo extends BaseEntity {
     @Min(value = 0, message = "El odometro del ultimo mantenimiento no puede ser negativo")
     @Column(name = "odometro_ultimo_mantenimiento")
     private BigInteger odometroUltimoMantenimiento;
+
+    @DecimalMin(value = "0.0", inclusive = false, message = "El indice de consumo debe ser mayor a 0")
+    @Column(name = "indice_consumo", nullable = false)
+    private Double indiceConsumo;
 }

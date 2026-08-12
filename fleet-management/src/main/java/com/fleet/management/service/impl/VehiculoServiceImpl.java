@@ -122,6 +122,7 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .combustible(request.getCombustible())
                 .ultimoMantenimiento(request.getUltimoMantenimiento())
                 .odometroUltimoMantenimiento(request.getOdometroUltimoMantenimiento())
+                .indiceConsumo(request.getIndiceConsumo())
                 .activo(true)
                 .build();
         return toResponse(vehiculoRepository.save(entity));
@@ -164,6 +165,7 @@ public class VehiculoServiceImpl implements VehiculoService {
         entity.setCombustible(request.getCombustible());
         entity.setUltimoMantenimiento(request.getUltimoMantenimiento());
         entity.setOdometroUltimoMantenimiento(request.getOdometroUltimoMantenimiento());
+        entity.setIndiceConsumo(request.getIndiceConsumo());
         return toResponse(vehiculoRepository.save(entity));
     }
 
@@ -272,6 +274,7 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .combustible(entity.getCombustible())
                 .ultimoMantenimiento(entity.getUltimoMantenimiento())
                 .odometroUltimoMantenimiento(entity.getOdometroUltimoMantenimiento())
+                .indiceConsumo(entity.getIndiceConsumo())
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())

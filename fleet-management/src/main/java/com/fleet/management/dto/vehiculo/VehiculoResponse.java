@@ -30,6 +30,7 @@ public class VehiculoResponse {
     private Double combustible;
     private LocalDate ultimoMantenimiento;
     private BigInteger odometroUltimoMantenimiento;
+    private Double indiceConsumo;
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;

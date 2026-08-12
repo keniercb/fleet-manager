@@ -48,4 +48,7 @@ public class VehiculoRequest {
 
     @Min(value = 0, message = "El odometro del ultimo mantenimiento no puede ser negativo")
     private BigInteger odometroUltimoMantenimiento;
+
+    @DecimalMin(value = "0.0", inclusive = false, message = "El indice de consumo debe ser mayor a 0")
+    private Double indiceConsumo;
 }

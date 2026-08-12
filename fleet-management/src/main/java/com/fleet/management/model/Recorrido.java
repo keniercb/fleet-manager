@@ -38,4 +38,8 @@ public class Recorrido extends BaseEntity {
     @Min(value = 0, message = "El odometro inicial no puede ser negativo")
     @Column(name = "odometro_inicial", nullable = false)
     private BigInteger odometroInicial;
+
+    @DecimalMin(value = "0.0", message = "El consumo no puede ser negativo")
+    @Column(name = "consumo", nullable = false)
+    private Double consumo;
 }

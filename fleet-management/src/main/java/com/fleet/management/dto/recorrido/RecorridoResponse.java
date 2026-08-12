@@ -19,6 +19,7 @@ public class RecorridoResponse {
     private LocalDate fecha;
     private Integer kilometros;
     private BigInteger odometroInicial;
+    private Double consumo;
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;

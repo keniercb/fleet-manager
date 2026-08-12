@@ -72,11 +72,22 @@ public class RecorridoServiceImpl implements RecorridoService {
                     + request.getVehiculoId() + " en la fecha " + request.getFecha());
         }
 
+        // Calcular consumo: (indiceConsumo * kilometros) / 100
+        double consumo = (vehiculo.getIndiceConsumo() * request.getKilometros()) / 100.0;
+
+        // Validar que el vehiculo tenga suficiente combustible
+        double combustibleRestante = vehiculo.getCombustible() - consumo;
+        if (combustibleRestante < 0) {
+            throw new BusinessException("El recorrido no puede ser insertado porque se consume mas combustible ("
+                    + consumo + ") que el disponible en el vehiculo (" + vehiculo.getCombustible() + ")");
+        }
+
         Recorrido entity = Recorrido.builder()
                 .vehiculo(vehiculo)
                 .fecha(request.getFecha())
                 .kilometros(request.getKilometros())
                 .odometroInicial(request.getOdometroInicial())
+                .consumo(consumo)
                 .activo(true)
                 .build();
 
@@ -84,6 +95,8 @@ public class RecorridoServiceImpl implements RecorridoService {
 
         // Sumar kilometros al odometro del vehiculo
         vehiculo.setOdometro(vehiculo.getOdometro().add(BigInteger.valueOf(request.getKilometros())));
+        // Restar consumo al combustible del vehiculo
+        vehiculo.setCombustible(combustibleRestante);
         vehiculoRepository.save(vehiculo);
 
         return toResponse(saved);
@@ -108,10 +121,34 @@ public class RecorridoServiceImpl implements RecorridoService {
             });
         }
 
-        // Restar los kilometros antiguos al odometro del vehiculo asociado previamente
+        // Calcular el nuevo consumo
+        double nuevoConsumo = (vehiculo.getIndiceConsumo() * request.getKilometros()) / 100.0;
+
+        // Si es el mismo vehiculo, verificar disponibilidad de combustible
+        // considerando que se restaura el consumo antiguo primero
+        if (vehiculo.getId().equals(entity.getVehiculo().getId())) {
+            double consumoAntiguo = entity.getConsumo() != null ? entity.getConsumo() : 0.0;
+            double combustibleDisponible = vehiculo.getCombustible() + consumoAntiguo - nuevoConsumo;
+            if (combustibleDisponible < 0) {
+                throw new BusinessException("El recorrido no puede ser actualizado porque se consume mas combustible ("
+                        + nuevoConsumo + ") que el disponible en el vehiculo ("
+                        + (vehiculo.getCombustible() + consumoAntiguo) + ")");
+            }
+        } else {
+            // Vehiculo diferente: validar contra el nuevo vehiculo
+            double combustibleDisponible = vehiculo.getCombustible() - nuevoConsumo;
+            if (combustibleDisponible < 0) {
+                throw new BusinessException("El recorrido no puede ser actualizado porque se consume mas combustible ("
+                        + nuevoConsumo + ") que el disponible en el vehiculo (" + vehiculo.getCombustible() + ")");
+            }
+        }
+
+        // Restaurar odometro y combustible del vehiculo anterior
         Vehiculo vehiculoAnterior = entity.getVehiculo();
         BigInteger kilometrosAnteriores = BigInteger.valueOf(entity.getKilometros());
         vehiculoAnterior.setOdometro(vehiculoAnterior.getOdometro().subtract(kilometrosAnteriores));
+        double consumoAntiguo = entity.getConsumo() != null ? entity.getConsumo() : 0.0;
+        vehiculoAnterior.setCombustible(vehiculoAnterior.getCombustible() + consumoAntiguo);
         vehiculoRepository.save(vehiculoAnterior);
 
         // Actualizar la entidad
@@ -119,11 +156,13 @@ public class RecorridoServiceImpl implements RecorridoService {
         entity.setFecha(request.getFecha());
         entity.setKilometros(request.getKilometros());
         entity.setOdometroInicial(request.getOdometroInicial());
+        entity.setConsumo(nuevoConsumo);
 
         Recorrido saved = repository.save(entity);
 
-        // Sumar los nuevos kilometros al odometro del (posible nuevo) vehiculo
+        // Sumar kilometros al odometro y restar consumo al combustible del (posible nuevo) vehiculo
         vehiculo.setOdometro(vehiculo.getOdometro().add(BigInteger.valueOf(request.getKilometros())));
+        vehiculo.setCombustible(vehiculo.getCombustible() - nuevoConsumo);
         vehiculoRepository.save(vehiculo);
 
         return toResponse(saved);
@@ -139,6 +178,9 @@ public class RecorridoServiceImpl implements RecorridoService {
         Vehiculo vehiculo = entity.getVehiculo();
         BigInteger kilometros = BigInteger.valueOf(entity.getKilometros());
         vehiculo.setOdometro(vehiculo.getOdometro().subtract(kilometros));
+        // Restaurar el combustible consumido
+        double consumo = entity.getConsumo() != null ? entity.getConsumo() : 0.0;
+        vehiculo.setCombustible(vehiculo.getCombustible() + consumo);
         vehiculoRepository.save(vehiculo);
 
         // Baja logica
@@ -153,6 +195,7 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .fecha(entity.getFecha())
                 .kilometros(entity.getKilometros())
                 .odometroInicial(entity.getOdometroInicial())
+                .consumo(entity.getConsumo())
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
@@ -202,6 +245,7 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .combustible(v.getCombustible())
                 .ultimoMantenimiento(v.getUltimoMantenimiento())
                 .odometroUltimoMantenimiento(v.getOdometroUltimoMantenimiento())
+                .indiceConsumo(v.getIndiceConsumo())
                 .activo(v.getActivo())
                 .fechaCreacion(v.getFechaCreacion())
                 .fechaActualizacion(v.getFechaActualizacion())
