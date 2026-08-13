@@ -37,9 +37,8 @@ public class ChoferServiceImpl implements ChoferService {
     @Override
     @Transactional(readOnly = true)
     public Page<ChoferResponse> findAll(Pageable pageable) {
-        return choferRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+        return choferRepository.findAll(pageable)
+                .map(this::toResponse);
     }
 
     @Override
