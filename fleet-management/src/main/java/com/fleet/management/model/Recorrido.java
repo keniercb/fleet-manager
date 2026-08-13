@@ -45,7 +45,7 @@ public class Recorrido extends BaseEntity {
     private Double consumo;
 
     @DecimalMin(value = "0.0", message = "Los litros abastecidos no pueden ser negativos")
-    @Column(name = "litros_abastecidos", nullable = false, precision = 10, scale = 2)
+    @Column(name = "litros_abastecidos", nullable = false)
     private Double litrosAbastecidos;
 
     @Size(max = 50, message = "El numero de chip no puede exceder 50 caracteres")
