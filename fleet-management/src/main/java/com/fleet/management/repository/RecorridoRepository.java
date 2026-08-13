@@ -24,4 +24,6 @@ public interface RecorridoRepository extends JpaRepository<Recorrido, Long> {
     List<Recorrido> findByVehiculoIdAndFechaBetween(@Param("vehiculoId") Long vehiculoId,
                                                     @Param("desde") LocalDate desde,
                                                     @Param("hasta") LocalDate hasta);
+
+    boolean existsByVehiculoIdAndFechaAfter(Long vehiculoId, LocalDate fecha);
 }

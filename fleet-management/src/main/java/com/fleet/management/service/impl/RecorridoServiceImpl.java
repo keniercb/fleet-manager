@@ -74,6 +74,13 @@ public class RecorridoServiceImpl implements RecorridoService {
                     + request.getVehiculoId() + " en la fecha " + request.getFecha());
         }
 
+        // Validar que no exista un recorrido con fecha posterior para el mismo vehiculo
+        if (repository.existsByVehiculoIdAndFechaAfter(request.getVehiculoId(), request.getFecha())) {
+            throw new BusinessException("No se puede insertar el recorrido en la fecha "
+                    + request.getFecha() + " porque ya existe un recorrido con fecha posterior para el vehiculo con id "
+                    + request.getVehiculoId());
+        }
+
         // Calcular consumo: (indiceConsumo * kilometros) / 100, redondeado a 2 decimales
         double consumo = BigDecimal.valueOf(vehiculo.getIndiceConsumo() * request.getKilometros() / 100.0)
                 .setScale(2, RoundingMode.HALF_UP).doubleValue();
