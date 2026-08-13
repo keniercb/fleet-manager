@@ -3,6 +3,7 @@ package com.fleet.management.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -16,7 +17,7 @@ import java.time.LocalDate;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Vehiculo extends BaseEntity {
 
     @NotNull(message = "La empresa es obligatoria")

@@ -3,6 +3,7 @@ package com.fleet.management.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "empresas", uniqueConstraints = {
@@ -12,7 +13,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Empresa extends BaseEntity {
 
     @NotBlank(message = "El codigo es obligatorio")
