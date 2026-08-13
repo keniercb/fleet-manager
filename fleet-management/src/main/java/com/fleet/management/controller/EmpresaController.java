@@ -37,7 +37,7 @@ public class EmpresaController {
 
     @GetMapping("/codigo/{codigo}")
     public ResponseEntity<EmpresaResponse> findByCodigo(@PathVariable String codigo) {
-        return ResponseEntity.ok(service.findByCodigo(codigo, pageable));
+        return ResponseEntity.ok(service.findByCodigo(codigo));
     }
 
     @PostMapping

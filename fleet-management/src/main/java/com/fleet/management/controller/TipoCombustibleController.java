@@ -37,7 +37,7 @@ public class TipoCombustibleController {
 
     @GetMapping("/codigo/{codigo}")
     public ResponseEntity<TipoCombustibleResponse> findByCodigo(@PathVariable String codigo) {
-        return ResponseEntity.ok(service.findByCodigo(codigo, pageable));
+        return ResponseEntity.ok(service.findByCodigo(codigo));
     }
 
     @PostMapping

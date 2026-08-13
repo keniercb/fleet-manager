@@ -37,7 +37,7 @@ public class CategoriaLicenciaController {
 
     @GetMapping("/codigo/{codigo}")
     public ResponseEntity<CategoriaLicenciaResponse> findByCodigo(@PathVariable String codigo) {
-        return ResponseEntity.ok(service.findByCodigo(codigo, pageable));
+        return ResponseEntity.ok(service.findByCodigo(codigo));
     }
 
     @PostMapping
