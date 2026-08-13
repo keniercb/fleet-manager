@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigInteger;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -73,7 +75,8 @@ public class RecorridoServiceImpl implements RecorridoService {
         }
 
         // Calcular consumo: (indiceConsumo * kilometros) / 100, redondeado a 2 decimales
-        double consumo = Math.round(vehiculo.getIndiceConsumo() * request.getKilometros() / 100.0 * 100.0) / 100.0;
+        double consumo = BigDecimal.valueOf(vehiculo.getIndiceConsumo() * request.getKilometros() / 100.0)
+                .setScale(2, RoundingMode.HALF_UP).doubleValue();
 
         // Validar que el vehiculo tenga suficiente combustible
         double combustibleRestante = vehiculo.getCombustible() - consumo;
@@ -125,7 +128,8 @@ public class RecorridoServiceImpl implements RecorridoService {
         }
 
         // Calcular el nuevo consumo, redondeado a 2 decimales
-        double nuevoConsumo = Math.round(vehiculo.getIndiceConsumo() * request.getKilometros() / 100.0 * 100.0) / 100.0;
+        double nuevoConsumo = BigDecimal.valueOf(vehiculo.getIndiceConsumo() * request.getKilometros() / 100.0)
+                .setScale(2, RoundingMode.HALF_UP).doubleValue();
 
         // Si es el mismo vehiculo, verificar disponibilidad de combustible
         // considerando que se restaura el consumo antiguo primero
