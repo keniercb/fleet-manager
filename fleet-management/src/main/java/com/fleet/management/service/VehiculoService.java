@@ -5,8 +5,6 @@ import org.springframework.data.domain.Page;
 import com.fleet.management.dto.vehiculo.VehiculoRequest;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
 
-import java.util.List;
-
 public interface VehiculoService {
 
     Page<VehiculoResponse> findAll(Pageable pageable);
@@ -19,7 +17,7 @@ public interface VehiculoService {
 
     Page<VehiculoResponse> findByTipoCombustibleId(Long tipoCombustibleId, Pageable pageable);
 
-    List<VehiculoResponse> findSinChoferAsignado();
+    Page<VehiculoResponse> findSinChoferAsignado(Pageable pageable);
 
     VehiculoResponse create(VehiculoRequest request);
 
