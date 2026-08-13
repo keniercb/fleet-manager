@@ -1,9 +1,8 @@
 package com.fleet.management.controller;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
-
 
 import com.fleet.management.dto.vehiculo.VehiculoRequest;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
@@ -25,7 +24,8 @@ public class VehiculoController {
     private final VehiculoService service;
 
     @GetMapping
-    public ResponseEntity<Page<VehiculoResponse>> findAll(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<VehiculoResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
 
         return ResponseEntity.ok(service.findAll(pageable));
     }
@@ -36,25 +36,29 @@ public class VehiculoController {
     }
 
     @GetMapping("/chofer/{choferId}")
-    public ResponseEntity<Page<VehiculoResponse>> findByChoferId(@PathVariable Long choferId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<VehiculoResponse>> findByChoferId(@PathVariable Long choferId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
 
         return ResponseEntity.ok(service.findByChoferId(choferId, pageable));
     }
 
     @GetMapping("/tipo-vehiculo/{tipoVehiculoId}")
-    public ResponseEntity<Page<VehiculoResponse>> findByTipoVehiculoId(@PathVariable Long tipoVehiculoId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<VehiculoResponse>> findByTipoVehiculoId(@PathVariable Long tipoVehiculoId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
 
         return ResponseEntity.ok(service.findByTipoVehiculoId(tipoVehiculoId, pageable));
     }
 
     @GetMapping("/tipo-combustible/{tipoCombustibleId}")
-    public ResponseEntity<Page<VehiculoResponse>> findByTipoCombustibleId(@PathVariable Long tipoCombustibleId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<VehiculoResponse>> findByTipoCombustibleId(@PathVariable Long tipoCombustibleId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
 
         return ResponseEntity.ok(service.findByTipoCombustibleId(tipoCombustibleId, pageable));
     }
 
     @GetMapping("/sin-chofer")
-    public ResponseEntity<Page<VehiculoResponse>> findSinChoferAsignado(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<VehiculoResponse>> findSinChoferAsignado(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
 
         return ResponseEntity.ok(service.findSinChoferAsignado(pageable));
     }

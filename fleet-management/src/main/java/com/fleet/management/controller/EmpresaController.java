@@ -1,9 +1,8 @@
 package com.fleet.management.controller;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
-
 
 import com.fleet.management.dto.empresa.EmpresaRequest;
 import com.fleet.management.dto.empresa.EmpresaResponse;
@@ -25,7 +24,8 @@ public class EmpresaController {
     private final EmpresaService service;
 
     @GetMapping
-    public ResponseEntity<Page<EmpresaResponse>> findAll(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<EmpresaResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
 
         return ResponseEntity.ok(service.findAll(pageable));
     }

@@ -1,9 +1,8 @@
 package com.fleet.management.controller;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
-
 
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaRequest;
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaResponse;
@@ -25,7 +24,8 @@ public class ChoferCategoriaController {
     private final ChoferCategoriaService service;
 
     @GetMapping
-    public ResponseEntity<Page<ChoferCategoriaResponse>> findAll(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<ChoferCategoriaResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
 
         return ResponseEntity.ok(service.findAll(pageable));
     }
@@ -36,13 +36,15 @@ public class ChoferCategoriaController {
     }
 
     @GetMapping("/chofer/{choferId}")
-    public ResponseEntity<Page<ChoferCategoriaResponse>> findByChoferId(@PathVariable Long choferId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<ChoferCategoriaResponse>> findByChoferId(@PathVariable Long choferId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
 
         return ResponseEntity.ok(service.findByChoferId(choferId, pageable));
     }
 
     @GetMapping("/categoria/{categoriaLicenciaId}")
-    public ResponseEntity<Page<ChoferCategoriaResponse>> findByCategoriaLicenciaId(@PathVariable Long categoriaLicenciaId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<ChoferCategoriaResponse>> findByCategoriaLicenciaId(@PathVariable Long categoriaLicenciaId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
 
         return ResponseEntity.ok(service.findByCategoriaLicenciaId(categoriaLicenciaId, pageable));
     }
