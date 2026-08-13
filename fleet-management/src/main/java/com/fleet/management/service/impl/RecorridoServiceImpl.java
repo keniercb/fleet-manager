@@ -73,7 +73,7 @@ public class RecorridoServiceImpl implements RecorridoService {
         }
 
         // Calcular consumo: (indiceConsumo * kilometros) / 100, redondeado a 2 decimales
-        double consumo = Math.round((vehiculo.getIndiceConsumo() * request.getKilometros()) / 100.0 * 100.0) / 100.0;
+        double consumo = Math.round(vehiculo.getIndiceConsumo() * request.getKilometros() / 100.0 * 100.0) / 100.0;
 
         // Validar que el vehiculo tenga suficiente combustible
         double combustibleRestante = vehiculo.getCombustible() - consumo;
@@ -125,7 +125,7 @@ public class RecorridoServiceImpl implements RecorridoService {
         }
 
         // Calcular el nuevo consumo, redondeado a 2 decimales
-        double nuevoConsumo = Math.round((vehiculo.getIndiceConsumo() * request.getKilometros()) / 100.0 * 100.0) / 100.0;
+        double nuevoConsumo = Math.round(vehiculo.getIndiceConsumo() * request.getKilometros() / 100.0 * 100.0) / 100.0;
 
         // Si es el mismo vehiculo, verificar disponibilidad de combustible
         // considerando que se restaura el consumo antiguo primero
