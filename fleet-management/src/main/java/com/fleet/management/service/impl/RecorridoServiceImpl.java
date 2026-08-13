@@ -82,11 +82,14 @@ public class RecorridoServiceImpl implements RecorridoService {
                     + consumo + ") que el disponible en el vehiculo (" + vehiculo.getCombustible() + ")");
         }
 
+        // OdometroInicial es el odometro actual del vehiculo antes de sumar kilometros
+        BigInteger odometroInicial = vehiculo.getOdometro();
+
         Recorrido entity = Recorrido.builder()
                 .vehiculo(vehiculo)
                 .fecha(request.getFecha())
                 .kilometros(request.getKilometros())
-                .odometroInicial(request.getOdometroInicial())
+                .odometroInicial(odometroInicial)
                 .consumo(consumo)
                 .activo(true)
                 .build();
@@ -155,7 +158,8 @@ public class RecorridoServiceImpl implements RecorridoService {
         entity.setVehiculo(vehiculo);
         entity.setFecha(request.getFecha());
         entity.setKilometros(request.getKilometros());
-        entity.setOdometroInicial(request.getOdometroInicial());
+        // OdometroInicial es el odometro actual del vehiculo antes de sumar kilometros
+        entity.setOdometroInicial(vehiculo.getOdometro());
         entity.setConsumo(nuevoConsumo);
 
         Recorrido saved = repository.save(entity);

@@ -3,7 +3,6 @@ package com.fleet.management.dto.recorrido;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-import java.math.BigInteger;
 import java.time.LocalDate;
 
 @Getter
@@ -23,8 +22,4 @@ public class RecorridoRequest {
     @NotNull(message = "Los kilometros son obligatorios")
     @Min(value = 1, message = "Los kilometros deben ser mayor a 0")
     private Integer kilometros;
-
-    @NotNull(message = "El odometro inicial es obligatorio")
-    @Min(value = 0, message = "El odometro inicial no puede ser negativo")
-    private BigInteger odometroInicial;
 }
