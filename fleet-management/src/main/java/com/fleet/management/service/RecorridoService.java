@@ -1,4 +1,6 @@
 package com.fleet.management.service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.recorrido.RecorridoRequest;
 import com.fleet.management.dto.recorrido.RecorridoResponse;
@@ -8,13 +10,13 @@ import java.util.List;
 
 public interface RecorridoService {
 
-    List<RecorridoResponse> findAll();
+    Page<RecorridoResponse> findAll(Pageable pageable);
 
     RecorridoResponse findById(Long id);
 
-    List<RecorridoResponse> findByVehiculoId(Long vehiculoId);
+    Page<RecorridoResponse> findByVehiculoId(Long vehiculoId, Pageable pageable);
 
-    List<RecorridoResponse> findByVehiculoIdAndFechaBetween(Long vehiculoId, LocalDate desde, LocalDate hasta);
+    Page<RecorridoResponse> findByVehiculoIdAndFechaBetween(Long vehiculoId, LocalDate desde, LocalDate hasta, Pageable pageable);
 
     RecorridoResponse create(RecorridoRequest request);
 

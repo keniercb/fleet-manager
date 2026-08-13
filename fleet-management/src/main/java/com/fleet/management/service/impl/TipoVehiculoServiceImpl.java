@@ -1,4 +1,6 @@
 package com.fleet.management.service.impl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoRequest;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
@@ -21,10 +23,8 @@ public class TipoVehiculoServiceImpl implements TipoVehiculoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TipoVehiculoResponse> findAll() {
-        return repository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<TipoVehiculoResponse> findAll(Pageable pageable) {
+        return repository.findAll(pageable).map(this::toResponse);
     }
 
     @Override

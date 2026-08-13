@@ -1,4 +1,6 @@
 package com.fleet.management.repository;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.model.Vehiculo;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,15 +22,15 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
 
     boolean existsByNumeroMotor(String numeroMotor);
 
-    List<Vehiculo> findByChoferId(Long choferId);
+    Page<Vehiculo> findByChoferId(Long choferId, Pageable pageable);
 
-    List<Vehiculo> findByTipoVehiculoId(Long tipoVehiculoId);
+    Page<Vehiculo> findByTipoVehiculoId(Long tipoVehiculoId, Pageable pageable);
 
-    List<Vehiculo> findByTipoCombustibleId(Long tipoCombustibleId);
+    Page<Vehiculo> findByTipoCombustibleId(Long tipoCombustibleId, Pageable pageable);
 
     @Query("SELECT v FROM Vehiculo v WHERE v.chofer IS NULL AND v.activo = true")
-    List<Vehiculo> findSinChoferAsignado();
+    Page<Vehiculo> findSinChoferAsignado(Pageable pageable);
 
     @Query("SELECT v FROM Vehiculo v WHERE v.chofer.id = :choferId AND v.activo = true")
-    List<Vehiculo> findActivosByChoferId(@Param("choferId") Long choferId);
+    Page<Vehiculo> findActivosByChoferId(@Param("choferId") Long choferId, Pageable pageable);
 }

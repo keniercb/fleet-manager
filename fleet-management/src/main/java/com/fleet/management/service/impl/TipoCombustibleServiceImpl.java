@@ -1,4 +1,6 @@
 package com.fleet.management.service.impl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.tipocombustible.TipoCombustibleRequest;
 import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
@@ -21,10 +23,8 @@ public class TipoCombustibleServiceImpl implements TipoCombustibleService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TipoCombustibleResponse> findAll() {
-        return repository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<TipoCombustibleResponse> findAll(Pageable pageable) {
+        return repository.findAll(pageable).map(this::toResponse);
     }
 
     @Override

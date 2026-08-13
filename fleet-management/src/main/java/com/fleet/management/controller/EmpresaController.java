@@ -1,4 +1,9 @@
 package com.fleet.management.controller;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+
 
 import com.fleet.management.dto.empresa.EmpresaRequest;
 import com.fleet.management.dto.empresa.EmpresaResponse;
@@ -9,7 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Companies")
@@ -21,8 +25,9 @@ public class EmpresaController {
     private final EmpresaService service;
 
     @GetMapping
-    public ResponseEntity<List<EmpresaResponse>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    public ResponseEntity<Page<EmpresaResponse>> findAll(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findAll(pageable));
     }
 
     @GetMapping("/{id}")
@@ -32,7 +37,7 @@ public class EmpresaController {
 
     @GetMapping("/codigo/{codigo}")
     public ResponseEntity<EmpresaResponse> findByCodigo(@PathVariable String codigo) {
-        return ResponseEntity.ok(service.findByCodigo(codigo));
+        return ResponseEntity.ok(service.findByCodigo(codigo, pageable));
     }
 
     @PostMapping

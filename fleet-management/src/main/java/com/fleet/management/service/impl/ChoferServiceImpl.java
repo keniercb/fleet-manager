@@ -1,4 +1,6 @@
 package com.fleet.management.service.impl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
 import com.fleet.management.dto.chofer.ChoferRequest;
@@ -34,7 +36,7 @@ public class ChoferServiceImpl implements ChoferService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ChoferResponse> findAll() {
+    public Page<ChoferResponse> findAll(Pageable pageable) {
         return choferRepository.findAll().stream()
                 .map(this::toResponse)
                 .toList();

@@ -1,4 +1,6 @@
 package com.fleet.management.repository;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.model.ChoferCategoria;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,17 +14,17 @@ import java.util.Optional;
 @Repository
 public interface ChoferCategoriaRepository extends JpaRepository<ChoferCategoria, Long> {
 
-    List<ChoferCategoria> findByChoferId(Long choferId);
+    Page<ChoferCategoria> findByChoferId(Long choferId, Pageable pageable);
 
-    List<ChoferCategoria> findByCategoriaLicenciaId(Long categoriaLicenciaId);
+    Page<ChoferCategoria> findByCategoriaLicenciaId(Long categoriaLicenciaId, Pageable pageable);
 
     Optional<ChoferCategoria> findByChoferIdAndCategoriaLicenciaId(Long choferId, Long categoriaLicenciaId);
 
     boolean existsByChoferIdAndCategoriaLicenciaId(Long choferId, Long categoriaLicenciaId);
 
     @Query("SELECT cc FROM ChoferCategoria cc WHERE cc.chofer.id = :choferId AND cc.activo = true")
-    List<ChoferCategoria> findActivosByChoferId(@Param("choferId") Long choferId);
+    Page<ChoferCategoria> findActivosByChoferId(@Param("choferId") Long choferId, Pageable pageable);
 
     @Query("SELECT cc FROM ChoferCategoria cc WHERE cc.categoriaLicencia.id = :categoriaId AND cc.activo = true")
-    List<ChoferCategoria> findActivosByCategoriaLicenciaId(@Param("categoriaId") Long categoriaId);
+    Page<ChoferCategoria> findActivosByCategoriaLicenciaId(@Param("categoriaId") Long categoriaId, Pageable pageable);
 }

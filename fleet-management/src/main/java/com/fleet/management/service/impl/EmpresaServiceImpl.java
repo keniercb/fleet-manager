@@ -1,4 +1,6 @@
 package com.fleet.management.service.impl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.empresa.EmpresaRequest;
 import com.fleet.management.dto.empresa.EmpresaResponse;
@@ -21,10 +23,8 @@ public class EmpresaServiceImpl implements EmpresaService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<EmpresaResponse> findAll() {
-        return repository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<EmpresaResponse> findAll(Pageable pageable) {
+        return repository.findAll(pageable).map(this::toResponse);
     }
 
     @Override

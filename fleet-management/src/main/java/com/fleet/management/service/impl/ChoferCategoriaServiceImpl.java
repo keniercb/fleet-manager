@@ -1,4 +1,6 @@
 package com.fleet.management.service.impl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
 import com.fleet.management.dto.chofer.ChoferResponse;
@@ -31,10 +33,8 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ChoferCategoriaResponse> findAll() {
-        return repository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<ChoferCategoriaResponse> findAll(Pageable pageable) {
+        return repository.findAll(pageable).map(this::toResponse);
     }
 
     @Override
@@ -47,18 +47,14 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ChoferCategoriaResponse> findByChoferId(Long choferId) {
-        return repository.findByChoferId(choferId).stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<ChoferCategoriaResponse> findByChoferId(Long choferId, Pageable pageable) {
+        return repository.findByChoferId(choferId), pageable).map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ChoferCategoriaResponse> findByCategoriaLicenciaId(Long categoriaLicenciaId) {
-        return repository.findByCategoriaLicenciaId(categoriaLicenciaId).stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<ChoferCategoriaResponse> findByCategoriaLicenciaId(Long categoriaLicenciaId, Pageable pageable) {
+        return repository.findByCategoriaLicenciaId(categoriaLicenciaId), pageable).map(this::toResponse);
     }
 
     @Override

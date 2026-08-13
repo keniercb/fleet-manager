@@ -1,4 +1,9 @@
 package com.fleet.management.controller;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+
 
 import com.fleet.management.dto.vehiculo.VehiculoRequest;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
@@ -9,7 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Vehicles")
@@ -21,8 +25,9 @@ public class VehiculoController {
     private final VehiculoService service;
 
     @GetMapping
-    public ResponseEntity<List<VehiculoResponse>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    public ResponseEntity<Page<VehiculoResponse>> findAll(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findAll(pageable));
     }
 
     @GetMapping("/{id}")
@@ -31,23 +36,27 @@ public class VehiculoController {
     }
 
     @GetMapping("/chofer/{choferId}")
-    public ResponseEntity<List<VehiculoResponse>> findByChoferId(@PathVariable Long choferId) {
-        return ResponseEntity.ok(service.findByChoferId(choferId));
+    public ResponseEntity<Page<VehiculoResponse>> findByChoferId(@PathVariable Long choferId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findByChoferId(choferId, pageable));
     }
 
     @GetMapping("/tipo-vehiculo/{tipoVehiculoId}")
-    public ResponseEntity<List<VehiculoResponse>> findByTipoVehiculoId(@PathVariable Long tipoVehiculoId) {
-        return ResponseEntity.ok(service.findByTipoVehiculoId(tipoVehiculoId));
+    public ResponseEntity<Page<VehiculoResponse>> findByTipoVehiculoId(@PathVariable Long tipoVehiculoId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findByTipoVehiculoId(tipoVehiculoId, pageable));
     }
 
     @GetMapping("/tipo-combustible/{tipoCombustibleId}")
-    public ResponseEntity<List<VehiculoResponse>> findByTipoCombustibleId(@PathVariable Long tipoCombustibleId) {
-        return ResponseEntity.ok(service.findByTipoCombustibleId(tipoCombustibleId));
+    public ResponseEntity<Page<VehiculoResponse>> findByTipoCombustibleId(@PathVariable Long tipoCombustibleId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findByTipoCombustibleId(tipoCombustibleId, pageable));
     }
 
     @GetMapping("/sin-chofer")
-    public ResponseEntity<List<VehiculoResponse>> findSinChoferAsignado() {
-        return ResponseEntity.ok(service.findSinChoferAsignado());
+    public ResponseEntity<Page<VehiculoResponse>> findSinChoferAsignado(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findSinChoferAsignado(pageable));
     }
 
     @PostMapping

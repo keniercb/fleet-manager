@@ -1,4 +1,6 @@
 package com.fleet.management.service.impl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.chofer.ChoferResponse;
 import com.fleet.management.dto.empresa.EmpresaResponse;
@@ -41,10 +43,9 @@ public class VehiculoServiceImpl implements VehiculoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<VehiculoResponse> findAll() {
-        return vehiculoRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<VehiculoResponse> findAll(Pageable pageable) {
+        return vehiculoRepository.findAll(pageable)
+                .map(this::toResponse);
     }
 
     @Override
@@ -57,34 +58,30 @@ public class VehiculoServiceImpl implements VehiculoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<VehiculoResponse> findByChoferId(Long choferId) {
-        return vehiculoRepository.findByChoferId(choferId).stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<VehiculoResponse> findByChoferId(Long choferId, Pageable pageable) {
+        return vehiculoRepository.findByChoferId(choferId, pageable)
+                .map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<VehiculoResponse> findByTipoVehiculoId(Long tipoVehiculoId) {
-        return vehiculoRepository.findByTipoVehiculoId(tipoVehiculoId).stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<VehiculoResponse> findByTipoVehiculoId(Long tipoVehiculoId, Pageable pageable) {
+        return vehiculoRepository.findByTipoVehiculoId(tipoVehiculoId, pageable)
+                .map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<VehiculoResponse> findByTipoCombustibleId(Long tipoCombustibleId) {
-        return vehiculoRepository.findByTipoCombustibleId(tipoCombustibleId).stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<VehiculoResponse> findByTipoCombustibleId(Long tipoCombustibleId, Pageable pageable) {
+        return vehiculoRepository.findByTipoCombustibleId(tipoCombustibleId, pageable)
+                .map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<VehiculoResponse> findSinChoferAsignado() {
-        return vehiculoRepository.findSinChoferAsignado().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<VehiculoResponse> findSinChoferAsignado(Pageable pageable) {
+        return vehiculoRepository.findSinChoferAsignado(pageable)
+                .map(this::toResponse);
     }
 
     @Override

@@ -1,4 +1,9 @@
 package com.fleet.management.controller;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+
 
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoRequest;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
@@ -9,7 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Vehicle Types")
@@ -21,8 +25,9 @@ public class TipoVehiculoController {
     private final TipoVehiculoService service;
 
     @GetMapping
-    public ResponseEntity<List<TipoVehiculoResponse>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    public ResponseEntity<Page<TipoVehiculoResponse>> findAll(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findAll(pageable));
     }
 
     @GetMapping("/{id}")

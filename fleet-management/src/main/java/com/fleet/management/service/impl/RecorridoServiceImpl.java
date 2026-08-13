@@ -1,4 +1,6 @@
 package com.fleet.management.service.impl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.marca.MarcaResponse;
@@ -35,10 +37,8 @@ public class RecorridoServiceImpl implements RecorridoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<RecorridoResponse> findAll() {
-        return repository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<RecorridoResponse> findAll(Pageable pageable) {
+        return repository.findAll(pageable).map(this::toResponse);
     }
 
     @Override
@@ -51,18 +51,14 @@ public class RecorridoServiceImpl implements RecorridoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<RecorridoResponse> findByVehiculoId(Long vehiculoId) {
-        return repository.findByVehiculoId(vehiculoId).stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<RecorridoResponse> findByVehiculoId(Long vehiculoId, Pageable pageable) {
+        return repository.findByVehiculoId(vehiculoId), pageable).map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<RecorridoResponse> findByVehiculoIdAndFechaBetween(Long vehiculoId, LocalDate desde, LocalDate hasta) {
-        return repository.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta).stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<RecorridoResponse> findByVehiculoIdAndFechaBetween(Long vehiculoId, LocalDate desde, LocalDate hasta, Pageable pageable) {
+        return repository.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta), pageable).map(this::toResponse);
     }
 
     @Override

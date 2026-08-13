@@ -1,4 +1,6 @@
 package com.fleet.management.service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.vehiculo.VehiculoRequest;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
@@ -7,15 +9,15 @@ import java.util.List;
 
 public interface VehiculoService {
 
-    List<VehiculoResponse> findAll();
+    Page<VehiculoResponse> findAll(Pageable pageable);
 
     VehiculoResponse findById(Long id);
 
-    List<VehiculoResponse> findByChoferId(Long choferId);
+    Page<VehiculoResponse> findByChoferId(Long choferId, Pageable pageable);
 
-    List<VehiculoResponse> findByTipoVehiculoId(Long tipoVehiculoId);
+    Page<VehiculoResponse> findByTipoVehiculoId(Long tipoVehiculoId, Pageable pageable);
 
-    List<VehiculoResponse> findByTipoCombustibleId(Long tipoCombustibleId);
+    Page<VehiculoResponse> findByTipoCombustibleId(Long tipoCombustibleId, Pageable pageable);
 
     List<VehiculoResponse> findSinChoferAsignado();
 

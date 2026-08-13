@@ -1,4 +1,6 @@
 package com.fleet.management.service.impl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.categorialicencia.CategoriaLicenciaRequest;
 import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
@@ -21,10 +23,8 @@ public class CategoriaLicenciaServiceImpl implements CategoriaLicenciaService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CategoriaLicenciaResponse> findAll() {
-        return repository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<CategoriaLicenciaResponse> findAll(Pageable pageable) {
+        return repository.findAll(pageable).map(this::toResponse);
     }
 
     @Override

@@ -1,4 +1,9 @@
 package com.fleet.management.controller;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+
 
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaRequest;
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaResponse;
@@ -9,7 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Driver License Categories")
@@ -21,8 +25,9 @@ public class ChoferCategoriaController {
     private final ChoferCategoriaService service;
 
     @GetMapping
-    public ResponseEntity<List<ChoferCategoriaResponse>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    public ResponseEntity<Page<ChoferCategoriaResponse>> findAll(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findAll(pageable));
     }
 
     @GetMapping("/{id}")
@@ -31,13 +36,15 @@ public class ChoferCategoriaController {
     }
 
     @GetMapping("/chofer/{choferId}")
-    public ResponseEntity<List<ChoferCategoriaResponse>> findByChoferId(@PathVariable Long choferId) {
-        return ResponseEntity.ok(service.findByChoferId(choferId));
+    public ResponseEntity<Page<ChoferCategoriaResponse>> findByChoferId(@PathVariable Long choferId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findByChoferId(choferId, pageable));
     }
 
     @GetMapping("/categoria/{categoriaLicenciaId}")
-    public ResponseEntity<List<ChoferCategoriaResponse>> findByCategoriaLicenciaId(@PathVariable Long categoriaLicenciaId) {
-        return ResponseEntity.ok(service.findByCategoriaLicenciaId(categoriaLicenciaId));
+    public ResponseEntity<Page<ChoferCategoriaResponse>> findByCategoriaLicenciaId(@PathVariable Long categoriaLicenciaId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findByCategoriaLicenciaId(categoriaLicenciaId, pageable));
     }
 
     @PostMapping

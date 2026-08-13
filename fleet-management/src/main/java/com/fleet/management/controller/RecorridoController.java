@@ -1,4 +1,9 @@
 package com.fleet.management.controller;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+
 
 import com.fleet.management.dto.recorrido.RecorridoRequest;
 import com.fleet.management.dto.recorrido.RecorridoResponse;
@@ -11,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Trips")
@@ -23,8 +27,9 @@ public class RecorridoController {
     private final RecorridoService service;
 
     @GetMapping
-    public ResponseEntity<List<RecorridoResponse>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    public ResponseEntity<Page<RecorridoResponse>> findAll(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findAll(pageable));
     }
 
     @GetMapping("/{id}")
@@ -33,16 +38,15 @@ public class RecorridoController {
     }
 
     @GetMapping("/vehiculo/{vehiculoId}")
-    public ResponseEntity<List<RecorridoResponse>> findByVehiculoId(@PathVariable Long vehiculoId) {
-        return ResponseEntity.ok(service.findByVehiculoId(vehiculoId));
+    public ResponseEntity<Page<RecorridoResponse>> findByVehiculoId(@PathVariable Long vehiculoId, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findByVehiculoId(vehiculoId, pageable));
     }
 
     @GetMapping("/vehiculo/{vehiculoId}/rango")
-    public ResponseEntity<List<RecorridoResponse>> findByVehiculoIdAndFechaBetween(
-            @PathVariable Long vehiculoId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        return ResponseEntity.ok(service.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta));
+    public ResponseEntity<Page<RecorridoResponse>> findByVehiculoIdAndFechaBetween( @PathVariable Long vehiculoId, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta, @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        return ResponseEntity.ok(service.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta, pageable));
     }
 
     @PostMapping

@@ -1,4 +1,6 @@
 package com.fleet.management.service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.chofer.ChoferRequest;
 import com.fleet.management.dto.chofer.ChoferResponse;
@@ -7,7 +9,7 @@ import java.util.List;
 
 public interface ChoferService {
 
-    List<ChoferResponse> findAll();
+    Page<ChoferResponse> findAll(Pageable pageable);
 
     ChoferResponse findById(Long id);
 

@@ -1,4 +1,6 @@
 package com.fleet.management.service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaRequest;
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaResponse;
@@ -7,13 +9,13 @@ import java.util.List;
 
 public interface ChoferCategoriaService {
 
-    List<ChoferCategoriaResponse> findAll();
+    Page<ChoferCategoriaResponse> findAll(Pageable pageable);
 
     ChoferCategoriaResponse findById(Long id);
 
-    List<ChoferCategoriaResponse> findByChoferId(Long choferId);
+    Page<ChoferCategoriaResponse> findByChoferId(Long choferId, Pageable pageable);
 
-    List<ChoferCategoriaResponse> findByCategoriaLicenciaId(Long categoriaLicenciaId);
+    Page<ChoferCategoriaResponse> findByCategoriaLicenciaId(Long categoriaLicenciaId, Pageable pageable);
 
     ChoferCategoriaResponse create(ChoferCategoriaRequest request);
 
