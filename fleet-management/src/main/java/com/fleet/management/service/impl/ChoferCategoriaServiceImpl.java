@@ -48,13 +48,13 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
     @Override
     @Transactional(readOnly = true)
     public Page<ChoferCategoriaResponse> findByChoferId(Long choferId, Pageable pageable) {
-        return repository.findByChoferId(choferId), pageable).map(this::toResponse);
+        return repository.findByChoferId(choferId, pageable).map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ChoferCategoriaResponse> findByCategoriaLicenciaId(Long categoriaLicenciaId, Pageable pageable) {
-        return repository.findByCategoriaLicenciaId(categoriaLicenciaId), pageable).map(this::toResponse);
+        return repository.findByCategoriaLicenciaId(categoriaLicenciaId, pageable).map(this::toResponse);
     }
 
     @Override

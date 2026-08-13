@@ -52,13 +52,13 @@ public class RecorridoServiceImpl implements RecorridoService {
     @Override
     @Transactional(readOnly = true)
     public Page<RecorridoResponse> findByVehiculoId(Long vehiculoId, Pageable pageable) {
-        return repository.findByVehiculoId(vehiculoId), pageable).map(this::toResponse);
+        return repository.findByVehiculoId(vehiculoId, pageable).map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<RecorridoResponse> findByVehiculoIdAndFechaBetween(Long vehiculoId, LocalDate desde, LocalDate hasta, Pageable pageable) {
-        return repository.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta), pageable).map(this::toResponse);
+        return repository.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta, pageable).map(this::toResponse);
     }
 
     @Override
