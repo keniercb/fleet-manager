@@ -3,6 +3,7 @@ package com.fleet.management.dto.recorrido;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,8 +20,8 @@ public class RecorridoResponse {
     private LocalDate fecha;
     private Integer kilometros;
     private BigInteger odometroInicial;
-    private Double consumo;
-    private Double litrosAbastecidos;
+    private BigDecimal consumo;
+    private BigDecimal litrosAbastecidos;
     private String numeroChip;
     private String lugarAbastecimiento;
     private Boolean activo;

@@ -3,6 +3,7 @@ package com.fleet.management.dto.vehiculo;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 
@@ -41,7 +42,7 @@ public class VehiculoRequest {
 
     @NotNull(message = "El nivel de combustible es obligatorio")
     @DecimalMin(value = "0.0", message = "El nivel de combustible no puede ser negativo")
-    private Double combustible;
+    private BigDecimal combustible;
 
     @PastOrPresent(message = "La fecha del ultimo mantenimiento no puede ser futura")
     private LocalDate ultimoMantenimiento;
@@ -50,5 +51,5 @@ public class VehiculoRequest {
     private BigInteger odometroUltimoMantenimiento;
 
     @DecimalMin(value = "0.0", inclusive = false, message = "El indice de consumo debe ser mayor a 0")
-    private Double indiceConsumo;
+    private BigDecimal indiceConsumo;
 }

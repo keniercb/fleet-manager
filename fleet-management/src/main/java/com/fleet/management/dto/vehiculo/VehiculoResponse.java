@@ -7,6 +7,7 @@ import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,10 +28,10 @@ public class VehiculoResponse {
     private String matricula;
     private String numeroMotor;
     private BigInteger odometro;
-    private Double combustible;
+    private BigDecimal combustible;
     private LocalDate ultimoMantenimiento;
     private BigInteger odometroUltimoMantenimiento;
-    private Double indiceConsumo;
+    private BigDecimal indiceConsumo;
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;

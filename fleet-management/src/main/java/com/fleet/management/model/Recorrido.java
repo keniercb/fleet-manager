@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 
@@ -41,12 +42,12 @@ public class Recorrido extends BaseEntity {
     private BigInteger odometroInicial;
 
     @DecimalMin(value = "0.0", message = "El consumo no puede ser negativo")
-    @Column(name = "consumo", nullable = false)
-    private Double consumo;
+    @Column(name = "consumo", nullable = false, precision = 10, scale = 2)
+    private BigDecimal consumo;
 
     @DecimalMin(value = "0.0", message = "Los litros abastecidos no pueden ser negativos")
-    @Column(name = "litros_abastecidos", nullable = false)
-    private Double litrosAbastecidos;
+    @Column(name = "litros_abastecidos", nullable = false, precision = 10, scale = 2)
+    private BigDecimal litrosAbastecidos;
 
     @Size(max = 50, message = "El numero de chip no puede exceder 50 caracteres")
     @Column(name = "numero_chip", length = 50)

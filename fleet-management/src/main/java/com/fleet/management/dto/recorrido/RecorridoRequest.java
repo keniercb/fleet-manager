@@ -3,6 +3,7 @@ package com.fleet.management.dto.recorrido;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -24,7 +25,7 @@ public class RecorridoRequest {
     private Integer kilometros;
 
     @DecimalMin(value = "0.0", message = "Los litros abastecidos no pueden ser negativos")
-    private Double litrosAbastecidos;
+    private BigDecimal litrosAbastecidos;
 
     @Size(max = 50, message = "El numero de chip no puede exceder 50 caracteres")
     private String numeroChip;

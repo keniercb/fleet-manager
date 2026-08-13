@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 
@@ -66,8 +67,8 @@ public class Vehiculo extends BaseEntity {
 
     @NotNull(message = "El nivel de combustible es obligatorio")
     @DecimalMin(value = "0.0", message = "El nivel de combustible no puede ser negativo")
-    @Column(name = "combustible", nullable = false)
-    private Double combustible;
+    @Column(name = "combustible", nullable = false, precision = 10, scale = 2)
+    private BigDecimal combustible;
 
     @PastOrPresent(message = "La fecha del ultimo mantenimiento no puede ser futura")
     @Column(name = "ultimo_mantenimiento")
@@ -78,6 +79,6 @@ public class Vehiculo extends BaseEntity {
     private BigInteger odometroUltimoMantenimiento;
 
     @DecimalMin(value = "0.0", inclusive = false, message = "El indice de consumo debe ser mayor a 0")
-    @Column(name = "indice_consumo", nullable = false)
-    private Double indiceConsumo;
+    @Column(name = "indice_consumo", nullable = false, precision = 10, scale = 2)
+    private BigDecimal indiceConsumo;
 }
