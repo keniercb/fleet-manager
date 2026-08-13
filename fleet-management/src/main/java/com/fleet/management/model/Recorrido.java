@@ -43,4 +43,17 @@ public class Recorrido extends BaseEntity {
     @DecimalMin(value = "0.0", message = "El consumo no puede ser negativo")
     @Column(name = "consumo", nullable = false)
     private Double consumo;
+
+    @DecimalMin(value = "0.0", message = "Los litros abastecidos no pueden ser negativos")
+    @Column(name = "litros_abastecidos", nullable = false, precision = 10, scale = 2)
+    private Double litrosAbastecidos;
+
+    @Size(max = 50, message = "El numero de chip no puede exceder 50 caracteres")
+    @Column(name = "numero_chip", length = 50)
+    private String numeroChip;
+
+    @NotBlank(message = "El lugar de abastecimiento es obligatorio")
+    @Size(max = 100, message = "El lugar de abastecimiento no puede exceder 100 caracteres")
+    @Column(name = "lugar_abastecimiento", nullable = false, length = 100)
+    private String lugarAbastecimiento;
 }

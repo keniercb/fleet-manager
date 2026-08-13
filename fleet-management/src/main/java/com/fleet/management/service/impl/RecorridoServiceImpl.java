@@ -85,8 +85,13 @@ public class RecorridoServiceImpl implements RecorridoService {
         double consumo = BigDecimal.valueOf(vehiculo.getIndiceConsumo() * request.getKilometros() / 100.0)
                 .setScale(2, RoundingMode.HALF_UP).doubleValue();
 
-        // Validar que el vehiculo tenga suficiente combustible
-        double combustibleRestante = vehiculo.getCombustible() - consumo;
+        // Redondear litros abastecidos a 2 decimales
+        double litrosAbastecidos = request.getLitrosAbastecidos() != null
+                ? BigDecimal.valueOf(request.getLitrosAbastecidos()).setScale(2, RoundingMode.HALF_UP).doubleValue()
+                : 0.0;
+
+        // Validar que el vehiculo tenga suficiente combustible (sumando litros abastecidos)
+        double combustibleRestante = vehiculo.getCombustible() - consumo + litrosAbastecidos;
         if (combustibleRestante < 0) {
             throw new BusinessException("El recorrido no puede ser insertado porque se consume mas combustible ("
                     + consumo + ") que el disponible en el vehiculo (" + vehiculo.getCombustible() + ")");
@@ -101,6 +106,9 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .kilometros(request.getKilometros())
                 .odometroInicial(odometroInicial)
                 .consumo(consumo)
+                .litrosAbastecidos(litrosAbastecidos)
+                .numeroChip(request.getNumeroChip())
+                .lugarAbastecimiento(request.getLugarAbastecimiento())
                 .activo(true)
                 .build();
 
@@ -194,6 +202,9 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .kilometros(entity.getKilometros())
                 .odometroInicial(entity.getOdometroInicial())
                 .consumo(entity.getConsumo())
+                .litrosAbastecidos(entity.getLitrosAbastecidos())
+                .numeroChip(entity.getNumeroChip())
+                .lugarAbastecimiento(entity.getLugarAbastecimiento())
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())

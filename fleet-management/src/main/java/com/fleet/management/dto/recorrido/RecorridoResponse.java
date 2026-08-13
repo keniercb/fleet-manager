@@ -20,6 +20,9 @@ public class RecorridoResponse {
     private Integer kilometros;
     private BigInteger odometroInicial;
     private Double consumo;
+    private Double litrosAbastecidos;
+    private String numeroChip;
+    private String lugarAbastecimiento;
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
