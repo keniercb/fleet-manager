@@ -1,6 +1,5 @@
 package com.fleet.management.controller;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.PageRequest;
+import com.fleet.management.util.PaginationUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
@@ -25,7 +24,7 @@ public class ChoferCategoriaController {
 
     @GetMapping
     public ResponseEntity<Page<ChoferCategoriaResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findAll(pageable));
     }
@@ -37,14 +36,14 @@ public class ChoferCategoriaController {
 
     @GetMapping("/chofer/{choferId}")
     public ResponseEntity<Page<ChoferCategoriaResponse>> findByChoferId(@PathVariable Long choferId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findByChoferId(choferId, pageable));
     }
 
     @GetMapping("/categoria/{categoriaLicenciaId}")
     public ResponseEntity<Page<ChoferCategoriaResponse>> findByCategoriaLicenciaId(@PathVariable Long categoriaLicenciaId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findByCategoriaLicenciaId(categoriaLicenciaId, pageable));
     }

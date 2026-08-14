@@ -1,6 +1,5 @@
 package com.fleet.management.controller;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.PageRequest;
+import com.fleet.management.util.PaginationUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
@@ -25,7 +24,7 @@ public class VehiculoController {
 
     @GetMapping
     public ResponseEntity<Page<VehiculoResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findAll(pageable));
     }
@@ -37,28 +36,28 @@ public class VehiculoController {
 
     @GetMapping("/chofer/{choferId}")
     public ResponseEntity<Page<VehiculoResponse>> findByChoferId(@PathVariable Long choferId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findByChoferId(choferId, pageable));
     }
 
     @GetMapping("/tipo-vehiculo/{tipoVehiculoId}")
     public ResponseEntity<Page<VehiculoResponse>> findByTipoVehiculoId(@PathVariable Long tipoVehiculoId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findByTipoVehiculoId(tipoVehiculoId, pageable));
     }
 
     @GetMapping("/tipo-combustible/{tipoCombustibleId}")
     public ResponseEntity<Page<VehiculoResponse>> findByTipoCombustibleId(@PathVariable Long tipoCombustibleId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findByTipoCombustibleId(tipoCombustibleId, pageable));
     }
 
     @GetMapping("/sin-chofer")
     public ResponseEntity<Page<VehiculoResponse>> findSinChoferAsignado(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findSinChoferAsignado(pageable));
     }

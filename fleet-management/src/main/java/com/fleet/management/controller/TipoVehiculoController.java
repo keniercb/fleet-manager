@@ -1,6 +1,5 @@
 package com.fleet.management.controller;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.PageRequest;
+import com.fleet.management.util.PaginationUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
@@ -25,7 +24,7 @@ public class TipoVehiculoController {
 
     @GetMapping
     public ResponseEntity<Page<TipoVehiculoResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findAll(pageable));
     }

@@ -1,6 +1,5 @@
 package com.fleet.management.controller;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.PageRequest;
+import com.fleet.management.util.PaginationUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
@@ -27,7 +26,7 @@ public class RecorridoController {
 
     @GetMapping
     public ResponseEntity<Page<RecorridoResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findAll(pageable));
     }
@@ -39,14 +38,14 @@ public class RecorridoController {
 
     @GetMapping("/vehiculo/{vehiculoId}")
     public ResponseEntity<Page<RecorridoResponse>> findByVehiculoId(@PathVariable Long vehiculoId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findByVehiculoId(vehiculoId, pageable));
     }
 
     @GetMapping("/vehiculo/{vehiculoId}/rango")
     public ResponseEntity<Page<RecorridoResponse>> findByVehiculoIdAndFechaBetween( @PathVariable Long vehiculoId, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PageRequest.of(page, perPage, Sort.Direction.fromString(sortOrder), sort);
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
         return ResponseEntity.ok(service.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta, pageable));
     }
