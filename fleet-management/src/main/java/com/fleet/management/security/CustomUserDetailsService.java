@@ -3,12 +3,14 @@ package com.fleet.management.security;
 import com.fleet.management.model.User;
 import com.fleet.management.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,10 +27,20 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("Usuario inactivo con email: " + email);
         }
 
+        List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
+                .flatMap(role -> {
+                    List<SimpleGrantedAuthority> perms = role.getPermissions().stream()
+                            .map(perm -> new SimpleGrantedAuthority(perm.getName()))
+                            .collect(Collectors.toList());
+                    perms.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
+                    return perms.stream();
+                })
+                .collect(Collectors.toList());
+
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPassword(),
-                List.of()
+                authorities
         );
     }
 }

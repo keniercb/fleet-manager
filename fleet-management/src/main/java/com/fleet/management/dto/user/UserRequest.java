@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Set;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -22,4 +24,6 @@ public class UserRequest {
     @NotBlank(message = "El password es obligatorio")
     @Size(min = 6, max = 255, message = "El password debe tener entre 6 y 255 caracteres")
     private String password;
+
+    private Set<Long> roleIds;
 }

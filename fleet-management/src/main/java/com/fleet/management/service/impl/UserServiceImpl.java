@@ -1,10 +1,14 @@
 package com.fleet.management.service.impl;
 
+import com.fleet.management.dto.permission.PermissionResponse;
+import com.fleet.management.dto.role.RoleResponse;
 import com.fleet.management.dto.user.UserRequest;
 import com.fleet.management.dto.user.UserResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.model.Role;
 import com.fleet.management.model.User;
+import com.fleet.management.repository.RoleRepository;
 import com.fleet.management.repository.UserRepository;
 import com.fleet.management.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -14,11 +18,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -51,9 +60,12 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("Ya existe un usuario con el email: " + request.getEmail());
         }
 
+        Set<Role> roles = resolveRoles(request.getRoleIds());
+
         User entity = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .roles(roles)
                 .activo(true)
                 .build();
         return toResponse(userRepository.save(entity));
@@ -66,6 +78,12 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
 
         entity.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        if (request.getRoleIds() != null) {
+            Set<Role> roles = resolveRoles(request.getRoleIds());
+            entity.setRoles(roles);
+        }
+
         return toResponse(userRepository.save(entity));
     }
 
@@ -78,10 +96,52 @@ public class UserServiceImpl implements UserService {
         userRepository.save(entity);
     }
 
+    private Set<Role> resolveRoles(Set<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return new HashSet<>();
+        }
+        return roleIds.stream()
+                .map(roleId -> roleRepository.findById(roleId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId)))
+                .collect(Collectors.toSet());
+    }
+
+    private PermissionResponse toPermissionResponse(com.fleet.management.model.Permission permission) {
+        return PermissionResponse.builder()
+                .id(permission.getId())
+                .name(permission.getName())
+                .description(permission.getDescription())
+                .activo(permission.getActivo())
+                .fechaCreacion(permission.getFechaCreacion())
+                .fechaActualizacion(permission.getFechaActualizacion())
+                .build();
+    }
+
+    private RoleResponse toRoleResponse(Role role) {
+        Set<PermissionResponse> permissionResponses = role.getPermissions().stream()
+                .map(this::toPermissionResponse)
+                .collect(Collectors.toSet());
+
+        return RoleResponse.builder()
+                .id(role.getId())
+                .name(role.getName())
+                .description(role.getDescription())
+                .permissions(permissionResponses)
+                .activo(role.getActivo())
+                .fechaCreacion(role.getFechaCreacion())
+                .fechaActualizacion(role.getFechaActualizacion())
+                .build();
+    }
+
     private UserResponse toResponse(User entity) {
+        Set<RoleResponse> roleResponses = entity.getRoles().stream()
+                .map(this::toRoleResponse)
+                .collect(Collectors.toSet());
+
         return UserResponse.builder()
                 .id(entity.getId())
                 .email(entity.getEmail())
+                .roles(roleResponses)
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
