@@ -10,6 +10,7 @@ import com.fleet.management.model.Role;
 import com.fleet.management.repository.PermissionRepository;
 import com.fleet.management.repository.RoleRepository;
 import com.fleet.management.service.RoleService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -125,6 +126,8 @@ public class RoleServiceImpl implements RoleService {
                 .activo(permission.getActivo())
                 .fechaCreacion(permission.getFechaCreacion())
                 .fechaActualizacion(permission.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(permission.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(permission.getModificadoPor()))
                 .build();
     }
 
@@ -141,6 +144,8 @@ public class RoleServiceImpl implements RoleService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }

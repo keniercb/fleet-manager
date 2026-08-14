@@ -2,6 +2,7 @@ package com.fleet.management.dto.chofer;
 
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaEmbeddedResponse;
 import com.fleet.management.dto.empresa.EmpresaResponse;
+import com.fleet.management.dto.user.UserAuditResponse;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -26,4 +27,6 @@ public class ChoferResponse {
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
+    private UserAuditResponse creadoPor;
+    private UserAuditResponse modificadoPor;
 }

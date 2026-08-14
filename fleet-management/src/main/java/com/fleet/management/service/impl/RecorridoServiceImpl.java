@@ -15,6 +15,7 @@ import com.fleet.management.model.*;
 import com.fleet.management.repository.RecorridoRepository;
 import com.fleet.management.repository.VehiculoRepository;
 import com.fleet.management.service.RecorridoService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -209,6 +210,8 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 
@@ -259,6 +262,8 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .activo(v.getActivo())
                 .fechaCreacion(v.getFechaCreacion())
                 .fechaActualizacion(v.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(v.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(v.getModificadoPor()))
                 .build();
     }
 }

@@ -18,6 +18,7 @@ import com.fleet.management.repository.ChoferCategoriaRepository;
 import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.service.ChoferService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -166,6 +167,8 @@ public class ChoferServiceImpl implements ChoferService {
                 .activo(empresa.getActivo())
                 .fechaCreacion(empresa.getFechaCreacion())
                 .fechaActualizacion(empresa.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(empresa.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(empresa.getModificadoPor()))
                 .build();
     }
 
@@ -181,6 +184,8 @@ public class ChoferServiceImpl implements ChoferService {
                             .activo(cat.getActivo())
                             .fechaCreacion(cat.getFechaCreacion())
                             .fechaActualizacion(cat.getFechaActualizacion())
+                            .creadoPor(AuditMapper.toAuditResponse(cat.getCreadoPor()))
+                            .modificadoPor(AuditMapper.toAuditResponse(cat.getModificadoPor()))
                             .build();
                     return ChoferCategoriaEmbeddedResponse.builder()
                             .id(cc.getId())
@@ -189,6 +194,8 @@ public class ChoferServiceImpl implements ChoferService {
                             .activo(cc.getActivo())
                             .fechaCreacion(cc.getFechaCreacion())
                             .fechaActualizacion(cc.getFechaActualizacion())
+                            .creadoPor(AuditMapper.toAuditResponse(cc.getCreadoPor()))
+                            .modificadoPor(AuditMapper.toAuditResponse(cc.getModificadoPor()))
                             .build();
                 })
                 .toList();
@@ -205,6 +212,8 @@ public class ChoferServiceImpl implements ChoferService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }

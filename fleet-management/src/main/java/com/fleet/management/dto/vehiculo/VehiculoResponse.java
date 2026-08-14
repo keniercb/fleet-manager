@@ -5,6 +5,7 @@ import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.marca.MarcaResponse;
 import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
+import com.fleet.management.dto.user.UserAuditResponse;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -35,4 +36,6 @@ public class VehiculoResponse {
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
+    private UserAuditResponse creadoPor;
+    private UserAuditResponse modificadoPor;
 }

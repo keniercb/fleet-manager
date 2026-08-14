@@ -1,5 +1,6 @@
 package com.fleet.management.dto.empresa;
 
+import com.fleet.management.dto.user.UserAuditResponse;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -20,4 +21,6 @@ public class EmpresaResponse {
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
+    private UserAuditResponse creadoPor;
+    private UserAuditResponse modificadoPor;
 }

@@ -9,6 +9,7 @@ import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.Empresa;
 import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.service.EmpresaService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -98,6 +99,8 @@ public class EmpresaServiceImpl implements EmpresaService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }

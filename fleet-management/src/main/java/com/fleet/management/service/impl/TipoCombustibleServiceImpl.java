@@ -9,6 +9,7 @@ import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.TipoCombustible;
 import com.fleet.management.repository.TipoCombustibleRepository;
 import com.fleet.management.service.TipoCombustibleService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -92,6 +93,8 @@ public class TipoCombustibleServiceImpl implements TipoCombustibleService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }

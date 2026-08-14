@@ -9,6 +9,7 @@ import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.TipoVehiculo;
 import com.fleet.management.repository.TipoVehiculoRepository;
 import com.fleet.management.service.TipoVehiculoService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,6 +82,8 @@ public class TipoVehiculoServiceImpl implements TipoVehiculoService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }

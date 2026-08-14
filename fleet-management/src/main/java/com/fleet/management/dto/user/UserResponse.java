@@ -21,4 +21,6 @@ public class UserResponse {
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
+    private UserAuditResponse creadoPor;
+    private UserAuditResponse modificadoPor;
 }

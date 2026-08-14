@@ -17,6 +17,7 @@ import com.fleet.management.repository.CategoriaLicenciaRepository;
 import com.fleet.management.repository.ChoferCategoriaRepository;
 import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.service.ChoferCategoriaService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -129,6 +130,8 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
                 .activo(emp.getActivo())
                 .fechaCreacion(emp.getFechaCreacion())
                 .fechaActualizacion(emp.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(emp.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(emp.getModificadoPor()))
                 .build();
 
         ChoferResponse choferResponse = ChoferResponse.builder()
@@ -142,6 +145,8 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
                 .activo(chofer.getActivo())
                 .fechaCreacion(chofer.getFechaCreacion())
                 .fechaActualizacion(chofer.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(chofer.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(chofer.getModificadoPor()))
                 .build();
 
         CategoriaLicencia cat = entity.getCategoriaLicencia();
@@ -153,6 +158,8 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
                 .activo(cat.getActivo())
                 .fechaCreacion(cat.getFechaCreacion())
                 .fechaActualizacion(cat.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(cat.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(cat.getModificadoPor()))
                 .build();
 
         return ChoferCategoriaResponse.builder()
@@ -163,6 +170,8 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }

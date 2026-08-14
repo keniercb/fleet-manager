@@ -1,6 +1,7 @@
 package com.fleet.management.dto.recorrido;
 
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
+import com.fleet.management.dto.user.UserAuditResponse;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -27,4 +28,6 @@ public class RecorridoResponse {
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
+    private UserAuditResponse creadoPor;
+    private UserAuditResponse modificadoPor;
 }

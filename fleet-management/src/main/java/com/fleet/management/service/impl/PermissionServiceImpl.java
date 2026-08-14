@@ -7,6 +7,7 @@ import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.Permission;
 import com.fleet.management.repository.PermissionRepository;
 import com.fleet.management.service.PermissionService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -91,6 +92,8 @@ public class PermissionServiceImpl implements PermissionService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }

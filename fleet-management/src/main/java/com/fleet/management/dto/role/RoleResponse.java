@@ -1,6 +1,7 @@
 package com.fleet.management.dto.role;
 
 import com.fleet.management.dto.permission.PermissionResponse;
+import com.fleet.management.dto.user.UserAuditResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,4 +23,6 @@ public class RoleResponse {
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
+    private UserAuditResponse creadoPor;
+    private UserAuditResponse modificadoPor;
 }

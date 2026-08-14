@@ -9,6 +9,7 @@ import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.CategoriaLicencia;
 import com.fleet.management.repository.CategoriaLicenciaRepository;
 import com.fleet.management.service.CategoriaLicenciaService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,6 +94,8 @@ public class CategoriaLicenciaServiceImpl implements CategoriaLicenciaService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }

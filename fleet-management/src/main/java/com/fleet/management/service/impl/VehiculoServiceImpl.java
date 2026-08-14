@@ -24,6 +24,7 @@ import com.fleet.management.repository.TipoCombustibleRepository;
 import com.fleet.management.repository.TipoVehiculoRepository;
 import com.fleet.management.repository.VehiculoRepository;
 import com.fleet.management.service.VehiculoService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -202,6 +203,8 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .activo(empresa.getActivo())
                 .fechaCreacion(empresa.getFechaCreacion())
                 .fechaActualizacion(empresa.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(empresa.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(empresa.getModificadoPor()))
                 .build();
     }
 
@@ -216,6 +219,8 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .activo(tv.getActivo())
                 .fechaCreacion(tv.getFechaCreacion())
                 .fechaActualizacion(tv.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(tv.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(tv.getModificadoPor()))
                 .build();
 
         Marca m = entity.getMarca();
@@ -227,6 +232,8 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .activo(m.getActivo())
                 .fechaCreacion(m.getFechaCreacion())
                 .fechaActualizacion(m.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(m.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(m.getModificadoPor()))
                 .build();
 
         TipoCombustible tc = entity.getTipoCombustible();
@@ -238,6 +245,8 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .activo(tc.getActivo())
                 .fechaCreacion(tc.getFechaCreacion())
                 .fechaActualizacion(tc.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(tc.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(tc.getModificadoPor()))
                 .build();
 
         ChoferResponse choferResp = null;
@@ -254,6 +263,8 @@ public class VehiculoServiceImpl implements VehiculoService {
                     .activo(c.getActivo())
                     .fechaCreacion(c.getFechaCreacion())
                     .fechaActualizacion(c.getFechaActualizacion())
+                    .creadoPor(AuditMapper.toAuditResponse(c.getCreadoPor()))
+                    .modificadoPor(AuditMapper.toAuditResponse(c.getModificadoPor()))
                     .build();
         }
 
@@ -274,6 +285,8 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }

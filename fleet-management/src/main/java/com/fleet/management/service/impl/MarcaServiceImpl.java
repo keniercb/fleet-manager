@@ -9,6 +9,7 @@ import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.Marca;
 import com.fleet.management.repository.MarcaRepository;
 import com.fleet.management.service.MarcaService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,6 +85,8 @@ public class MarcaServiceImpl implements MarcaService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }

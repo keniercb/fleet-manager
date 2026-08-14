@@ -1,5 +1,6 @@
 package com.fleet.management.dto.tipocombustible;
 
+import com.fleet.management.dto.user.UserAuditResponse;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -18,4 +19,6 @@ public class TipoCombustibleResponse {
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
+    private UserAuditResponse creadoPor;
+    private UserAuditResponse modificadoPor;
 }

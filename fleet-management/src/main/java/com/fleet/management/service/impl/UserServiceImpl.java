@@ -11,6 +11,7 @@ import com.fleet.management.model.User;
 import com.fleet.management.repository.RoleRepository;
 import com.fleet.management.repository.UserRepository;
 import com.fleet.management.service.UserService;
+import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -114,6 +115,8 @@ public class UserServiceImpl implements UserService {
                 .activo(permission.getActivo())
                 .fechaCreacion(permission.getFechaCreacion())
                 .fechaActualizacion(permission.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(permission.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(permission.getModificadoPor()))
                 .build();
     }
 
@@ -130,6 +133,8 @@ public class UserServiceImpl implements UserService {
                 .activo(role.getActivo())
                 .fechaCreacion(role.getFechaCreacion())
                 .fechaActualizacion(role.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(role.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(role.getModificadoPor()))
                 .build();
     }
 
@@ -145,6 +150,8 @@ public class UserServiceImpl implements UserService {
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
+                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
     }
 }
