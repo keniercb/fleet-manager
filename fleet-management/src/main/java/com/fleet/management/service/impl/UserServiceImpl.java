@@ -10,6 +10,7 @@ import com.fleet.management.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional(readOnly = true)
@@ -45,11 +47,13 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse create(UserRequest request) {
-        validateUniqueEmail(request.getEmail(), null);
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException("Ya existe un usuario con el email: " + request.getEmail());
+        }
 
         User entity = User.builder()
                 .email(request.getEmail())
-                .password(request.getPassword())
+                .password(passwordEncoder.encode(request.getPassword()))
                 .activo(true)
                 .build();
         return toResponse(userRepository.save(entity));
@@ -61,10 +65,7 @@ public class UserServiceImpl implements UserService {
         User entity = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
 
-        validateUniqueEmail(request.getEmail(), id);
-
-        entity.setEmail(request.getEmail());
-        entity.setPassword(request.getPassword());
+        entity.setPassword(passwordEncoder.encode(request.getPassword()));
         return toResponse(userRepository.save(entity));
     }
 
@@ -75,16 +76,6 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
         entity.setActivo(false);
         userRepository.save(entity);
-    }
-
-    private void validateUniqueEmail(String email, Long excludeId) {
-        if (userRepository.existsByEmail(email)) {
-            userRepository.findByEmail(email).ifPresent(existing -> {
-                if (!existing.getId().equals(excludeId)) {
-                    throw new BusinessException("Ya existe un usuario con el email: " + email);
-                }
-            });
-        }
     }
 
     private UserResponse toResponse(User entity) {
