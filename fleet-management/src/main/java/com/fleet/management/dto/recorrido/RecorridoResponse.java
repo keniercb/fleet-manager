@@ -1,5 +1,6 @@
 package com.fleet.management.dto.recorrido;
 
+import com.fleet.management.dto.chofer.ChoferResponse;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
 import com.fleet.management.dto.user.UserAuditResponse;
 import lombok.*;
@@ -18,6 +19,7 @@ public class RecorridoResponse {
 
     private Long id;
     private VehiculoResponse vehiculo;
+    private ChoferResponse chofer;
     private LocalDate fecha;
     private Integer kilometros;
     private BigInteger odometroInicial;

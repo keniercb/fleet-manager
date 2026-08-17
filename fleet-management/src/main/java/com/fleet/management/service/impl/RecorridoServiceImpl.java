@@ -2,6 +2,7 @@ package com.fleet.management.service.impl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
+import com.fleet.management.dto.chofer.ChoferResponse;
 import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.marca.MarcaResponse;
 import com.fleet.management.dto.recorrido.RecorridoRequest;
@@ -12,6 +13,7 @@ import com.fleet.management.dto.vehiculo.VehiculoResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.*;
+import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.repository.RecorridoRepository;
 import com.fleet.management.repository.VehiculoRepository;
 import com.fleet.management.service.RecorridoService;
@@ -32,6 +34,7 @@ public class RecorridoServiceImpl implements RecorridoService {
 
     private final RecorridoRepository repository;
     private final VehiculoRepository vehiculoRepository;
+    private final ChoferRepository choferRepository;
 
     private static final BigDecimal CIEN = BigDecimal.valueOf(100);
     private static final BigDecimal CERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -98,11 +101,15 @@ public class RecorridoServiceImpl implements RecorridoService {
                     + consumo + ") que el disponible en el vehiculo (" + vehiculo.getCombustible() + ")");
         }
 
+        // Resolver chofer: si no se envia, usar el chofer asignado al vehiculo
+        Chofer chofer = resolverChofer(request.getChoferId(), vehiculo);
+
         // OdometroInicial es el odometro actual del vehiculo antes de sumar kilometros
         BigInteger odometroInicial = vehiculo.getOdometro();
 
         Recorrido entity = Recorrido.builder()
                 .vehiculo(vehiculo)
+                .chofer(chofer)
                 .fecha(request.getFecha())
                 .kilometros(request.getKilometros())
                 .odometroInicial(odometroInicial)
@@ -161,7 +168,11 @@ public class RecorridoServiceImpl implements RecorridoService {
         vehiculo.setOdometro(vehiculo.getOdometro().subtract(kilometrosAnteriores));
         vehiculo.setCombustible(vehiculo.getCombustible().add(consumoAntiguo));
 
+        // Resolver chofer: si no se envia, usar el chofer asignado al vehiculo
+        Chofer chofer = resolverChofer(request.getChoferId(), vehiculo);
+
         // Actualizar la entidad
+        entity.setChofer(chofer);
         entity.setKilometros(request.getKilometros());
         entity.setOdometroInicial(vehiculo.getOdometro());
         entity.setConsumo(nuevoConsumo);
@@ -200,6 +211,7 @@ public class RecorridoServiceImpl implements RecorridoService {
         return RecorridoResponse.builder()
                 .id(entity.getId())
                 .vehiculo(toVehiculoResumido(entity.getVehiculo()))
+                .chofer(entity.getChofer() != null ? toChoferResumido(entity.getChofer()) : null)
                 .fecha(entity.getFecha())
                 .kilometros(entity.getKilometros())
                 .odometroInicial(entity.getOdometroInicial())
@@ -213,6 +225,26 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
                 .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
+    }
+
+    private ChoferResponse toChoferResumido(Chofer c) {
+        return ChoferResponse.builder()
+                .id(c.getId())
+                .nombre(c.getNombre())
+                .apellidos(c.getApellidos())
+                .carneIdentidad(c.getCarneIdentidad())
+                .numeroLicencia(c.getNumeroLicencia())
+                .fechaNacimiento(c.getFechaNacimiento())
+                .activo(c.getActivo())
+                .build();
+    }
+
+    private Chofer resolverChofer(Long choferId, Vehiculo vehiculo) {
+        if (choferId != null) {
+            return choferRepository.findById(choferId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Chofer", "id", choferId));
+        }
+        return vehiculo.getChofer();
     }
 
     private VehiculoResponse toVehiculoResumido(Vehiculo v) {

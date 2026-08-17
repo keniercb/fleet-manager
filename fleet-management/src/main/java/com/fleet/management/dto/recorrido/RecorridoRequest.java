@@ -16,6 +16,8 @@ public class RecorridoRequest {
     @NotNull(message = "El vehiculo es obligatorio")
     private Long vehiculoId;
 
+    private Long choferId;
+
     @NotNull(message = "La fecha es obligatoria")
     @PastOrPresent(message = "La fecha no puede ser futura")
     private LocalDate fecha;

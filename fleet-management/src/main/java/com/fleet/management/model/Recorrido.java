@@ -49,6 +49,11 @@ public class Recorrido extends BaseEntity {
     @Column(name = "litros_abastecidos", nullable = false, precision = 10, scale = 2)
     private BigDecimal litrosAbastecidos;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chofer_id",
+            foreignKey = @ForeignKey(name = "fk_recorrido_chofer"))
+    private Chofer chofer;
+
     @Size(max = 50, message = "El numero de chip no puede exceder 50 caracteres")
     @Column(name = "numero_chip", length = 50)
     private String numeroChip;
