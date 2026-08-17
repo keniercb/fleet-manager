@@ -19,4 +19,6 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
 
     @Query("SELECT r FROM Role r JOIN r.permissions p WHERE p.id = :permissionId AND r.activo = true")
     Page<Role> findByPermissionId(@Param("permissionId") Long permissionId, Pageable pageable);
+
+    Page<Role> findAllByActivoTrue(Pageable pageable);
 }

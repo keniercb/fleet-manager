@@ -55,6 +55,10 @@ public class Vehiculo extends BaseEntity {
     @Column(name = "matricula", nullable = false, length = 20, unique = true)
     private String matricula;
 
+    @Size(max = 100, message = "El modelo no puede exceder 100 caracteres")
+    @Column(name = "modelo", length = 100)
+    private String modelo;
+
     @NotBlank(message = "El numero de motor es obligatorio")
     @Size(max = 50, message = "El numero de motor no puede exceder 50 caracteres")
     @Column(name = "numero_motor", nullable = false, length = 50, unique = true)

@@ -33,4 +33,8 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
 
     @Query("SELECT v FROM Vehiculo v WHERE v.chofer.id = :choferId AND v.activo = true")
     Page<Vehiculo> findActivosByChoferId(@Param("choferId") Long choferId, Pageable pageable);
+
+    Page<Vehiculo> findAllByActivoTrue(Pageable pageable);
+
+    Page<Vehiculo> findByEmpresaIdAndActivoTrue(Long empresaId, Pageable pageable);
 }

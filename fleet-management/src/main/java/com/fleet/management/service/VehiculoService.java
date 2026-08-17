@@ -19,6 +19,8 @@ public interface VehiculoService {
 
     Page<VehiculoResponse> findSinChoferAsignado(Pageable pageable);
 
+    Page<VehiculoResponse> findByEmpresaId(Long empresaId, Pageable pageable);
+
     VehiculoResponse create(VehiculoRequest request);
 
     VehiculoResponse update(Long id, VehiculoRequest request);

@@ -34,7 +34,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public Page<UserResponse> findAll(Pageable pageable) {
-        return userRepository.findAll(pageable)
+        return userRepository.findAllByActivoTrue(pageable)
                 .map(this::toResponse);
     }
 

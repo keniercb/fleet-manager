@@ -23,7 +23,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     @Transactional(readOnly = true)
     public Page<PermissionResponse> findAll(Pageable pageable) {
-        return permissionRepository.findAll(pageable)
+        return permissionRepository.findAllByActivoTrue(pageable)
                 .map(this::toResponse);
     }
 

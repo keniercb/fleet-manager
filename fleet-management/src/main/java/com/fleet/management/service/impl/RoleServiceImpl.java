@@ -31,7 +31,7 @@ public class RoleServiceImpl implements RoleService {
     @Override
     @Transactional(readOnly = true)
     public Page<RoleResponse> findAll(Pageable pageable) {
-        return roleRepository.findAll(pageable)
+        return roleRepository.findAllByActivoTrue(pageable)
                 .map(this::toResponse);
     }
 

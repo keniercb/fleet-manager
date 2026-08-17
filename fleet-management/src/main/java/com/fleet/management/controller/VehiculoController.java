@@ -62,6 +62,12 @@ public class VehiculoController {
         return ResponseEntity.ok(service.findSinChoferAsignado(pageable));
     }
 
+    @GetMapping("/empresa/{empresaId}")
+    public ResponseEntity<Page<VehiculoResponse>> findByEmpresaId(@PathVariable Long empresaId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
+        return ResponseEntity.ok(service.findByEmpresaId(empresaId, pageable));
+    }
+
     @PostMapping
     public ResponseEntity<VehiculoResponse> create(@Valid @RequestBody VehiculoRequest request) {
         VehiculoResponse response = service.create(request);

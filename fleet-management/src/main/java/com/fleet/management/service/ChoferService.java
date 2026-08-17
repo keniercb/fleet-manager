@@ -13,6 +13,8 @@ public interface ChoferService {
 
     ChoferResponse findById(Long id);
 
+    Page<ChoferResponse> findByEmpresaId(Long empresaId, Pageable pageable);
+
     ChoferResponse create(ChoferRequest request);
 
     ChoferResponse update(Long id, ChoferRequest request);

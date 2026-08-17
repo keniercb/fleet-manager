@@ -39,7 +39,7 @@ public class RecorridoServiceImpl implements RecorridoService {
     @Override
     @Transactional(readOnly = true)
     public Page<RecorridoResponse> findAll(Pageable pageable) {
-        return repository.findAll(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
     }
 
     @Override
@@ -253,6 +253,7 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .marca(marcaResp)
                 .tipoCombustible(combustibleResp)
                 .matricula(v.getMatricula())
+                .modelo(v.getModelo())
                 .numeroMotor(v.getNumeroMotor())
                 .odometro(v.getOdometro())
                 .combustible(v.getCombustible())

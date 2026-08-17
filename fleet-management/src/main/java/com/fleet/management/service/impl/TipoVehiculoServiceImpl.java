@@ -25,7 +25,7 @@ public class TipoVehiculoServiceImpl implements TipoVehiculoService {
     @Override
     @Transactional(readOnly = true)
     public Page<TipoVehiculoResponse> findAll(Pageable pageable) {
-        return repository.findAll(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
     }
 
     @Override

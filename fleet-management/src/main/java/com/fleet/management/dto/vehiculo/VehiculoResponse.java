@@ -27,6 +27,7 @@ public class VehiculoResponse {
     private ChoferResponse chofer;
     private TipoCombustibleResponse tipoCombustible;
     private String matricula;
+    private String modelo;
     private String numeroMotor;
     private BigInteger odometro;
     private BigDecimal combustible;

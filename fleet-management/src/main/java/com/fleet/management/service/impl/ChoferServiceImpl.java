@@ -38,7 +38,7 @@ public class ChoferServiceImpl implements ChoferService {
     @Override
     @Transactional(readOnly = true)
     public Page<ChoferResponse> findAll(Pageable pageable) {
-        return choferRepository.findAll(pageable)
+        return choferRepository.findAllByActivoTrue(pageable)
                 .map(this::toResponse);
     }
 
@@ -48,6 +48,13 @@ public class ChoferServiceImpl implements ChoferService {
         Chofer entity = choferRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Chofer", "id", id));
         return toResponse(entity);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ChoferResponse> findByEmpresaId(Long empresaId, Pageable pageable) {
+        return choferRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
+                .map(this::toResponse);
     }
 
     @Override

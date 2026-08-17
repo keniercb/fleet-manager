@@ -27,4 +27,6 @@ public interface ChoferCategoriaRepository extends JpaRepository<ChoferCategoria
 
     @Query("SELECT cc FROM ChoferCategoria cc WHERE cc.categoriaLicencia.id = :categoriaId AND cc.activo = true")
     Page<ChoferCategoria> findActivosByCategoriaLicenciaId(@Param("categoriaId") Long categoriaId, Pageable pageable);
+
+    Page<ChoferCategoria> findAllByActivoTrue(Pageable pageable);
 }

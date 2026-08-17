@@ -29,4 +29,6 @@ public interface RecorridoRepository extends JpaRepository<Recorrido, Long> {
                                                     Pageable pageable);
 
     boolean existsByVehiculoIdAndFechaAfter(Long vehiculoId, LocalDate fecha);
+
+    Page<Recorrido> findAllByActivoTrue(Pageable pageable);
 }

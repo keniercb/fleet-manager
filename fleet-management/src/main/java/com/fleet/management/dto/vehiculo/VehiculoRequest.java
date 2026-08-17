@@ -32,6 +32,9 @@ public class VehiculoRequest {
     @Size(max = 20, message = "La matricula no puede exceder 20 caracteres")
     private String matricula;
 
+    @Size(max = 100, message = "El modelo no puede exceder 100 caracteres")
+    private String modelo;
+
     @NotBlank(message = "El numero de motor es obligatorio")
     @Size(max = 50, message = "El numero de motor no puede exceder 50 caracteres")
     private String numeroMotor;

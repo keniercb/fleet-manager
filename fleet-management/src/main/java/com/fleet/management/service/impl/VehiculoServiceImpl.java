@@ -44,7 +44,7 @@ public class VehiculoServiceImpl implements VehiculoService {
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findAll(Pageable pageable) {
-        return vehiculoRepository.findAll(pageable)
+        return vehiculoRepository.findAllByActivoTrue(pageable)
                 .map(this::toResponse);
     }
 
@@ -85,6 +85,13 @@ public class VehiculoServiceImpl implements VehiculoService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<VehiculoResponse> findByEmpresaId(Long empresaId, Pageable pageable) {
+        return vehiculoRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
+                .map(this::toResponse);
+    }
+
+    @Override
     @Transactional
     public VehiculoResponse create(VehiculoRequest request) {
         validateUniqueFields(request, null);
@@ -114,6 +121,7 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .chofer(chofer)
                 .tipoCombustible(tipoCombustible)
                 .matricula(request.getMatricula())
+                .modelo(request.getModelo())
                 .numeroMotor(request.getNumeroMotor())
                 .odometro(request.getOdometro())
                 .combustible(request.getCombustible())
@@ -157,6 +165,7 @@ public class VehiculoServiceImpl implements VehiculoService {
         entity.setChofer(chofer);
         entity.setTipoCombustible(tipoCombustible);
         entity.setMatricula(request.getMatricula());
+        entity.setModelo(request.getModelo());
         entity.setNumeroMotor(request.getNumeroMotor());
         entity.setOdometro(request.getOdometro());
         entity.setCombustible(request.getCombustible());
@@ -276,6 +285,7 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .chofer(choferResp)
                 .tipoCombustible(tipoCombustibleResp)
                 .matricula(entity.getMatricula())
+                .modelo(entity.getModelo())
                 .numeroMotor(entity.getNumeroMotor())
                 .odometro(entity.getOdometro())
                 .combustible(entity.getCombustible())
