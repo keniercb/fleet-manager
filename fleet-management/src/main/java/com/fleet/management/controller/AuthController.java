@@ -1,6 +1,7 @@
 package com.fleet.management.controller;
 
 import com.fleet.management.dto.auth.AuthResponseDto;
+import com.fleet.management.dto.auth.CambioPasswordRequest;
 import com.fleet.management.dto.auth.LoginRequestDto;
 import com.fleet.management.dto.permission.PermissionResponse;
 import com.fleet.management.dto.role.RoleResponse;
@@ -41,5 +42,11 @@ public class AuthController {
     public ResponseEntity<UserResponse> getCurrentUser() {
         User user = authService.getCurrentUser();
         return ResponseEntity.ok(userService.findById(user.getId()));
+    }
+
+    @PutMapping("/cambiar-password")
+    public ResponseEntity<Void> cambiarPassword(@Valid @RequestBody CambioPasswordRequest request) {
+        authService.cambiarPassword(request);
+        return ResponseEntity.noContent().build();
     }
 }
