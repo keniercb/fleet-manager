@@ -37,17 +37,13 @@ public class RecorridoController {
     }
 
     @GetMapping("/vehiculo/{vehiculoId}")
-    public ResponseEntity<Page<RecorridoResponse>> findByVehiculoId(@PathVariable Long vehiculoId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+    public ResponseEntity<Page<RecorridoResponse>> findByVehiculoId(@PathVariable Long vehiculoId, @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from, @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
         Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
+        if (from != null && to != null) {
+            return ResponseEntity.ok(service.findByVehiculoIdAndFechaBetween(vehiculoId, from, to, pageable));
+        }
         return ResponseEntity.ok(service.findByVehiculoId(vehiculoId, pageable));
-    }
-
-    @GetMapping("/vehiculo/{vehiculoId}/rango")
-    public ResponseEntity<Page<RecorridoResponse>> findByVehiculoIdAndFechaBetween( @PathVariable Long vehiculoId, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
-        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
-
-        return ResponseEntity.ok(service.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta, pageable));
     }
 
     @PostMapping
