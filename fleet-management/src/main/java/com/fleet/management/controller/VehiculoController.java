@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.vehiculo.VehiculoRequest;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
+import com.fleet.management.dto.reporte.ReporteMovimientoMensualResponse;
+import com.fleet.management.service.RecorridoService;
 import com.fleet.management.service.VehiculoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class VehiculoController {
 
     private final VehiculoService service;
+    private final RecorridoService recorridoService;
 
     @GetMapping
     public ResponseEntity<Page<VehiculoResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
@@ -66,6 +69,14 @@ public class VehiculoController {
     public ResponseEntity<Page<VehiculoResponse>> findByEmpresaId(@PathVariable Long empresaId, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
         Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
         return ResponseEntity.ok(service.findByEmpresaId(empresaId, pageable));
+    }
+
+    @GetMapping("/reporte-movimiento-mensual/{vehiculoId}")
+    public ResponseEntity<ReporteMovimientoMensualResponse> reporteMovimientoMensual(
+            @PathVariable Long vehiculoId,
+            @RequestParam Integer mes,
+            @RequestParam Integer anio) {
+        return ResponseEntity.ok(recorridoService.reporteMovimientoMensual(vehiculoId, mes, anio));
     }
 
     @PostMapping

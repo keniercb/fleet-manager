@@ -30,5 +30,9 @@ public interface RecorridoRepository extends JpaRepository<Recorrido, Long> {
 
     boolean existsByVehiculoIdAndFechaAfter(Long vehiculoId, LocalDate fecha);
 
+    @Query("SELECT r FROM Recorrido r WHERE r.vehiculo.id = :vehiculoId AND r.fecha <= :fecha ORDER BY r.fecha ASC")
+    List<Recorrido> findByVehiculoIdAndFechaLessThanEqualOrderByFechaAsc(@Param("vehiculoId") Long vehiculoId,
+                                                                         @Param("fecha") LocalDate fecha);
+
     Page<Recorrido> findAllByActivoTrue(Pageable pageable);
 }

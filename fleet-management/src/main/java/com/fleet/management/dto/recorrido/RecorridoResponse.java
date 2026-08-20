@@ -23,6 +23,7 @@ public class RecorridoResponse {
     private LocalDate fecha;
     private Integer kilometros;
     private BigInteger odometroInicial;
+    private BigDecimal combustibleInicial;
     private BigDecimal consumo;
     private BigDecimal litrosAbastecidos;
     private String numeroChip;

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.recorrido.RecorridoRequest;
 import com.fleet.management.dto.recorrido.RecorridoResponse;
+import com.fleet.management.dto.reporte.ReporteMovimientoMensualResponse;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -17,6 +18,8 @@ public interface RecorridoService {
     Page<RecorridoResponse> findByVehiculoId(Long vehiculoId, Pageable pageable);
 
     Page<RecorridoResponse> findByVehiculoIdAndFechaBetween(Long vehiculoId, LocalDate desde, LocalDate hasta, Pageable pageable);
+
+    ReporteMovimientoMensualResponse reporteMovimientoMensual(Long vehiculoId, Integer mes, Integer anio);
 
     RecorridoResponse create(RecorridoRequest request);
 

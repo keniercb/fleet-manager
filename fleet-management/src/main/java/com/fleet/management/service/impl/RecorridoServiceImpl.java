@@ -7,6 +7,7 @@ import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.marca.MarcaResponse;
 import com.fleet.management.dto.recorrido.RecorridoRequest;
 import com.fleet.management.dto.recorrido.RecorridoResponse;
+import com.fleet.management.dto.reporte.*;
 import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
@@ -26,7 +27,9 @@ import java.math.BigInteger;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.List;
+import java.time.YearMonth;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -63,6 +66,130 @@ public class RecorridoServiceImpl implements RecorridoService {
     @Transactional(readOnly = true)
     public Page<RecorridoResponse> findByVehiculoIdAndFechaBetween(Long vehiculoId, LocalDate desde, LocalDate hasta, Pageable pageable) {
         return repository.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta, pageable).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReporteMovimientoMensualResponse reporteMovimientoMensual(Long vehiculoId, Integer mes, Integer anio) {
+        if (mes < 1 || mes > 12) {
+            throw new BusinessException("El mes debe estar entre 1 y 12");
+        }
+
+        Vehiculo vehiculo = vehiculoRepository.findById(vehiculoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Vehiculo", "id", vehiculoId));
+
+        YearMonth yearMonth = YearMonth.of(anio, mes);
+        LocalDate firstDay = yearMonth.atDay(1);
+        LocalDate lastDay = yearMonth.atEndOfMonth();
+        int daysInMonth = yearMonth.lengthOfMonth();
+
+        // Obtener todos los recorridos del vehiculo hasta el ultimo dia del mes
+        List<Recorrido> recorridos = repository.findByVehiculoIdAndFechaLessThanEqualOrderByFechaAsc(vehiculoId, lastDay);
+
+        // Map de recorridos del mes: dia -> recorrido
+        Map<Integer, Recorrido> recorridosDelMes = recorridos.stream()
+                .filter(r -> !r.getFecha().isBefore(firstDay) && !r.getFecha().isAfter(lastDay))
+                .collect(Collectors.toMap(r -> r.getFecha().getDayOfMonth(), r -> r));
+
+        // Establecer estado inicial a partir de recorridos anteriores al mes
+        BigDecimal runningCombustible = vehiculo.getCombustible();
+        BigInteger runningOdometro = vehiculo.getOdometro();
+        boolean estadoInicialCalculado = false;
+
+        for (Recorrido r : recorridos) {
+            if (r.getFecha().isBefore(firstDay)) {
+                runningOdometro = r.getOdometroInicial().add(BigInteger.valueOf(r.getKilometros()));
+                runningCombustible = r.getCombustibleInicial()
+                        .subtract(r.getConsumo() != null ? r.getConsumo() : CERO)
+                        .add(r.getLitrosAbastecidos() != null ? r.getLitrosAbastecidos() : CERO);
+                estadoInicialCalculado = true;
+            }
+        }
+
+        // Construir lecturas diarias
+        List<LecturaDiariaResponse> lecturas = new ArrayList<>();
+        BigDecimal totalConsumido = CERO;
+        BigDecimal totalAbastecido = CERO;
+        int totalKilometros = 0;
+        BigDecimal primerCombustibleEnDeposito = null;
+
+        for (int dia = 1; dia <= daysInMonth; dia++) {
+            Recorrido recorrido = recorridosDelMes.get(dia);
+
+            BigInteger odometro;
+            BigDecimal combustibleEnDeposito;
+            BigDecimal combustibleConsumido;
+            BigDecimal combustibleAbastecido;
+
+            if (recorrido != null) {
+                odometro = recorrido.getOdometroInicial();
+                combustibleEnDeposito = recorrido.getCombustibleInicial();
+                combustibleConsumido = recorrido.getConsumo() != null ? recorrido.getConsumo() : CERO;
+                combustibleAbastecido = recorrido.getLitrosAbastecidos() != null ? recorrido.getLitrosAbastecidos() : CERO;
+
+                totalConsumido = totalConsumido.add(combustibleConsumido);
+                totalAbastecido = totalAbastecido.add(combustibleAbastecido);
+                totalKilometros += recorrido.getKilometros();
+
+                // Actualizar estado corriendo
+                runningOdometro = odometro.add(BigInteger.valueOf(recorrido.getKilometros()));
+                runningCombustible = combustibleEnDeposito.subtract(combustibleConsumido).add(combustibleAbastecido);
+            } else {
+                odometro = runningOdometro;
+                combustibleEnDeposito = runningCombustible;
+                combustibleConsumido = CERO;
+                combustibleAbastecido = CERO;
+            }
+
+            if (primerCombustibleEnDeposito == null) {
+                primerCombustibleEnDeposito = combustibleEnDeposito;
+            }
+
+            BigDecimal saldoCombustible = combustibleEnDeposito.add(combustibleAbastecido).subtract(combustibleConsumido);
+
+            lecturas.add(LecturaDiariaResponse.builder()
+                    .dia(dia)
+                    .odometro(odometro)
+                    .combustibleEnDeposito(combustibleEnDeposito)
+                    .combustibleConsumido(combustibleConsumido)
+                    .combustibleAbastecido(combustibleAbastecido)
+                    .saldoCombustible(saldoCombustible)
+                    .build());
+        }
+
+        // Analisis de consumo
+        BigDecimal existenciaFinal = primerCombustibleEnDeposito != null
+                ? primerCombustibleEnDeposito.subtract(totalConsumido).add(totalAbastecido)
+                : CERO;
+        BigDecimal consumidoSegunNorma = vehiculo.getIndiceConsumo()
+                .multiply(BigDecimal.valueOf(totalKilometros))
+                .divide(CIEN, 2, RoundingMode.HALF_UP);
+
+        AnalisisConsumoResponse analisis = AnalisisConsumoResponse.builder()
+                .combustibleInicial(primerCombustibleEnDeposito != null ? primerCombustibleEnDeposito : CERO)
+                .combustibleRecibido(totalAbastecido)
+                .combustibleConsumido(totalConsumido)
+                .existenciaFinal(existenciaFinal)
+                .kilometrosRecorridos(totalKilometros)
+                .consumidoSegunNorma(consumidoSegunNorma)
+                .build();
+
+        // Datos del vehiculo
+        ChoferResponse choferResp = vehiculo.getChofer() != null ? toChoferResumido(vehiculo.getChofer()) : null;
+        VehiculoReporteData vehiculoData = VehiculoReporteData.builder()
+                .marca(vehiculo.getMarca().getNombre())
+                .numeroMotor(vehiculo.getNumeroMotor())
+                .tipoCombustible(vehiculo.getTipoCombustible().getDenominacion())
+                .normaConsumo(vehiculo.getIndiceConsumo())
+                .matricula(vehiculo.getMatricula())
+                .chofer(choferResp)
+                .build();
+
+        return ReporteMovimientoMensualResponse.builder()
+                .vehiculo(vehiculoData)
+                .lecturas(lecturas)
+                .analisis(analisis)
+                .build();
     }
 
     @Override
@@ -107,12 +234,16 @@ public class RecorridoServiceImpl implements RecorridoService {
         // OdometroInicial es el odometro actual del vehiculo antes de sumar kilometros
         BigInteger odometroInicial = vehiculo.getOdometro();
 
+        // CombustibleInicial es el combustible actual del vehiculo antes del recorrido
+        BigDecimal combustibleInicial = vehiculo.getCombustible();
+
         Recorrido entity = Recorrido.builder()
                 .vehiculo(vehiculo)
                 .chofer(chofer)
                 .fecha(request.getFecha())
                 .kilometros(request.getKilometros())
                 .odometroInicial(odometroInicial)
+                .combustibleInicial(combustibleInicial)
                 .consumo(consumo)
                 .litrosAbastecidos(litrosAbastecidos)
                 .numeroChip(request.getNumeroChip())
@@ -228,6 +359,7 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .fecha(entity.getFecha())
                 .kilometros(entity.getKilometros())
                 .odometroInicial(entity.getOdometroInicial())
+                .combustibleInicial(entity.getCombustibleInicial())
                 .consumo(entity.getConsumo())
                 .litrosAbastecidos(entity.getLitrosAbastecidos())
                 .numeroChip(entity.getNumeroChip())
