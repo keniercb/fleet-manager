@@ -149,6 +149,12 @@ public class RecorridoServiceImpl implements RecorridoService {
 
         Vehiculo vehiculo = entity.getVehiculo();
 
+        // No se permite modificar si existe un recorrido con fecha posterior
+        if (repository.existsByVehiculoIdAndFechaAfter(vehiculo.getId(), entity.getFecha())) {
+            throw new BusinessException("No se puede modificar el recorrido porque existe un recorrido con fecha posterior para el vehiculo con id "
+                    + vehiculo.getId());
+        }
+
         // Calcular el nuevo consumo, redondeado a 2 decimales
         BigDecimal nuevoConsumo = vehiculo.getIndiceConsumo()
                 .multiply(BigDecimal.valueOf(request.getKilometros()))
@@ -193,18 +199,25 @@ public class RecorridoServiceImpl implements RecorridoService {
         Recorrido entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recorrido", "id", id));
 
-        // Restar los kilometros al odometro del vehiculo
         Vehiculo vehiculo = entity.getVehiculo();
+
+        // No se permite eliminar si existe un recorrido con fecha posterior
+        if (repository.existsByVehiculoIdAndFechaAfter(vehiculo.getId(), entity.getFecha())) {
+            throw new BusinessException("No se puede eliminar el recorrido porque existe un recorrido con fecha posterior para el vehiculo con id "
+                    + vehiculo.getId());
+        }
+
+        // Restar los kilometros al odometro del vehiculo
         BigInteger kilometros = BigInteger.valueOf(entity.getKilometros());
         vehiculo.setOdometro(vehiculo.getOdometro().subtract(kilometros));
-        // Restaurar el combustible consumido
+        // Restaurar el combustible consumido y los litros abastecidos
         BigDecimal consumo = entity.getConsumo() != null ? entity.getConsumo() : CERO;
-        vehiculo.setCombustible(vehiculo.getCombustible().add(consumo));
+        BigDecimal litrosAbastecidos = entity.getLitrosAbastecidos() != null ? entity.getLitrosAbastecidos() : CERO;
+        vehiculo.setCombustible(vehiculo.getCombustible().add(consumo).subtract(litrosAbastecidos));
         vehiculoRepository.save(vehiculo);
 
-        // Baja logica
-        entity.setActivo(false);
-        repository.save(entity);
+        // Eliminacion fisica
+        repository.delete(entity);
     }
 
     private RecorridoResponse toResponse(Recorrido entity) {
