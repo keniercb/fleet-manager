@@ -58,8 +58,7 @@ public class Recorrido extends BaseEntity {
     @Column(name = "numero_chip", length = 50)
     private String numeroChip;
 
-    @NotBlank(message = "El lugar de abastecimiento es obligatorio")
     @Size(max = 100, message = "El lugar de abastecimiento no puede exceder 100 caracteres")
-    @Column(name = "lugar_abastecimiento", nullable = false, length = 100)
+    @Column(name = "lugar_abastecimiento", length = 100)
     private String lugarAbastecimiento;
 }
