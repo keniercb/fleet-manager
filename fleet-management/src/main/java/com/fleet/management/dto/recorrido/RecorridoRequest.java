@@ -32,7 +32,6 @@ public class RecorridoRequest {
     @Size(max = 50, message = "El numero de chip no puede exceder 50 caracteres")
     private String numeroChip;
 
-    @NotBlank(message = "El lugar de abastecimiento es obligatorio")
     @Size(max = 100, message = "El lugar de abastecimiento no puede exceder 100 caracteres")
     private String lugarAbastecimiento;
 }
