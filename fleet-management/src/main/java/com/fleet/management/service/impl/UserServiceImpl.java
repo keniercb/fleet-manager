@@ -90,6 +90,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<UserResponse> findByEmpresaId(Long empresaId, Pageable pageable) {
+        return userRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
+                .map(this::toResponse);
+    }
+
+    @Override
     @Transactional
     public void delete(Long id) {
         User entity = userRepository.findById(id)

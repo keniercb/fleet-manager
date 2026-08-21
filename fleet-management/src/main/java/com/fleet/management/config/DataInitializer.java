@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -23,6 +24,9 @@ public class DataInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     private static final String EMPRESA_ADMIN_CODIGO = "EMP-ADMIN";
+    private static final String SUPER_ADMIN_ROLE_NAME = "SUPER_ADMIN";
+    private static final String ADMIN_ROLE_NAME = "ADMIN";
+    private static final String USER_ROLE_NAME = "USER";
 
     @Override
     public void run(String... args) {
@@ -30,21 +34,20 @@ public class DataInitializer implements CommandLineRunner {
 
         Empresa empresaAdmin = createEmpresaAdminIfNotExists();
 
-        Set<Permission> adminPermissions = createDefaultPermissions();
+        Set<Permission> allPermissions = createDefaultPermissions();
 
-        Role adminRole = createRoleIfNotExists(
-                "ADMIN",
-                "Rol con acceso total al sistema",
-                adminPermissions
-        );
+        Role superAdminRole = createOrUpdateSuperAdminRole(allPermissions);
+
+        Set<Permission> adminPermissions = filterAdminPermissions(allPermissions);
+        Role adminRole = createOrUpdateAdminRole(adminPermissions);
 
         Role userRole = createRoleIfNotExists(
-                "USER",
+                USER_ROLE_NAME,
                 "Rol de usuario estandar con acceso de lectura",
                 new HashSet<>()
         );
 
-        createAdminUserIfNotExists(adminRole, empresaAdmin);
+        createOrUpdateAdminUser(superAdminRole, empresaAdmin);
 
         log.info("=== Datos de bootstrap completados ===");
     }
@@ -115,6 +118,48 @@ public class DataInitializer implements CommandLineRunner {
         return permissions;
     }
 
+    private Set<Permission> filterAdminPermissions(Set<Permission> allPermissions) {
+        return allPermissions.stream()
+                .filter(p -> !p.getName().startsWith("role:") && !p.getName().startsWith("permission:"))
+                .collect(Collectors.toSet());
+    }
+
+    private Role createOrUpdateSuperAdminRole(Set<Permission> allPermissions) {
+        return roleRepository.findByName(SUPER_ADMIN_ROLE_NAME)
+                .map(role -> {
+                    role.setPermissions(allPermissions);
+                    log.info("Actualizando rol SUPER_ADMIN con todos los permisos");
+                    return roleRepository.save(role);
+                })
+                .orElseGet(() -> {
+                    log.info("Creando rol: SUPER_ADMIN");
+                    return roleRepository.save(Role.builder()
+                            .name(SUPER_ADMIN_ROLE_NAME)
+                            .description("Rol con acceso total al sistema incluyendo roles y permisos")
+                            .permissions(allPermissions)
+                            .activo(true)
+                            .build());
+                });
+    }
+
+    private Role createOrUpdateAdminRole(Set<Permission> adminPermissions) {
+        return roleRepository.findByName(ADMIN_ROLE_NAME)
+                .map(role -> {
+                    role.setPermissions(adminPermissions);
+                    log.info("Actualizando rol ADMIN sin permisos de roles y permisos");
+                    return roleRepository.save(role);
+                })
+                .orElseGet(() -> {
+                    log.info("Creando rol: ADMIN");
+                    return roleRepository.save(Role.builder()
+                            .name(ADMIN_ROLE_NAME)
+                            .description("Rol administrativo sin acceso a roles ni permisos")
+                            .permissions(adminPermissions)
+                            .activo(true)
+                            .build());
+                });
+    }
+
     private Role createRoleIfNotExists(String name, String description, Set<Permission> permissions) {
         return roleRepository.findByName(name)
                 .orElseGet(() -> {
@@ -128,23 +173,27 @@ public class DataInitializer implements CommandLineRunner {
                 });
     }
 
-    private void createAdminUserIfNotExists(Role adminRole, Empresa empresa) {
+    private void createOrUpdateAdminUser(Role superAdminRole, Empresa empresa) {
         String adminEmail = "admin@fleet.com";
         userRepository.findByEmail(adminEmail).ifPresentOrElse(
                 user -> {
                     log.info("Usuario admin ya existe: {}", adminEmail);
                     if (user.getEmpresa() == null) {
                         user.setEmpresa(empresa);
-                        userRepository.save(user);
                         log.info("Asignada empresa por defecto al usuario admin existente");
                     }
+                    if (!user.getRoles().contains(superAdminRole)) {
+                        user.setRoles(Set.of(superAdminRole));
+                        log.info("Asignado rol SUPER_ADMIN al usuario admin existente");
+                    }
+                    userRepository.save(user);
                 },
                 () -> {
                     log.info("Creando usuario admin: {}", adminEmail);
                     User admin = User.builder()
                             .email(adminEmail)
                             .password(passwordEncoder.encode("admin123"))
-                            .roles(Set.of(adminRole))
+                            .roles(Set.of(superAdminRole))
                             .empresa(empresa)
                             .activo(true)
                             .build();

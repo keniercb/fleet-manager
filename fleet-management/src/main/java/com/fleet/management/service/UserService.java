@@ -17,5 +17,7 @@ public interface UserService {
 
     UserResponse update(Long id, UserRequest request);
 
+    Page<UserResponse> findByEmpresaId(Long empresaId, Pageable pageable);
+
     void delete(Long id);
 }

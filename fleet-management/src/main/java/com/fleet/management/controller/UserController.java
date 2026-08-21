@@ -39,6 +39,17 @@ public class UserController {
         return ResponseEntity.ok(service.findByEmail(email));
     }
 
+    @GetMapping("/empresa/{empresaId}")
+    public ResponseEntity<Page<UserResponse>> findByEmpresaId(
+            @PathVariable Long empresaId,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer perPage,
+            @RequestParam(defaultValue = "id") String sort,
+            @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
+        return ResponseEntity.ok(service.findByEmpresaId(empresaId, pageable));
+    }
+
     @PostMapping
     public ResponseEntity<UserResponse> create(@Valid @RequestBody UserRequest request) {
         UserResponse response = service.create(request);
