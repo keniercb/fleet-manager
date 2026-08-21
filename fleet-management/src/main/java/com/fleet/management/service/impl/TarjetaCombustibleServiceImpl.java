@@ -1,12 +1,15 @@
 package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.currency.CurrencyResponse;
+import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.tarjetacombustible.TarjetaCombustibleRequest;
 import com.fleet.management.dto.tarjetacombustible.TarjetaCombustibleResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.model.Empresa;
 import com.fleet.management.model.TarjetaCombustible;
 import com.fleet.management.repository.CurrencyRepository;
+import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.TarjetaCombustibleRepository;
 import com.fleet.management.service.TarjetaCombustibleService;
 import com.fleet.management.util.AuditMapper;
@@ -22,6 +25,7 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
 
     private final TarjetaCombustibleRepository repository;
     private final CurrencyRepository currencyRepository;
+    private final EmpresaRepository empresaRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -46,6 +50,12 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<TarjetaCombustibleResponse> findByEmpresaId(Long empresaId, Pageable pageable) {
+        return repository.findByEmpresaIdAndActivoTrue(empresaId, pageable).map(this::toResponse);
+    }
+
+    @Override
     @Transactional
     public TarjetaCombustibleResponse create(TarjetaCombustibleRequest request) {
         if (repository.existsByNumero(request.getNumero())) {
@@ -55,10 +65,14 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
         var currency = currencyRepository.findById(request.getCurrencyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Currency", "id", request.getCurrencyId()));
 
+        Empresa empresa = empresaRepository.findById(request.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", request.getEmpresaId()));
+
         TarjetaCombustible entity = TarjetaCombustible.builder()
                 .numero(request.getNumero())
                 .saldo(request.getSaldo())
                 .currency(currency)
+                .empresa(empresa)
                 .activo(true)
                 .build();
         return toResponse(repository.save(entity));
@@ -77,9 +91,13 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
         var currency = currencyRepository.findById(request.getCurrencyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Currency", "id", request.getCurrencyId()));
 
+        Empresa empresa = empresaRepository.findById(request.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", request.getEmpresaId()));
+
         entity.setNumero(request.getNumero());
         entity.setSaldo(request.getSaldo());
         entity.setCurrency(currency);
+        entity.setEmpresa(empresa);
         return toResponse(repository.save(entity));
     }
 
@@ -98,6 +116,7 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
                 .numero(entity.getNumero())
                 .saldo(entity.getSaldo())
                 .currency(toCurrencyResponse(entity.getCurrency()))
+                .empresa(toEmpresaResponse(entity.getEmpresa()))
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
@@ -112,6 +131,15 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
                 .isoCode(currency.getIsoCode())
                 .descripcion(currency.getDescripcion())
                 .activo(currency.getActivo())
+                .build();
+    }
+
+    private EmpresaResponse toEmpresaResponse(Empresa empresa) {
+        return EmpresaResponse.builder()
+                .id(empresa.getId())
+                .codigo(empresa.getCodigo())
+                .nombre(empresa.getNombre())
+                .activo(empresa.getActivo())
                 .build();
     }
 }

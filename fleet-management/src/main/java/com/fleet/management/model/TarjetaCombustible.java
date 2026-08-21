@@ -34,4 +34,10 @@ public class TarjetaCombustible extends BaseEntity {
     @JoinColumn(name = "currency_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_tarjeta_combustible_currency"))
     private Currency currency;
+
+    @NotNull(message = "La empresa es obligatoria")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empresa_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_tarjeta_combustible_empresa"))
+    private Empresa empresa;
 }

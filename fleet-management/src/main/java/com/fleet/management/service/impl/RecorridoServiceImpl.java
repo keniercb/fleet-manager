@@ -533,6 +533,12 @@ public class RecorridoServiceImpl implements RecorridoService {
                         .descripcion(t.getCurrency().getDescripcion())
                         .activo(t.getCurrency().getActivo())
                         .build())
+                .empresa(EmpresaResponse.builder()
+                        .id(t.getEmpresa().getId())
+                        .codigo(t.getEmpresa().getCodigo())
+                        .nombre(t.getEmpresa().getNombre())
+                        .activo(t.getEmpresa().getActivo())
+                        .build())
                 .activo(t.getActivo())
                 .build();
     }

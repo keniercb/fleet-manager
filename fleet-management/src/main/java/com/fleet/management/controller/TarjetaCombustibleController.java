@@ -41,6 +41,17 @@ public class TarjetaCombustibleController {
         return ResponseEntity.ok(service.findByNumero(numero));
     }
 
+    @GetMapping("/empresa/{empresaId}")
+    public ResponseEntity<Page<TarjetaCombustibleResponse>> findByEmpresaId(
+            @PathVariable Long empresaId,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer perPage,
+            @RequestParam(defaultValue = "id") String sort,
+            @RequestParam(defaultValue = "ASC") String sortOrder) {
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
+        return ResponseEntity.ok(service.findByEmpresaId(empresaId, pageable));
+    }
+
     @PostMapping
     public ResponseEntity<TarjetaCombustibleResponse> create(@Valid @RequestBody TarjetaCombustibleRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));

@@ -23,4 +23,7 @@ public class TarjetaCombustibleRequest {
 
     @NotNull(message = "La moneda es obligatoria")
     private Long currencyId;
+
+    @NotNull(message = "La empresa es obligatoria")
+    private Long empresaId;
 }

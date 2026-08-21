@@ -16,4 +16,6 @@ public interface TarjetaCombustibleRepository extends JpaRepository<TarjetaCombu
     boolean existsByNumero(String numero);
 
     Page<TarjetaCombustible> findAllByActivoTrue(Pageable pageable);
+
+    Page<TarjetaCombustible> findByEmpresaIdAndActivoTrue(Long empresaId, Pageable pageable);
 }
