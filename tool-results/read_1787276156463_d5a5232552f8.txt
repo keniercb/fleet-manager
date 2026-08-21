@@ -1,0 +1,540 @@
+     1→package com.fleet.management.service.impl;
+     2→import org.springframework.data.domain.Pageable;
+     3→import org.springframework.data.domain.Page;
+     4→
+     5→import com.fleet.management.dto.chofer.ChoferResponse;
+     6→import com.fleet.management.dto.currency.CurrencyResponse;
+     7→import com.fleet.management.dto.empresa.EmpresaResponse;
+     8→import com.fleet.management.dto.marca.MarcaResponse;
+     9→import com.fleet.management.dto.recorrido.RecorridoRequest;
+    10→import com.fleet.management.dto.recorrido.RecorridoResponse;
+    11→import com.fleet.management.dto.reporte.*;
+    12→import com.fleet.management.dto.tarjetacombustible.TarjetaCombustibleResponse;
+    13→import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
+    14→import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
+    15→import com.fleet.management.dto.vehiculo.VehiculoResponse;
+    16→import com.fleet.management.exception.BusinessException;
+    17→import com.fleet.management.exception.ResourceNotFoundException;
+    18→import com.fleet.management.model.*;
+    19→import com.fleet.management.repository.ChoferRepository;
+    20→import com.fleet.management.repository.RecorridoRepository;
+    21→import com.fleet.management.repository.TarjetaCombustibleRepository;
+    22→import com.fleet.management.repository.VehiculoRepository;
+    23→import com.fleet.management.service.RecorridoService;
+    24→import com.fleet.management.util.AuditMapper;
+    25→import lombok.RequiredArgsConstructor;
+    26→import org.springframework.stereotype.Service;
+    27→import org.springframework.transaction.annotation.Transactional;
+    28→
+    29→import java.math.BigInteger;
+    30→import java.math.BigDecimal;
+    31→import java.math.RoundingMode;
+    32→import java.time.LocalDate;
+    33→import java.time.YearMonth;
+    34→import java.util.*;
+    35→import java.util.stream.Collectors;
+    36→
+    37→@Service
+    38→@RequiredArgsConstructor
+    39→public class RecorridoServiceImpl implements RecorridoService {
+    40→
+    41→    private final RecorridoRepository repository;
+    42→    private final VehiculoRepository vehiculoRepository;
+    43→    private final ChoferRepository choferRepository;
+    44→    private final TarjetaCombustibleRepository tarjetaCombustibleRepository;
+    45→
+    46→    private static final BigDecimal CIEN = BigDecimal.valueOf(100);
+    47→    private static final BigDecimal CERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    48→
+    49→    @Override
+    50→    @Transactional(readOnly = true)
+    51→    public Page<RecorridoResponse> findAll(Pageable pageable) {
+    52→        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+    53→    }
+    54→
+    55→    @Override
+    56→    @Transactional(readOnly = true)
+    57→    public RecorridoResponse findById(Long id) {
+    58→        Recorrido entity = repository.findById(id)
+    59→                .orElseThrow(() -> new ResourceNotFoundException("Recorrido", "id", id));
+    60→        return toResponse(entity);
+    61→    }
+    62→
+    63→    @Override
+    64→    @Transactional(readOnly = true)
+    65→    public Page<RecorridoResponse> findByVehiculoId(Long vehiculoId, Pageable pageable) {
+    66→        return repository.findByVehiculoId(vehiculoId, pageable).map(this::toResponse);
+    67→    }
+    68→
+    69→    @Override
+    70→    @Transactional(readOnly = true)
+    71→    public Page<RecorridoResponse> findByVehiculoIdAndFechaBetween(Long vehiculoId, LocalDate desde, LocalDate hasta, Pageable pageable) {
+    72→        return repository.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta, pageable).map(this::toResponse);
+    73→    }
+    74→
+    75→    @Override
+    76→    @Transactional(readOnly = true)
+    77→    public ReporteMovimientoMensualResponse reporteMovimientoMensual(Long vehiculoId, Integer mes, Integer anio) {
+    78→        if (mes < 1 || mes > 12) {
+    79→            throw new BusinessException("El mes debe estar entre 1 y 12");
+    80→        }
+    81→
+    82→        Vehiculo vehiculo = vehiculoRepository.findById(vehiculoId)
+    83→                .orElseThrow(() -> new ResourceNotFoundException("Vehiculo", "id", vehiculoId));
+    84→
+    85→        YearMonth yearMonth = YearMonth.of(anio, mes);
+    86→        LocalDate firstDay = yearMonth.atDay(1);
+    87→        LocalDate lastDay = yearMonth.atEndOfMonth();
+    88→        int daysInMonth = yearMonth.lengthOfMonth();
+    89→
+    90→        // Obtener todos los recorridos del vehiculo hasta el ultimo dia del mes
+    91→        List<Recorrido> recorridos = repository.findByVehiculoIdAndFechaLessThanEqualOrderByFechaAsc(vehiculoId, lastDay);
+    92→
+    93→        // Map de recorridos del mes: dia -> recorrido
+    94→        Map<Integer, Recorrido> recorridosDelMes = recorridos.stream()
+    95→                .filter(r -> !r.getFecha().isBefore(firstDay) && !r.getFecha().isAfter(lastDay))
+    96→                .collect(Collectors.toMap(r -> r.getFecha().getDayOfMonth(), r -> r));
+    97→
+    98→        // Establecer estado inicial a partir de recorridos anteriores al mes
+    99→        BigDecimal runningCombustible = CERO;
+   100→        BigInteger runningOdometro = BigInteger.valueOf(0L);
+   101→        boolean estadoInicialCalculado = false;
+   102→
+   103→        for (Recorrido r : recorridos) {
+   104→            if (r.getFecha().isBefore(firstDay)) {
+   105→                runningOdometro = r.getOdometroInicial().add(BigInteger.valueOf(r.getKilometros()));
+   106→                runningCombustible = r.getCombustibleInicial()
+   107→                        .subtract(r.getConsumo() != null ? r.getConsumo() : CERO)
+   108→                        .add(r.getLitrosAbastecidos() != null ? r.getLitrosAbastecidos() : CERO);
+   109→                estadoInicialCalculado = true;
+   110→            }
+   111→        }
+   112→
+   113→        // Construir lecturas diarias
+   114→        List<LecturaDiariaResponse> lecturas = new ArrayList<>();
+   115→        BigDecimal totalConsumido = CERO;
+   116→        BigDecimal totalAbastecido = CERO;
+   117→        int totalKilometros = 0;
+   118→        BigDecimal primerCombustibleEnDeposito = null;
+   119→
+   120→        for (int dia = 1; dia <= daysInMonth; dia++) {
+   121→            Recorrido recorrido = recorridosDelMes.get(dia);
+   122→
+   123→            BigInteger odometro;
+   124→            BigDecimal combustibleEnDeposito;
+   125→            BigDecimal combustibleConsumido;
+   126→            BigDecimal combustibleAbastecido;
+   127→
+   128→            if (recorrido != null) {
+   129→                odometro = recorrido.getOdometroInicial();
+   130→                combustibleEnDeposito = recorrido.getCombustibleInicial();
+   131→                combustibleConsumido = recorrido.getConsumo() != null ? recorrido.getConsumo() : CERO;
+   132→                combustibleAbastecido = recorrido.getLitrosAbastecidos() != null ? recorrido.getLitrosAbastecidos() : CERO;
+   133→
+   134→                totalConsumido = totalConsumido.add(combustibleConsumido);
+   135→                totalAbastecido = totalAbastecido.add(combustibleAbastecido);
+   136→                totalKilometros += recorrido.getKilometros();
+   137→
+   138→                // Actualizar estado corriendo
+   139→                runningOdometro = odometro.add(BigInteger.valueOf(recorrido.getKilometros()));
+   140→                runningCombustible = combustibleEnDeposito.subtract(combustibleConsumido).add(combustibleAbastecido);
+   141→            } else {
+   142→                odometro = runningOdometro;
+   143→                combustibleEnDeposito = runningCombustible;
+   144→                combustibleConsumido = CERO;
+   145→                combustibleAbastecido = CERO;
+   146→            }
+   147→
+   148→            if (primerCombustibleEnDeposito == null) {
+   149→                primerCombustibleEnDeposito = combustibleEnDeposito;
+   150→            }
+   151→
+   152→            BigDecimal saldoCombustible = combustibleEnDeposito.add(combustibleAbastecido).subtract(combustibleConsumido);
+   153→
+   154→            int kilometrosRecorridos = recorrido != null ? recorrido.getKilometros() : 0;
+   155→
+   156→            lecturas.add(LecturaDiariaResponse.builder()
+   157→                    .dia(dia)
+   158→                    .odometro(odometro)
+   159→                    .combustibleEnDeposito(combustibleEnDeposito)
+   160→                    .combustibleConsumido(combustibleConsumido)
+   161→                    .combustibleAbastecido(combustibleAbastecido)
+   162→                    .saldoCombustible(saldoCombustible)
+   163→                    .kilometrosRecorridos(kilometrosRecorridos)
+   164→                    .build());
+   165→        }
+   166→
+   167→        // Analisis de consumo
+   168→        BigDecimal existenciaFinal = primerCombustibleEnDeposito != null
+   169→                ? primerCombustibleEnDeposito.subtract(totalConsumido).add(totalAbastecido)
+   170→                : CERO;
+   171→        BigDecimal consumidoSegunNorma = vehiculo.getIndiceConsumo()
+   172→                .multiply(BigDecimal.valueOf(totalKilometros))
+   173→                .divide(CIEN, 2, RoundingMode.HALF_UP);
+   174→
+   175→        AnalisisConsumoResponse analisis = AnalisisConsumoResponse.builder()
+   176→                .combustibleInicial(primerCombustibleEnDeposito != null ? primerCombustibleEnDeposito : CERO)
+   177→                .combustibleRecibido(totalAbastecido)
+   178→                .combustibleConsumido(totalConsumido)
+   179→                .existenciaFinal(existenciaFinal)
+   180→                .kilometrosRecorridos(totalKilometros)
+   181→                .consumidoSegunNorma(consumidoSegunNorma)
+   182→                .build();
+   183→
+   184→        // Datos del vehiculo
+   185→        ChoferResponse choferResp = vehiculo.getChofer() != null ? toChoferResumido(vehiculo.getChofer()) : null;
+   186→        VehiculoReporteData vehiculoData = VehiculoReporteData.builder()
+   187→                .marca(vehiculo.getMarca().getNombre())
+   188→                .numeroMotor(vehiculo.getNumeroMotor())
+   189→                .tipoCombustible(vehiculo.getTipoCombustible().getDenominacion())
+   190→                .normaConsumo(vehiculo.getIndiceConsumo())
+   191→                .matricula(vehiculo.getMatricula())
+   192→                .chofer(choferResp)
+   193→                .build();
+   194→
+   195→        return ReporteMovimientoMensualResponse.builder()
+   196→                .vehiculo(vehiculoData)
+   197→                .lecturas(lecturas)
+   198→                .analisis(analisis)
+   199→                .build();
+   200→    }
+   201→
+   202→    @Override
+   203→    @Transactional
+   204→    public RecorridoResponse create(RecorridoRequest request) {
+   205→        Vehiculo vehiculo = vehiculoRepository.findById(request.getVehiculoId())
+   206→                .orElseThrow(() -> new ResourceNotFoundException("Vehiculo", "id", request.getVehiculoId()));
+   207→
+   208→        // Validar unicidad: solo un recorrido por vehiculo por fecha
+   209→        if (repository.existsByVehiculoIdAndFecha(request.getVehiculoId(), request.getFecha())) {
+   210→            throw new BusinessException("Ya existe un recorrido para el vehiculo con id "
+   211→                    + request.getVehiculoId() + " en la fecha " + request.getFecha());
+   212→        }
+   213→
+   214→        // Validar que no exista un recorrido con fecha posterior para el mismo vehiculo
+   215→        if (repository.existsByVehiculoIdAndFechaAfter(request.getVehiculoId(), request.getFecha())) {
+   216→            throw new BusinessException("No se puede insertar el recorrido en la fecha "
+   217→                    + request.getFecha() + " porque ya existe un recorrido con fecha posterior para el vehiculo con id "
+   218→                    + request.getVehiculoId());
+   219→        }
+   220→
+   221→        // Calcular consumo: (indiceConsumo * kilometros) / 100, redondeado a 2 decimales
+   222→        BigDecimal consumo = vehiculo.getIndiceConsumo()
+   223→                .multiply(BigDecimal.valueOf(request.getKilometros()))
+   224→                .divide(CIEN, 2, RoundingMode.HALF_UP);
+   225→
+   226→        // Redondear litros abastecidos a 2 decimales
+   227→        BigDecimal litrosAbastecidos = request.getLitrosAbastecidos() != null
+   228→                ? request.getLitrosAbastecidos().setScale(2, RoundingMode.HALF_UP)
+   229→                : CERO;
+   230→
+   231→        // Validar que el vehiculo tenga suficiente combustible (sumando litros abastecidos)
+   232→        BigDecimal combustibleRestante = vehiculo.getCombustible().subtract(consumo).add(litrosAbastecidos);
+   233→        if (combustibleRestante.compareTo(BigDecimal.ZERO) < 0) {
+   234→            throw new BusinessException("El recorrido no puede ser insertado porque se consume mas combustible ("
+   235→                    + consumo + ") que el disponible en el vehiculo (" + vehiculo.getCombustible() + ")");
+   236→        }
+   237→
+   238→        // Resolver chofer: si no se envia, usar el chofer asignado al vehiculo
+   239→        Chofer chofer = resolverChofer(request.getChoferId(), vehiculo);
+   240→
+   241→        // Validar tarjeta de combustible y descontar importe
+   242→        TarjetaCombustible tarjetaCombustible = null;
+   243→        if (request.getTarjetaCombustibleId() != null) {
+   244→            if (request.getImporteAbastecido() == null || request.getImporteAbastecido() <= 0) {
+   245→                throw new BusinessException("Si se envia tarjeta de combustible, el importe abastecido es obligatorio y debe ser mayor a cero");
+   246→            }
+   247→            tarjetaCombustible = tarjetaCombustibleRepository.findById(request.getTarjetaCombustibleId())
+   248→                    .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "id", request.getTarjetaCombustibleId()));
+   249→            if (tarjetaCombustible.getSaldo() <= request.getImporteAbastecido()) {
+   250→                throw new BusinessException("El saldo de la tarjeta no puede quedar en cero o negativo tras el descuento");
+   251→            }
+   252→            tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo() - request.getImporteAbastecido());
+   253→            tarjetaCombustibleRepository.save(tarjetaCombustible);
+   254→        } else if (request.getImporteAbastecido() != null) {
+   255→            throw new BusinessException("Si se envia importe abastecido, debe enviarse la tarjeta de combustible");
+   256→        }
+   257→
+   258→        // OdometroInicial es el odometro actual del vehiculo antes de sumar kilometros
+   259→        BigInteger odometroInicial = vehiculo.getOdometro();
+   260→
+   261→        // CombustibleInicial es el combustible actual del vehiculo antes del recorrido
+   262→        BigDecimal combustibleInicial = vehiculo.getCombustible();
+   263→
+   264→        Recorrido entity = Recorrido.builder()
+   265→                .vehiculo(vehiculo)
+   266→                .chofer(chofer)
+   267→                .fecha(request.getFecha())
+   268→                .kilometros(request.getKilometros())
+   269→                .odometroInicial(odometroInicial)
+   270→                .combustibleInicial(combustibleInicial)
+   271→                .consumo(consumo)
+   272→                .litrosAbastecidos(litrosAbastecidos)
+   273→                .numeroChip(request.getNumeroChip())
+   274→                .lugarAbastecimiento(request.getLugarAbastecimiento())
+   275→                .tarjetaCombustible(tarjetaCombustible)
+   276→                .importeAbastecido(request.getImporteAbastecido())
+   277→                .activo(true)
+   278→                .build();
+   279→
+   280→        Recorrido saved = repository.save(entity);
+   281→
+   282→        // Sumar kilometros al odometro del vehiculo
+   283→        vehiculo.setOdometro(vehiculo.getOdometro().add(BigInteger.valueOf(request.getKilometros())));
+   284→        // Actualizar combustible del vehiculo
+   285→        vehiculo.setCombustible(combustibleRestante);
+   286→        vehiculoRepository.save(vehiculo);
+   287→
+   288→        return toResponse(saved);
+   289→    }
+   290→
+   291→    @Override
+   292→    @Transactional
+   293→    public RecorridoResponse update(Long id, RecorridoRequest request) {
+   294→        Recorrido entity = repository.findById(id)
+   295→                .orElseThrow(() -> new ResourceNotFoundException("Recorrido", "id", id));
+   296→
+   297→        // No se permite cambiar el vehiculo
+   298→        if (!entity.getVehiculo().getId().equals(request.getVehiculoId())) {
+   299→            throw new BusinessException("No se permite cambiar el vehiculo del recorrido");
+   300→        }
+   301→
+   302→        // No se permite cambiar la fecha
+   303→        if (!entity.getFecha().equals(request.getFecha())) {
+   304→            throw new BusinessException("No se permite cambiar la fecha del recorrido");
+   305→        }
+   306→
+   307→        Vehiculo vehiculo = entity.getVehiculo();
+   308→
+   309→        // No se permite modificar si existe un recorrido con fecha posterior
+   310→        if (repository.existsByVehiculoIdAndFechaAfter(vehiculo.getId(), entity.getFecha())) {
+   311→            throw new BusinessException("No se puede modificar el recorrido porque existe un recorrido con fecha posterior para el vehiculo con id "
+   312→                    + vehiculo.getId());
+   313→        }
+   314→
+   315→        // Calcular el nuevo consumo, redondeado a 2 decimales
+   316→        BigDecimal nuevoConsumo = vehiculo.getIndiceConsumo()
+   317→                .multiply(BigDecimal.valueOf(request.getKilometros()))
+   318→                .divide(CIEN, 2, RoundingMode.HALF_UP);
+   319→
+   320→        // Verificar disponibilidad de combustible restaurando el consumo antiguo primero
+   321→        BigDecimal consumoAntiguo = entity.getConsumo() != null ? entity.getConsumo() : CERO;
+   322→        BigDecimal combustibleDisponible = vehiculo.getCombustible().add(consumoAntiguo).subtract(nuevoConsumo);
+   323→        if (combustibleDisponible.compareTo(BigDecimal.ZERO) < 0) {
+   324→            throw new BusinessException("El recorrido no puede ser actualizado porque se consume mas combustible ("
+   325→                    + nuevoConsumo + ") que el disponible en el vehiculo ("
+   326→                    + vehiculo.getCombustible().add(consumoAntiguo) + ")");
+   327→        }
+   328→
+   329→        // Restaurar odometro y combustible del vehiculo
+   330→        BigInteger kilometrosAnteriores = BigInteger.valueOf(entity.getKilometros());
+   331→        vehiculo.setOdometro(vehiculo.getOdometro().subtract(kilometrosAnteriores));
+   332→        vehiculo.setCombustible(vehiculo.getCombustible().add(consumoAntiguo));
+   333→
+   334→        // Resolver chofer: si no se envia, usar el chofer asignado al vehiculo
+   335→        Chofer chofer = resolverChofer(request.getChoferId(), vehiculo);
+   336→
+   337→        // Manejar tarjeta de combustible: restablecer saldo anterior y descontar nuevo importe
+   338→        TarjetaCombustible tarjetaCombustible = null;
+   339→        TarjetaCombustible tarjetaAnterior = entity.getTarjetaCombustible();
+   340→        Double importeAnterior = entity.getImporteAbastecido() != null ? entity.getImporteAbastecido() : 0.0;
+   341→
+   342→        if (request.getTarjetaCombustibleId() != null) {
+   343→            if (request.getImporteAbastecido() == null || request.getImporteAbastecido() <= 0) {
+   344→                throw new BusinessException("Si se envia tarjeta de combustible, el importe abastecido es obligatorio y debe ser mayor a cero");
+   345→            }
+   346→            tarjetaCombustible = tarjetaCombustibleRepository.findById(request.getTarjetaCombustibleId())
+   347→                    .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "id", request.getTarjetaCombustibleId()));
+   348→
+   349→            Double nuevoImporte = request.getImporteAbastecido();
+   350→
+   351→            // Restablecer saldo de tarjeta anterior si existe
+   352→            if (tarjetaAnterior != null) {
+   353→                if (tarjetaAnterior.getId().equals(tarjetaCombustible.getId())) {
+   354→                    // Misma tarjeta: restaurar importe anterior al saldo actual
+   355→                    tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo() + importeAnterior);
+   356→                } else {
+   357→                    // Tarjeta diferente: restaurar en la anterior
+   358→                    tarjetaAnterior.setSaldo(tarjetaAnterior.getSaldo() + importeAnterior);
+   359→                    tarjetaCombustibleRepository.save(tarjetaAnterior);
+   360→                }
+   361→            }
+   362→
+   363→            // Validar y restar nuevo importe
+   364→            if (tarjetaCombustible.getSaldo() <= nuevoImporte) {
+   365→                throw new BusinessException("El saldo de la tarjeta no puede quedar en cero o negativo tras el descuento");
+   366→            }
+   367→            tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo() - nuevoImporte);
+   368→            tarjetaCombustibleRepository.save(tarjetaCombustible);
+   369→        } else if (request.getImporteAbastecido() != null) {
+   370→            throw new BusinessException("Si se envia importe abastecido, debe enviarse la tarjeta de combustible");
+   371→        } else if (tarjetaAnterior != null) {
+   372→            // Se elimino la tarjeta: restablecer saldo de la tarjeta anterior
+   373→            tarjetaAnterior.setSaldo(tarjetaAnterior.getSaldo() + importeAnterior);
+   374→            tarjetaCombustibleRepository.save(tarjetaAnterior);
+   375→        }
+   376→
+   377→        // Actualizar la entidad
+   378→        entity.setChofer(chofer);
+   379→        entity.setKilometros(request.getKilometros());
+   380→        entity.setOdometroInicial(vehiculo.getOdometro());
+   381→        entity.setConsumo(nuevoConsumo);
+   382→        entity.setTarjetaCombustible(tarjetaCombustible);
+   383→        entity.setImporteAbastecido(request.getImporteAbastecido());
+   384→
+   385→        Recorrido saved = repository.save(entity);
+   386→
+   387→        // Sumar kilometros al odometro y restar consumo al combustible del vehiculo
+   388→        vehiculo.setOdometro(vehiculo.getOdometro().add(BigInteger.valueOf(request.getKilometros())));
+   389→        vehiculo.setCombustible(vehiculo.getCombustible().subtract(nuevoConsumo));
+   390→        vehiculoRepository.save(vehiculo);
+   391→
+   392→        return toResponse(saved);
+   393→    }
+   394→
+   395→    @Override
+   396→    @Transactional
+   397→    public void delete(Long id) {
+   398→        Recorrido entity = repository.findById(id)
+   399→                .orElseThrow(() -> new ResourceNotFoundException("Recorrido", "id", id));
+   400→
+   401→        Vehiculo vehiculo = entity.getVehiculo();
+   402→
+   403→        // No se permite eliminar si existe un recorrido con fecha posterior
+   404→        if (repository.existsByVehiculoIdAndFechaAfter(vehiculo.getId(), entity.getFecha())) {
+   405→            throw new BusinessException("No se puede eliminar el recorrido porque existe un recorrido con fecha posterior para el vehiculo con id "
+   406→                    + vehiculo.getId());
+   407→        }
+   408→
+   409→        // Restar los kilometros al odometro del vehiculo
+   410→        BigInteger kilometros = BigInteger.valueOf(entity.getKilometros());
+   411→        vehiculo.setOdometro(vehiculo.getOdometro().subtract(kilometros));
+   412→        // Restaurar el combustible consumido y los litros abastecidos
+   413→        BigDecimal consumo = entity.getConsumo() != null ? entity.getConsumo() : CERO;
+   414→        BigDecimal litrosAbastecidos = entity.getLitrosAbastecidos() != null ? entity.getLitrosAbastecidos() : CERO;
+   415→        vehiculo.setCombustible(vehiculo.getCombustible().add(consumo).subtract(litrosAbastecidos));
+   416→        vehiculoRepository.save(vehiculo);
+   417→
+   418→        // Restablecer saldo de tarjeta de combustible si existe
+   419→        if (entity.getTarjetaCombustible() != null && entity.getImporteAbastecido() != null) {
+   420→            TarjetaCombustible tarjeta = entity.getTarjetaCombustible();
+   421→            tarjeta.setSaldo(tarjeta.getSaldo() + entity.getImporteAbastecido());
+   422→            tarjetaCombustibleRepository.save(tarjeta);
+   423→        }
+   424→
+   425→        // Eliminacion fisica
+   426→        repository.delete(entity);
+   427→    }
+   428→
+   429→    private RecorridoResponse toResponse(Recorrido entity) {
+   430→        return RecorridoResponse.builder()
+   431→                .id(entity.getId())
+   432→                .vehiculo(toVehiculoResumido(entity.getVehiculo()))
+   433→                .chofer(entity.getChofer() != null ? toChoferResumido(entity.getChofer()) : null)
+   434→                .fecha(entity.getFecha())
+   435→                .kilometros(entity.getKilometros())
+   436→                .odometroInicial(entity.getOdometroInicial())
+   437→                .combustibleInicial(entity.getCombustibleInicial())
+   438→                .consumo(entity.getConsumo())
+   439→                .litrosAbastecidos(entity.getLitrosAbastecidos())
+   440→                .numeroChip(entity.getNumeroChip())
+   441→                .lugarAbastecimiento(entity.getLugarAbastecimiento())
+   442→                .tarjetaCombustible(entity.getTarjetaCombustible() != null ? toTarjetaResumida(entity.getTarjetaCombustible()) : null)
+   443→                .importeAbastecido(entity.getImporteAbastecido())
+   444→                .activo(entity.getActivo())
+   445→                .fechaCreacion(entity.getFechaCreacion())
+   446→                .fechaActualizacion(entity.getFechaActualizacion())
+   447→                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+   448→                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
+   449→                .build();
+   450→    }
+   451→
+   452→    private ChoferResponse toChoferResumido(Chofer c) {
+   453→        return ChoferResponse.builder()
+   454→                .id(c.getId())
+   455→                .nombre(c.getNombre())
+   456→                .apellidos(c.getApellidos())
+   457→                .carneIdentidad(c.getCarneIdentidad())
+   458→                .numeroLicencia(c.getNumeroLicencia())
+   459→                .fechaNacimiento(c.getFechaNacimiento())
+   460→                .activo(c.getActivo())
+   461→                .build();
+   462→    }
+   463→
+   464→    private Chofer resolverChofer(Long choferId, Vehiculo vehiculo) {
+   465→        if (choferId != null) {
+   466→            return choferRepository.findById(choferId)
+   467→                    .orElseThrow(() -> new ResourceNotFoundException("Chofer", "id", choferId));
+   468→        }
+   469→        return vehiculo.getChofer();
+   470→    }
+   471→
+   472→    private VehiculoResponse toVehiculoResumido(Vehiculo v) {
+   473→        Empresa emp = v.getEmpresa();
+   474→        EmpresaResponse empresaResp = EmpresaResponse.builder()
+   475→                .id(emp.getId())
+   476→                .codigo(emp.getCodigo())
+   477→                .nombre(emp.getNombre())
+   478→                .activo(emp.getActivo())
+   479→                .build();
+   480→
+   481→        TipoVehiculo tv = v.getTipoVehiculo();
+   482→        TipoVehiculoResponse tipoResp = TipoVehiculoResponse.builder()
+   483→                .id(tv.getId())
+   484→                .nombre(tv.getNombre())
+   485→                .activo(tv.getActivo())
+   486→                .build();
+   487→
+   488→        Marca m = v.getMarca();
+   489→        MarcaResponse marcaResp = MarcaResponse.builder()
+   490→                .id(m.getId())
+   491→                .nombre(m.getNombre())
+   492→                .activo(m.getActivo())
+   493→                .build();
+   494→
+   495→        TipoCombustible tc = v.getTipoCombustible();
+   496→        TipoCombustibleResponse combustibleResp = TipoCombustibleResponse.builder()
+   497→                .id(tc.getId())
+   498→                .codigo(tc.getCodigo())
+   499→                .denominacion(tc.getDenominacion())
+   500→                .activo(tc.getActivo())
+   501→                .build();
+   502→
+   503→        return VehiculoResponse.builder()
+   504→                .id(v.getId())
+   505→                .empresa(empresaResp)
+   506→                .tipoVehiculo(tipoResp)
+   507→                .marca(marcaResp)
+   508→                .tipoCombustible(combustibleResp)
+   509→                .matricula(v.getMatricula())
+   510→                .modelo(v.getModelo())
+   511→                .numeroMotor(v.getNumeroMotor())
+   512→                .odometro(v.getOdometro())
+   513→                .combustible(v.getCombustible())
+   514→                .ultimoMantenimiento(v.getUltimoMantenimiento())
+   515→                .odometroUltimoMantenimiento(v.getOdometroUltimoMantenimiento())
+   516→                .indiceConsumo(v.getIndiceConsumo())
+   517→                .activo(v.getActivo())
+   518→                .fechaCreacion(v.getFechaCreacion())
+   519→                .fechaActualizacion(v.getFechaActualizacion())
+   520→                .creadoPor(AuditMapper.toAuditResponse(v.getCreadoPor()))
+   521→                .modificadoPor(AuditMapper.toAuditResponse(v.getModificadoPor()))
+   522→                .build();
+   523→    }
+   524→
+   525→    private TarjetaCombustibleResponse toTarjetaResumida(TarjetaCombustible t) {
+   526→        return TarjetaCombustibleResponse.builder()
+   527→                .id(t.getId())
+   528→                .numero(t.getNumero())
+   529→                .saldo(t.getSaldo())
+   530→                .currency(CurrencyResponse.builder()
+   531→                        .id(t.getCurrency().getId())
+   532→                        .isoCode(t.getCurrency().getIsoCode())
+   533→                        .descripcion(t.getCurrency().getDescripcion())
+   534→                        .activo(t.getCurrency().getActivo())
+   535→                        .build())
+   536→                .activo(t.getActivo())
+   537→                .build();
+   538→    }
+   539→}
+   540→
