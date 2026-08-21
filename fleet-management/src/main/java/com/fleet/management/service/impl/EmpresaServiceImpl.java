@@ -22,6 +22,8 @@ public class EmpresaServiceImpl implements EmpresaService {
 
     private final EmpresaRepository repository;
 
+    private static final String EMPRESA_ADMIN_CODIGO = "EMP-ADMIN";
+
     @Override
     @Transactional(readOnly = true)
     public Page<EmpresaResponse> findAll(Pageable pageable) {
@@ -67,6 +69,8 @@ public class EmpresaServiceImpl implements EmpresaService {
         Empresa entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", id));
 
+        validarEmpresaAdmin(entity);
+
         if (!entity.getCodigo().equals(request.getCodigo()) && repository.existsByCodigo(request.getCodigo())) {
             throw new BusinessException("Ya existe una empresa con el codigo: " + request.getCodigo());
         }
@@ -84,8 +88,17 @@ public class EmpresaServiceImpl implements EmpresaService {
     public void delete(Long id) {
         Empresa entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", id));
+
+        validarEmpresaAdmin(entity);
+
         entity.setActivo(false);
         repository.save(entity);
+    }
+
+    private void validarEmpresaAdmin(Empresa entity) {
+        if (EMPRESA_ADMIN_CODIGO.equals(entity.getCodigo())) {
+            throw new BusinessException("La empresa de administracion no puede ser modificada ni eliminada");
+        }
     }
 
     private EmpresaResponse toResponse(Empresa entity) {

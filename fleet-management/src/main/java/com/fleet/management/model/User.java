@@ -32,4 +32,8 @@ public class User extends BaseEntity {
     )
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
-}
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empresa_id",
+            foreignKey = @ForeignKey(name = "fk_user_empresa"))
+    private Empresa empresa;}

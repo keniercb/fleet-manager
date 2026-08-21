@@ -1,5 +1,6 @@
 package com.fleet.management.service.impl;
 
+import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.permission.PermissionResponse;
 import com.fleet.management.dto.role.RoleResponse;
 import com.fleet.management.dto.user.UserRequest;
@@ -146,12 +147,25 @@ public class UserServiceImpl implements UserService {
         return UserResponse.builder()
                 .id(entity.getId())
                 .email(entity.getEmail())
+                .empresa(entity.getEmpresa() != null ? toEmpresaResponse(entity.getEmpresa()) : null)
                 .roles(roleResponses)
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())
                 .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
                 .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
+                .build();
+    }
+
+    private EmpresaResponse toEmpresaResponse(com.fleet.management.model.Empresa empresa) {
+        return EmpresaResponse.builder()
+                .id(empresa.getId())
+                .codigo(empresa.getCodigo())
+                .nombre(empresa.getNombre())
+                .direccion(empresa.getDireccion())
+                .telefono(empresa.getTelefono())
+                .email(empresa.getEmail())
+                .activo(empresa.getActivo())
                 .build();
     }
 }

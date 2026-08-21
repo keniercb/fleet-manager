@@ -1,5 +1,6 @@
 package com.fleet.management.dto.user;
 
+import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.role.RoleResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,6 +18,7 @@ public class UserResponse {
 
     private Long id;
     private String email;
+    private EmpresaResponse empresa;
     private Set<RoleResponse> roles;
     private Boolean activo;
     private LocalDateTime fechaCreacion;

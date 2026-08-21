@@ -1,11 +1,7 @@
 package com.fleet.management.config;
 
-import com.fleet.management.model.Permission;
-import com.fleet.management.model.Role;
-import com.fleet.management.model.User;
-import com.fleet.management.repository.PermissionRepository;
-import com.fleet.management.repository.RoleRepository;
-import com.fleet.management.repository.UserRepository;
+import com.fleet.management.model.*;
+import com.fleet.management.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -23,33 +19,47 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
+    private final EmpresaRepository empresaRepository;
     private final PasswordEncoder passwordEncoder;
+
+    private static final String EMPRESA_ADMIN_CODIGO = "EMP-ADMIN";
 
     @Override
     public void run(String... args) {
         log.info("=== Iniciando datos de bootstrap ===");
 
-        // Crear permisos por defecto
+        Empresa empresaAdmin = createEmpresaAdminIfNotExists();
+
         Set<Permission> adminPermissions = createDefaultPermissions();
 
-        // Crear rol ADMIN si no existe
         Role adminRole = createRoleIfNotExists(
                 "ADMIN",
                 "Rol con acceso total al sistema",
                 adminPermissions
         );
 
-        // Crear rol USER si no existe
         Role userRole = createRoleIfNotExists(
                 "USER",
                 "Rol de usuario estandar con acceso de lectura",
                 new HashSet<>()
         );
 
-        // Crear usuario admin si no existe
-        createAdminUserIfNotExists(adminRole);
+        createAdminUserIfNotExists(adminRole, empresaAdmin);
 
         log.info("=== Datos de bootstrap completados ===");
+    }
+
+    private Empresa createEmpresaAdminIfNotExists() {
+        return empresaRepository.findByCodigo(EMPRESA_ADMIN_CODIGO)
+                .orElseGet(() -> {
+                    log.info("Creando empresa por defecto: Empresa de Administracion");
+                    Empresa empresa = Empresa.builder()
+                            .codigo(EMPRESA_ADMIN_CODIGO)
+                            .nombre("Empresa de Administracion")
+                            .activo(true)
+                            .build();
+                    return empresaRepository.save(empresa);
+                });
     }
 
     private Set<Permission> createDefaultPermissions() {
@@ -118,16 +128,24 @@ public class DataInitializer implements CommandLineRunner {
                 });
     }
 
-    private void createAdminUserIfNotExists(Role adminRole) {
+    private void createAdminUserIfNotExists(Role adminRole, Empresa empresa) {
         String adminEmail = "admin@fleet.com";
         userRepository.findByEmail(adminEmail).ifPresentOrElse(
-                user -> log.info("Usuario admin ya existe: {}", adminEmail),
+                user -> {
+                    log.info("Usuario admin ya existe: {}", adminEmail);
+                    if (user.getEmpresa() == null) {
+                        user.setEmpresa(empresa);
+                        userRepository.save(user);
+                        log.info("Asignada empresa por defecto al usuario admin existente");
+                    }
+                },
                 () -> {
                     log.info("Creando usuario admin: {}", adminEmail);
                     User admin = User.builder()
                             .email(adminEmail)
                             .password(passwordEncoder.encode("admin123"))
                             .roles(Set.of(adminRole))
+                            .empresa(empresa)
                             .activo(true)
                             .build();
                     userRepository.save(admin);
