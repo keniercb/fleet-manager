@@ -1,6 +1,7 @@
 package com.fleet.management.dto.recorrido;
 
 import com.fleet.management.dto.chofer.ChoferResponse;
+import com.fleet.management.dto.tarjetacombustible.TarjetaCombustibleResponse;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
 import com.fleet.management.dto.user.UserAuditResponse;
 import lombok.*;
@@ -28,6 +29,8 @@ public class RecorridoResponse {
     private BigDecimal litrosAbastecidos;
     private String numeroChip;
     private String lugarAbastecimiento;
+    private TarjetaCombustibleResponse tarjetaCombustible;
+    private Double importeAbastecido;
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;

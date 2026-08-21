@@ -34,4 +34,9 @@ public class RecorridoRequest {
 
     @Size(max = 100, message = "El lugar de abastecimiento no puede exceder 100 caracteres")
     private String lugarAbastecimiento;
+
+    private Long tarjetaCombustibleId;
+
+    @Positive(message = "El importe abastecido debe ser mayor a cero")
+    private Double importeAbastecido;
 }

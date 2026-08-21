@@ -65,4 +65,12 @@ public class Recorrido extends BaseEntity {
     @Size(max = 100, message = "El lugar de abastecimiento no puede exceder 100 caracteres")
     @Column(name = "lugar_abastecimiento", length = 100)
     private String lugarAbastecimiento;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tarjeta_combustible_id",
+            foreignKey = @ForeignKey(name = "fk_recorrido_tarjeta_combustible"))
+    private TarjetaCombustible tarjetaCombustible;
+
+    @Column(name = "importe_abastecido")
+    private Double importeAbastecido;
 }
