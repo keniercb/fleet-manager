@@ -20,4 +20,5 @@ public class LecturaDiariaResponse {
     private BigDecimal combustibleConsumido;
     private BigDecimal combustibleAbastecido;
     private BigDecimal saldoCombustible;
+    private Integer kilometrosRecorridos;
 }

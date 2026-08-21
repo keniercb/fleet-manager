@@ -92,8 +92,8 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .collect(Collectors.toMap(r -> r.getFecha().getDayOfMonth(), r -> r));
 
         // Establecer estado inicial a partir de recorridos anteriores al mes
-        BigDecimal runningCombustible = vehiculo.getCombustible();
-        BigInteger runningOdometro = vehiculo.getOdometro();
+        BigDecimal runningCombustible = CERO;
+        BigInteger runningOdometro = BigInteger.valueOf(0L);
         boolean estadoInicialCalculado = false;
 
         for (Recorrido r : recorridos) {
@@ -147,6 +147,8 @@ public class RecorridoServiceImpl implements RecorridoService {
 
             BigDecimal saldoCombustible = combustibleEnDeposito.add(combustibleAbastecido).subtract(combustibleConsumido);
 
+            int kilometrosRecorridos = recorrido != null ? recorrido.getKilometros() : 0;
+
             lecturas.add(LecturaDiariaResponse.builder()
                     .dia(dia)
                     .odometro(odometro)
@@ -154,6 +156,7 @@ public class RecorridoServiceImpl implements RecorridoService {
                     .combustibleConsumido(combustibleConsumido)
                     .combustibleAbastecido(combustibleAbastecido)
                     .saldoCombustible(saldoCombustible)
+                    .kilometrosRecorridos(kilometrosRecorridos)
                     .build());
         }
 
