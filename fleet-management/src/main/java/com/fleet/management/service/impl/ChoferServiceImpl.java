@@ -56,9 +56,13 @@ public class ChoferServiceImpl implements ChoferService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ChoferResponse> findByEmpresaId(Long empresaId, Pageable pageable) {
-        return choferRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
-                .map(this::toResponse);
+    public Page<ChoferResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable) {
+        if (filter == null || filter.isBlank()) {
+            return choferRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
+                    .map(this::toResponse);
+        }
+        return choferRepository.findByEmpresaIdAndActivoTrueAndNombreOrCarneIdentidad(empresaId, filter, pageable)
+                    .map(this::toResponse);
     }
 
     @Override

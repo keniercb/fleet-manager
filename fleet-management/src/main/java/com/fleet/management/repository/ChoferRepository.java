@@ -29,4 +29,9 @@ public interface ChoferRepository extends JpaRepository<Chofer, Long> {
     Page<Chofer> findAllByActivoTrueAndNombreOrCarneIdentidad(@Param("filter") String filter, Pageable pageable);
 
     Page<Chofer> findByEmpresaIdAndActivoTrue(Long empresaId, Pageable pageable);
+
+    @Query("SELECT c FROM Chofer c WHERE c.empresa.id = :empresaId AND c.activo = true AND " +
+            "(LOWER(c.nombre) LIKE LOWER(CONCAT('%', :filter, '%')) OR " +
+            "LOWER(c.carneIdentidad) LIKE LOWER(CONCAT('%', :filter, '%')))")
+    Page<Chofer> findByEmpresaIdAndActivoTrueAndNombreOrCarneIdentidad(@Param("empresaId") Long empresaId, @Param("filter") String filter, Pageable pageable);
 }

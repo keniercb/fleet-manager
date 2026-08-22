@@ -20,4 +20,6 @@ public interface TarjetaCombustibleRepository extends JpaRepository<TarjetaCombu
     Page<TarjetaCombustible> findAllByActivoTrueAndNumeroContainingIgnoreCase(String numero, Pageable pageable);
 
     Page<TarjetaCombustible> findByEmpresaIdAndActivoTrue(Long empresaId, Pageable pageable);
+
+    Page<TarjetaCombustible> findByEmpresaIdAndActivoTrueAndNumeroContainingIgnoreCase(Long empresaId, String numero, Pageable pageable);
 }

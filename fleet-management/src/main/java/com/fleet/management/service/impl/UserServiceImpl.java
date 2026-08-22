@@ -95,8 +95,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<UserResponse> findByEmpresaId(Long empresaId, Pageable pageable) {
-        return userRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
+    public Page<UserResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable) {
+        if (filter == null || filter.isBlank()) {
+            return userRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
+                    .map(this::toResponse);
+        }
+        return userRepository.findByEmpresaIdAndActivoTrueAndEmailContainingIgnoreCase(empresaId, filter, pageable)
                 .map(this::toResponse);
     }
 

@@ -54,8 +54,11 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TarjetaCombustibleResponse> findByEmpresaId(Long empresaId, Pageable pageable) {
-        return repository.findByEmpresaIdAndActivoTrue(empresaId, pageable).map(this::toResponse);
+    public Page<TarjetaCombustibleResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable) {
+        if (filter == null || filter.isBlank()) {
+            return repository.findByEmpresaIdAndActivoTrue(empresaId, pageable).map(this::toResponse);
+        }
+        return repository.findByEmpresaIdAndActivoTrueAndNumeroContainingIgnoreCase(empresaId, filter, pageable).map(this::toResponse);
     }
 
     @Override

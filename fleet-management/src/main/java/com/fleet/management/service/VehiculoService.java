@@ -19,7 +19,7 @@ public interface VehiculoService {
 
     Page<VehiculoResponse> findSinChoferAsignado(Pageable pageable);
 
-    Page<VehiculoResponse> findByEmpresaId(Long empresaId, Pageable pageable);
+    Page<VehiculoResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable);
 
     VehiculoResponse create(VehiculoRequest request);
 

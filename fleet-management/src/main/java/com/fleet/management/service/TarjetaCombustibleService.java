@@ -19,5 +19,5 @@ public interface TarjetaCombustibleService {
 
     void delete(Long id);
 
-    Page<TarjetaCombustibleResponse> findByEmpresaId(Long empresaId, Pageable pageable);
+    Page<TarjetaCombustibleResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable);
 }

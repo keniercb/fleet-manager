@@ -90,8 +90,12 @@ public class VehiculoServiceImpl implements VehiculoService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<VehiculoResponse> findByEmpresaId(Long empresaId, Pageable pageable) {
-        return vehiculoRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
+    public Page<VehiculoResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable) {
+        if (filter == null || filter.isBlank()) {
+            return vehiculoRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
+                    .map(this::toResponse);
+        }
+        return vehiculoRepository.findByEmpresaIdAndActivoTrueAndMatriculaOrNumeroMotor(empresaId, filter, pageable)
                 .map(this::toResponse);
     }
 
