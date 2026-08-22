@@ -36,5 +36,10 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
 
     Page<Vehiculo> findAllByActivoTrue(Pageable pageable);
 
+    @Query("SELECT v FROM Vehiculo v WHERE v.activo = true AND " +
+            "(LOWER(v.matricula) LIKE LOWER(CONCAT('%', :filter, '%')) OR " +
+            "LOWER(v.numeroMotor) LIKE LOWER(CONCAT('%', :filter, '%')))" )
+    Page<Vehiculo> findAllByActivoTrueAndMatriculaOrNumeroMotor(@Param("filter") String filter, Pageable pageable);
+
     Page<Vehiculo> findByEmpresaIdAndActivoTrue(Long empresaId, Pageable pageable);
 }

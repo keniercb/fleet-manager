@@ -16,4 +16,6 @@ public interface MarcaRepository extends JpaRepository<Marca, Long> {
     boolean existsByNombre(String nombre);
 
     Page<Marca> findAllByActivoTrue(Pageable pageable);
+
+    Page<Marca> findAllByActivoTrueAndNombreContainingIgnoreCase(String nombre, Pageable pageable);
 }

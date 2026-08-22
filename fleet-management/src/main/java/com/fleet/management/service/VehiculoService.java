@@ -7,7 +7,7 @@ import com.fleet.management.dto.vehiculo.VehiculoResponse;
 
 public interface VehiculoService {
 
-    Page<VehiculoResponse> findAll(Pageable pageable);
+    Page<VehiculoResponse> findAll(String filter, Pageable pageable);
 
     VehiculoResponse findById(Long id);
 

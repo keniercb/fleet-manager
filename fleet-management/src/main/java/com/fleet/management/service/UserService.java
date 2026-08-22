@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface UserService {
 
-    Page<UserResponse> findAll(Pageable pageable);
+    Page<UserResponse> findAll(String filter, Pageable pageable);
 
     UserResponse findById(Long id);
 

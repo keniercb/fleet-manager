@@ -16,4 +16,6 @@ public interface EmpresaRepository extends JpaRepository<Empresa, Long> {
     boolean existsByCodigo(String codigo);
 
     Page<Empresa> findAllByActivoTrue(Pageable pageable);
+
+    Page<Empresa> findAllByActivoTrueAndNombreContainingIgnoreCase(String nombre, Pageable pageable);
 }

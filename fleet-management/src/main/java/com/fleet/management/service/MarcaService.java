@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface MarcaService {
 
-    Page<MarcaResponse> findAll(Pageable pageable);
+    Page<MarcaResponse> findAll(String filter, Pageable pageable);
 
     MarcaResponse findById(Long id);
 

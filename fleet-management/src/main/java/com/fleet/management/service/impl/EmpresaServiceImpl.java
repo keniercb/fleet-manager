@@ -26,8 +26,11 @@ public class EmpresaServiceImpl implements EmpresaService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<EmpresaResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+    public Page<EmpresaResponse> findAll(String filter, Pageable pageable) {
+        if (filter == null || filter.isBlank()) {
+            return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        }
+        return repository.findAllByActivoTrueAndNombreContainingIgnoreCase(filter, pageable).map(this::toResponse);
     }
 
     @Override

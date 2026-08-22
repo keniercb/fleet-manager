@@ -61,14 +61,14 @@ class MarcaServiceImplTest {
     void findAllShouldReturnPagedResponses() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Marca> page = new PageImpl<>(List.of(entity));
-        when(repository.findAll(pageable)).thenReturn(page);
+        when(repository.findAllByActivoTrue(pageable)).thenReturn(page);
 
-        Page<MarcaResponse> result = service.findAll(pageable);
+        Page<MarcaResponse> result = service.findAll(null, pageable);
 
         assertFalse(result.isEmpty());
         assertEquals(1, result.getTotalElements());
         assertEquals("Toyota", result.getContent().get(0).getNombre());
-        verify(repository).findAll(pageable);
+        verify(repository).findAllByActivoTrue(pageable);
     }
 
     @Test

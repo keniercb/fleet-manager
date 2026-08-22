@@ -43,8 +43,12 @@ public class VehiculoServiceImpl implements VehiculoService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<VehiculoResponse> findAll(Pageable pageable) {
-        return vehiculoRepository.findAllByActivoTrue(pageable)
+    public Page<VehiculoResponse> findAll(String filter, Pageable pageable) {
+        if (filter == null || filter.isBlank()) {
+            return vehiculoRepository.findAllByActivoTrue(pageable)
+                    .map(this::toResponse);
+        }
+        return vehiculoRepository.findAllByActivoTrueAndMatriculaOrNumeroMotor(filter, pageable)
                 .map(this::toResponse);
     }
 

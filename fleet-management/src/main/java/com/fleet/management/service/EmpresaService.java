@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface EmpresaService {
 
-    Page<EmpresaResponse> findAll(Pageable pageable);
+    Page<EmpresaResponse> findAll(String filter, Pageable pageable);
 
     EmpresaResponse findById(Long id);
 

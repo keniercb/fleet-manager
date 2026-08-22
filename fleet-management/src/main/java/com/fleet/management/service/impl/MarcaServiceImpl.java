@@ -24,8 +24,11 @@ public class MarcaServiceImpl implements MarcaService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<MarcaResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+    public Page<MarcaResponse> findAll(String filter, Pageable pageable) {
+        if (filter == null || filter.isBlank()) {
+            return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        }
+        return repository.findAllByActivoTrueAndNombreContainingIgnoreCase(filter, pageable).map(this::toResponse);
     }
 
     @Override

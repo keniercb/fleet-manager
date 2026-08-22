@@ -26,10 +26,9 @@ public class VehiculoController {
     private final RecorridoService recorridoService;
 
     @GetMapping
-    public ResponseEntity<Page<VehiculoResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
+    public ResponseEntity<Page<VehiculoResponse>> findAll(@RequestParam(required = false) String filter, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
         Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
-
-        return ResponseEntity.ok(service.findAll(pageable));
+        return ResponseEntity.ok(service.findAll(filter, pageable));
     }
 
     @GetMapping("/{id}")

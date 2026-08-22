@@ -65,15 +65,15 @@ class EmpresaServiceImplTest {
     void findAllShouldReturnPagedResponses() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Empresa> page = new PageImpl<>(List.of(entity));
-        when(repository.findAll(pageable)).thenReturn(page);
+        when(repository.findAllByActivoTrue(pageable)).thenReturn(page);
 
-        Page<EmpresaResponse> result = service.findAll(pageable);
+        Page<EmpresaResponse> result = service.findAll(null, pageable);
 
         assertFalse(result.isEmpty());
         assertEquals(1, result.getTotalElements());
         assertEquals("EMP-001", result.getContent().get(0).getCodigo());
         assertEquals("Transportes ABC", result.getContent().get(0).getNombre());
-        verify(repository).findAll(pageable);
+        verify(repository).findAllByActivoTrue(pageable);
     }
 
     @Test

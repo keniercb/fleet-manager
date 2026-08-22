@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface ChoferService {
 
-    Page<ChoferResponse> findAll(Pageable pageable);
+    Page<ChoferResponse> findAll(String filter, Pageable pageable);
 
     ChoferResponse findById(Long id);
 

@@ -37,9 +37,13 @@ public class ChoferServiceImpl implements ChoferService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ChoferResponse> findAll(Pageable pageable) {
-        return choferRepository.findAllByActivoTrue(pageable)
-                .map(this::toResponse);
+    public Page<ChoferResponse> findAll(String filter, Pageable pageable) {
+        if (filter == null || filter.isBlank()) {
+            return choferRepository.findAllByActivoTrue(pageable)
+                    .map(this::toResponse);
+        }
+        return choferRepository.findAllByActivoTrueAndNombreOrCarneIdentidad(filter, pageable)
+                    .map(this::toResponse);
     }
 
     @Override

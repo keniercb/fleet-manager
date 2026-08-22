@@ -34,8 +34,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<UserResponse> findAll(Pageable pageable) {
-        return userRepository.findAllByActivoTrue(pageable)
+    public Page<UserResponse> findAll(String filter, Pageable pageable) {
+        if (filter == null || filter.isBlank()) {
+            return userRepository.findAllByActivoTrue(pageable)
+                    .map(this::toResponse);
+        }
+        return userRepository.findAllByActivoTrueAndEmailContainingIgnoreCase(filter, pageable)
                 .map(this::toResponse);
     }
 

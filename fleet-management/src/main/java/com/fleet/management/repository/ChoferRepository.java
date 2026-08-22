@@ -4,6 +4,8 @@ import com.fleet.management.model.Chofer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -20,6 +22,11 @@ public interface ChoferRepository extends JpaRepository<Chofer, Long> {
     boolean existsByNumeroLicencia(String numeroLicencia);
 
     Page<Chofer> findAllByActivoTrue(Pageable pageable);
+
+    @Query("SELECT c FROM Chofer c WHERE c.activo = true AND " +
+            "(LOWER(c.nombre) LIKE LOWER(CONCAT('%', :filter, '%')) OR " +
+            "LOWER(c.carneIdentidad) LIKE LOWER(CONCAT('%', :filter, '%')))" )
+    Page<Chofer> findAllByActivoTrueAndNombreOrCarneIdentidad(@Param("filter") String filter, Pageable pageable);
 
     Page<Chofer> findByEmpresaIdAndActivoTrue(Long empresaId, Pageable pageable);
 }

@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface TarjetaCombustibleService {
 
-    Page<TarjetaCombustibleResponse> findAll(Pageable pageable);
+    Page<TarjetaCombustibleResponse> findAll(String filter, Pageable pageable);
 
     TarjetaCombustibleResponse findById(Long id);
 
