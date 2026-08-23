@@ -1,0 +1,616 @@
+    50→
+    51→    @BeforeEach
+    52→    void setUp() {
+    53→        empresa = Empresa.builder()
+    54→                .id(1L).codigo("EMP-001").nombre("Transportes ABC")
+    55→                .activo(true).fechaCreacion(NOW).fechaActualizacion(NOW).build();
+    56→
+    57→        tipoVehiculo = TipoVehiculo.builder()
+    58→                .id(1L).nombre("Camion").descripcion("Camion de carga")
+    59→                .activo(true).fechaCreacion(NOW).fechaActualizacion(NOW).build();
+    60→
+    61→        marca = Marca.builder()
+    62→                .id(1L).nombre("Toyota").descripcion("Toyota Motor Corp")
+    63→                .activo(true).fechaCreacion(NOW).fechaActualizacion(NOW).build();
+    64→
+    65→        tipoCombustible = TipoCombustible.builder()
+    66→                .id(1L).codigo("DSL").denominacion("Diesel")
+    67→                .activo(true).fechaCreacion(NOW).fechaActualizacion(NOW).build();
+    68→
+    69→        vehiculo = Vehiculo.builder()
+    70→                .id(10L)
+    71→                .empresa(empresa)
+    72→                .tipoVehiculo(tipoVehiculo)
+    73→                .marca(marca)
+    74→                .tipoCombustible(tipoCombustible)
+    75→                .matricula("MAT-001")
+    76→                .numeroMotor("MOT-001")
+    77→                .odometro(BigInteger.valueOf(50000))
+    78→                .combustible(new BigDecimal("50.00"))
+    79→                .indiceConsumo(new BigDecimal("8.50"))
+    80→                .activo(true)
+    81→                .fechaCreacion(NOW)
+    82→                .fechaActualizacion(NOW)
+    83→                .build();
+    84→    }
+    85→
+    86→    private RecorridoRequest buildRequest(Long vehiculoId, LocalDate fecha, Integer kilometros,
+    87→                                          BigDecimal litrosAbastecidos, String lugar) {
+    88→        return RecorridoRequest.builder()
+    89→                .vehiculoId(vehiculoId)
+    90→                .fecha(fecha)
+    91→                .kilometros(kilometros)
+    92→                .litrosAbastecidos(litrosAbastecidos)
+    93→                .lugarAbastecimiento(lugar)
+    94→                .build();
+    95→    }
+    96→
+    97→    private Recorrido buildRecorrido(Long id, Vehiculo v, LocalDate fecha, Integer kilometros,
+    98→                                      BigInteger odometroInicial, BigDecimal consumo,
+    99→                                      BigDecimal litrosAbastecidos) {
+   100→        return Recorrido.builder()
+   101→                .id(id)
+   102→                .vehiculo(v)
+   103→                .fecha(fecha)
+   104→                .kilometros(kilometros)
+   105→                .odometroInicial(odometroInicial)
+   106→                .consumo(consumo)
+   107→                .litrosAbastecidos(litrosAbastecidos)
+   108→                .lugarAbastecimiento("Estacion Central")
+   109→                .activo(true)
+   110→                .fechaCreacion(NOW)
+   111→                .fechaActualizacion(NOW)
+   112→                .build();
+   113→    }
+   114→
+   115→    // =========================================================================
+   116→    // CREATE TESTS
+   117→    // =========================================================================
+   118→    @Nested
+   119→    class Create {
+   120→
+   121→        @Test
+   122→        void createShouldReturnResponseWithCorrectConsumptionAndFuelUpdate() {
+   123→            // vehiculo: odometro=50000, combustible=50.00, indiceConsumo=8.50
+   124→            // kilometros=100 => consumo = 8.50 * 100 / 100 = 8.50
+   125→            // combustibleRestante = 50.00 - 8.50 + 0 = 41.50
+   126→            RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
+   127→
+   128→            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+   129→            when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
+   130→            when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
+   131→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
+   132→                Recorrido r = inv.getArgument(0);
+   133→                r.setId(1L);
+   134→                return r;
+   135→            });
+   136→
+   137→            RecorridoResponse response = service.create(request);
+   138→
+   139→            assertNotNull(response);
+   140→            assertEquals(1L, response.getId());
+   141→            assertEquals(new BigDecimal("8.50"), response.getConsumo());
+   142→            assertEquals(new BigDecimal("0.00"), response.getLitrosAbastecidos());
+   143→            assertEquals(BigInteger.valueOf(50000), response.getOdometroInicial());
+   144→            assertEquals(100, response.getKilometros());
+   145→            assertTrue(response.getActivo());
+   146→
+   147→            // Vehicle updated: odometro += 100, combustible = 41.50
+   148→            assertEquals(BigInteger.valueOf(50100), vehiculo.getOdometro());
+   149→            assertEquals(new BigDecimal("41.50"), vehiculo.getCombustible());
+   150→
+   151→            verify(repository).save(any(Recorrido.class));
+   152→            verify(vehiculoRepository).save(vehiculo);
+   153→        }
+   154→
+   155→        @Test
+   156→        void createShouldCalculateConsumoWithHalfUpRounding() {
+   157→            // vehiculo: indiceConsumo=8.33, kilometros=150
+   158→            // consumo = 8.33 * 150 / 100 = 12.495 => HALF_UP => 12.50
+   159→            vehiculo.setIndiceConsumo(new BigDecimal("8.33"));
+   160→            vehiculo.setCombustible(new BigDecimal("100.00"));
+   161→
+   162→            RecorridoRequest request = buildRequest(10L, FECHA, 150, null, "Estacion Central");
+   163→
+   164→            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+   165→            when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
+   166→            when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
+   167→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
+   168→                Recorrido r = inv.getArgument(0);
+   169→                r.setId(2L);
+   170→                return r;
+   171→            });
+   172→
+   173→            RecorridoResponse response = service.create(request);
+   174→
+   175→            assertEquals(new BigDecimal("12.50"), response.getConsumo());
+   176→            // combustible = 100.00 - 12.50 = 87.50
+   177→            assertEquals(new BigDecimal("87.50"), vehiculo.getCombustible());
+   178→        }
+   179→
+   180→        @Test
+   181→        void createShouldIncludeLitrosAbastecidosInFuelCalculation() {
+   182→            // vehiculo: combustible=5.00, indiceConsumo=8.50
+   183→            // kilometros=100 => consumo = 8.50
+   184→            // litrosAbastecidos=10.00
+   185→            // combustibleRestante = 5.00 - 8.50 + 10.00 = 6.50
+   186→            vehiculo.setCombustible(new BigDecimal("5.00"));
+   187→            RecorridoRequest request = buildRequest(10L, FECHA, 100, new BigDecimal("10.00"), "Estacion Central");
+   188→
+   189→            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+   190→            when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
+   191→            when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
+   192→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
+   193→                Recorrido r = inv.getArgument(0);
+   194→                r.setId(3L);
+   195→                return r;
+   196→            });
+   197→
+   198→            RecorridoResponse response = service.create(request);
+   199→
+   200→            assertEquals(new BigDecimal("10.00"), response.getLitrosAbastecidos());
+   201→            assertEquals(new BigDecimal("8.50"), response.getConsumo());
+   202→            assertEquals(new BigDecimal("6.50"), vehiculo.getCombustible());
+   203→        }
+   204→
+   205→        @Test
+   206→        void createShouldSetOdometroInicialFromVehiculoOdometro() {
+   207→            vehiculo.setOdometro(BigInteger.valueOf(123456));
+   208→            RecorridoRequest request = buildRequest(10L, FECHA, 50, null, "Estacion Central");
+   209→
+   210→            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+   211→            when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
+   212→            when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
+   213→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
+   214→                Recorrido r = inv.getArgument(0);
+   215→                r.setId(4L);
+   216→                return r;
+   217→            });
+   218→
+   219→            service.create(request);
+   220→
+   221→            verify(repository).save(argThat(r ->
+   222→                r.getOdometroInicial().equals(BigInteger.valueOf(123456))
+   223→            ));
+   224→        }
+   225→
+   226→        @Test
+   227→        void createShouldAddKilometrosToVehiculoOdometro() {
+   228→            BigInteger originalOdometro = vehiculo.getOdometro();
+   229→            RecorridoRequest request = buildRequest(10L, FECHA, 250, null, "Estacion Central");
+   230→
+   231→            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+   232→            when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
+   233→            when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
+   234→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
+   235→                Recorrido r = inv.getArgument(0);
+   236→                r.setId(5L);
+   237→                return r;
+   238→            });
+   239→
+   240→            service.create(request);
+   241→
+   242→            assertEquals(originalOdometro.add(BigInteger.valueOf(250)), vehiculo.getOdometro());
+   243→        }
+   244→
+   245→        @Test
+   246→        void createShouldTreatNullLitrosAbastecidosAsZero() {
+   247→            RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
+   248→
+   249→            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+   250→            when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
+   251→            when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
+   252→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
+   253→                Recorrido r = inv.getArgument(0);
+   254→                r.setId(6L);
+   255→                return r;
+   256→            });
+   257→
+   258→            RecorridoResponse response = service.create(request);
+   259→
+   260→            assertEquals(new BigDecimal("0.00"), response.getLitrosAbastecidos());
+   261→        }
+   262→
+   263→        @Test
+   264→        void createShouldThrowResourceNotFoundExceptionWhenVehiculoNotFound() {
+   265→            RecorridoRequest request = buildRequest(99L, FECHA, 100, null, "Estacion Central");
+   266→
+   267→            when(vehiculoRepository.findById(99L)).thenReturn(Optional.empty());
+   268→
+   269→            ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
+   270→                    () -> service.create(request));
+   271→            assertTrue(ex.getMessage().contains("Vehiculo"));
+   272→            assertTrue(ex.getMessage().contains("99"));
+   273→            verify(repository, never()).save(any());
+   274→        }
+   275→
+   276→        @Test
+   277→        void createShouldThrowBusinessExceptionWhenDuplicateVehiculoFecha() {
+   278→            RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
+   279→
+   280→            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+   281→            when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(true);
+   282→
+   283→            BusinessException ex = assertThrows(BusinessException.class,
+   284→                    () -> service.create(request));
+   285→            assertTrue(ex.getMessage().contains("Ya existe un recorrido"));
+   286→            assertTrue(ex.getMessage().contains("10"));
+   287→            assertTrue(ex.getMessage().contains(FECHA.toString()));
+   288→            verify(repository, never()).save(any());
+   289→        }
+   290→
+   291→        @Test
+   292→        void createShouldThrowBusinessExceptionWhenFutureDateRecorridoExists() {
+   293→            RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
+   294→
+   295→            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+   296→            when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
+   297→            when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(true);
+   298→
+   299→            BusinessException ex = assertThrows(BusinessException.class,
+   300→                    () -> service.create(request));
+   301→            assertTrue(ex.getMessage().contains("fecha posterior"));
+   302→            assertTrue(ex.getMessage().contains("10"));
+   303→            verify(repository, never()).save(any());
+   304→        }
+   305→
+   306→        @Test
+   307→        void createShouldThrowBusinessExceptionWhenInsufficientFuel() {
+   308→            // vehiculo: combustible=5.00, indiceConsumo=8.50
+   309→            // kilometros=100 => consumo = 8.50
+   310→            // combustibleRestante = 5.00 - 8.50 = -3.50 < 0
+   311→            vehiculo.setCombustible(new BigDecimal("5.00"));
+   312→            RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
+   313→
+   314→            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+   315→            when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
+   316→            when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
+   317→
+   318→            BusinessException ex = assertThrows(BusinessException.class,
+   319→                    () -> service.create(request));
+   320→            assertTrue(ex.getMessage().contains("mas combustible"));
+   321→            verify(repository, never()).save(any());
+   322→            verify(vehiculoRepository, never()).save(any());
+   323→        }
+   324→
+   325→        @Test
+   326→        void createShouldAllowExactZeroFuelRemaining() {
+   327→            // vehiculo: combustible=8.50, indiceConsumo=8.50, kilometros=100
+   328→            // consumo = 8.50, restante = 8.50 - 8.50 = 0.00 (exactly zero, valid)
+   329→            vehiculo.setCombustible(new BigDecimal("8.50"));
+   330→            RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
+   331→
+   332→            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+   333→            when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
+   334→            when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
+   335→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
+   336→                Recorrido r = inv.getArgument(0);
+   337→                r.setId(7L);
+   338→                return r;
+   339→            });
+   340→
+   341→            RecorridoResponse response = service.create(request);
+   342→
+   343→            assertNotNull(response);
+   344→            assertEquals(new BigDecimal("0.00"), vehiculo.getCombustible());
+   345→        }
+   346→    }
+   347→
+   348→    // =========================================================================
+   349→    // UPDATE TESTS
+   350→    // =========================================================================
+   351→    @Nested
+   352→    class Update {
+   353→
+   354→        @Test
+   355→        void updateShouldReturnResponseWithRecalculatedValues() {
+   356→            // Existing: kilometros=100, consumo=8.50 (8.50*100/100)
+   357→            // Current vehiculo state: odometro=50100, combustible=41.50 (after original create)
+   358→            vehiculo.setOdometro(BigInteger.valueOf(50100));
+   359→            vehiculo.setCombustible(new BigDecimal("41.50"));
+   360→
+   361→            Recorrido existing = buildRecorrido(1L, vehiculo, FECHA, 100,
+   362→                    BigInteger.valueOf(50000), new BigDecimal("8.50"), new BigDecimal("0.00"));
+   363→
+   364→            // New: kilometros=200 => nuevoConsumo = 8.50 * 200 / 100 = 17.00
+   365→            RecorridoRequest request = buildRequest(10L, FECHA, 200, null, "Estacion Central");
+   366→
+   367→            when(repository.findById(1L)).thenReturn(Optional.of(existing));
+   368→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
+   369→
+   370→            RecorridoResponse response = service.update(1L, request);
+   371→
+   372→            assertEquals(new BigDecimal("17.00"), response.getConsumo());
+   373→            assertEquals(200, response.getKilometros());
+   374→            // Odometro: 50100 - 100 (old) + 200 (new) = 50200
+   375→            assertEquals(BigInteger.valueOf(50200), vehiculo.getOdometro());
+   376→            // Combustible: 41.50 + 8.50 (restore old) - 17.00 (new consumo) = 33.00
+   377→            assertEquals(new BigDecimal("33.00"), vehiculo.getCombustible());
+   378→            // odometroInicial should be the restored odometro (50100 - 100 = 50000)
+   379→            assertEquals(BigInteger.valueOf(50000), response.getOdometroInicial());
+   380→
+   381→            verify(repository).save(existing);
+   382→            verify(vehiculoRepository).save(vehiculo);
+   383→        }
+   384→
+   385→        @Test
+   386→        void updateShouldThrowBusinessExceptionWhenChangingVehiculo() {
+   387→            Recorrido existing = buildRecorrido(1L, vehiculo, FECHA, 100,
+   388→                    BigInteger.valueOf(50000), new BigDecimal("8.50"), new BigDecimal("0.00"));
+   389→
+   390→            RecorridoRequest request = buildRequest(99L, FECHA, 100, null, "Estacion Central");
+   391→
+   392→            when(repository.findById(1L)).thenReturn(Optional.of(existing));
+   393→
+   394→            BusinessException ex = assertThrows(BusinessException.class,
+   395→                    () -> service.update(1L, request));
+   396→            assertTrue(ex.getMessage().contains("vehiculo"));
+   397→            verify(repository, never()).save(any());
+   398→        }
+   399→
+   400→        @Test
+   401→        void updateShouldThrowBusinessExceptionWhenChangingFecha() {
+   402→            Recorrido existing = buildRecorrido(1L, vehiculo, FECHA, 100,
+   403→                    BigInteger.valueOf(50000), new BigDecimal("8.50"), new BigDecimal("0.00"));
+   404→
+   405→            LocalDate differentDate = LocalDate.of(2024, 6, 20);
+   406→            RecorridoRequest request = buildRequest(10L, differentDate, 100, null, "Estacion Central");
+   407→
+   408→            when(repository.findById(1L)).thenReturn(Optional.of(existing));
+   409→
+   410→            BusinessException ex = assertThrows(BusinessException.class,
+   411→                    () -> service.update(1L, request));
+   412→            assertTrue(ex.getMessage().contains("fecha"));
+   413→            verify(repository, never()).save(any());
+   414→        }
+   415→
+   416→        @Test
+   417→        void updateShouldThrowResourceNotFoundExceptionWhenRecorridoNotFound() {
+   418→            RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
+   419→
+   420→            when(repository.findById(99L)).thenReturn(Optional.empty());
+   421→
+   422→            ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
+   423→                    () -> service.update(99L, request));
+   424→            assertTrue(ex.getMessage().contains("Recorrido"));
+   425→            assertTrue(ex.getMessage().contains("99"));
+   426→        }
+   427→
+   428→        @Test
+   429→        void updateShouldRestoreOldConsumoBeforeValidatingFuel() {
+   430→            // Existing: kilometros=200, consumo=17.00
+   431→            // Current vehiculo: combustible=33.00, odometro=50200
+   432→            vehiculo.setOdometro(BigInteger.valueOf(50200));
+   433→            vehiculo.setCombustible(new BigDecimal("33.00"));
+   434→
+   435→            Recorrido existing = buildRecorrido(1L, vehiculo, FECHA, 200,
+   436→                    BigInteger.valueOf(50000), new BigDecimal("17.00"), new BigDecimal("0.00"));
+   437→
+   438→            // New: kilometros=400 => nuevoConsumo = 8.50 * 400 / 100 = 34.00
+   439→            // Restored fuel: 33.00 + 17.00 = 50.00
+   440→            // After new: 50.00 - 34.00 = 16.00 >= 0, OK
+   441→            RecorridoRequest request = buildRequest(10L, FECHA, 400, null, "Estacion Central");
+   442→
+   443→            when(repository.findById(1L)).thenReturn(Optional.of(existing));
+   444→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
+   445→
+   446→            RecorridoResponse response = service.update(1L, request);
+   447→
+   448→            assertNotNull(response);
+   449→            assertEquals(new BigDecimal("34.00"), response.getConsumo());
+   450→            // Odometro: 50200 - 200 + 400 = 50400
+   451→            assertEquals(BigInteger.valueOf(50400), vehiculo.getOdometro());
+   452→            // Combustible: (33.00 + 17.00) - 34.00 = 16.00
+   453→            assertEquals(new BigDecimal("16.00"), vehiculo.getCombustible());
+   454→        }
+   455→
+   456→        @Test
+   457→        void updateShouldThrowBusinessExceptionWhenInsufficientFuelAfterRestore() {
+   458→            // Existing: kilometros=100, consumo=8.50
+   459→            // Current vehiculo: combustible=41.50
+   460→            vehiculo.setCombustible(new BigDecimal("41.50"));
+   461→
+   462→            Recorrido existing = buildRecorrido(1L, vehiculo, FECHA, 100,
+   463→                    BigInteger.valueOf(50000), new BigDecimal("8.50"), new BigDecimal("0.00"));
+   464→
+   465→            // New: kilometros=1000 => nuevoConsumo = 8.50 * 1000 / 100 = 85.00
+   466→            // Restored fuel: 41.50 + 8.50 = 50.00
+   467→            // After new: 50.00 - 85.00 = -35.00 < 0 => FAIL
+   468→            RecorridoRequest request = buildRequest(10L, FECHA, 1000, null, "Estacion Central");
+   469→
+   470→            when(repository.findById(1L)).thenReturn(Optional.of(existing));
+   471→
+   472→            BusinessException ex = assertThrows(BusinessException.class,
+   473→                    () -> service.update(1L, request));
+   474→            assertTrue(ex.getMessage().contains("mas combustible"));
+   475→            verify(repository, never()).save(any());
+   476→        }
+   477→
+   478→        @Test
+   479→        void updateShouldHandleNullOldConsumoAsZero() {
+   480→            // Existing: consumo=null (edge case from data)
+   481→            vehiculo.setOdometro(BigInteger.valueOf(50000));
+   482→            vehiculo.setCombustible(new BigDecimal("50.00"));
+   483→
+   484→            Recorrido existing = buildRecorrido(1L, vehiculo, FECHA, 100,
+   485→                    BigInteger.valueOf(49900), null, new BigDecimal("0.00"));
+   486→
+   487→            // New: kilometros=100 => nuevoConsumo = 8.50
+   488→            // Restored fuel: 50.00 + 0.00 = 50.00
+   489→            // After new: 50.00 - 8.50 = 41.50
+   490→            RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
+   491→
+   492→            when(repository.findById(1L)).thenReturn(Optional.of(existing));
+   493→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
+   494→
+   495→            RecorridoResponse response = service.update(1L, request);
+   496→
+   497→            assertNotNull(response);
+   498→            assertEquals(new BigDecimal("8.50"), response.getConsumo());
+   499→            assertEquals(new BigDecimal("41.50"), vehiculo.getCombustible());
+   500→        }
+   501→
+   502→        @Test
+   503→        void updateShouldCorrectlyUpdateOdometroInicial() {
+   504→            vehiculo.setOdometro(BigInteger.valueOf(50100));
+   505→            vehiculo.setCombustible(new BigDecimal("41.50"));
+   506→
+   507→            Recorrido existing = buildRecorrido(1L, vehiculo, FECHA, 100,
+   508→                    BigInteger.valueOf(50000), new BigDecimal("8.50"), new BigDecimal("0.00"));
+   509→
+   510→            RecorridoRequest request = buildRequest(10L, FECHA, 200, null, "Estacion Central");
+   511→
+   512→            when(repository.findById(1L)).thenReturn(Optional.of(existing));
+   513→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
+   514→
+   515→            service.update(1L, request);
+   516→
+   517→            // After restoring old odometro: 50100 - 100 = 50000
+   518→            // This becomes the new odometroInicial
+   519→            verify(repository).save(argThat(r ->
+   520→                r.getOdometroInicial().equals(BigInteger.valueOf(50000))
+   521→            ));
+   522→        }
+   523→    }
+   524→
+   525→    // =========================================================================
+   526→    // DELETE TESTS
+   527→    // =========================================================================
+   528→    @Nested
+   529→    class Delete {
+   530→
+   531→        @Test
+   532→        void deleteShouldSetActivoFalse() {
+   533→            Recorrido recorrido = buildRecorrido(1L, vehiculo, FECHA, 100,
+   534→                    BigInteger.valueOf(50000), new BigDecimal("8.50"), new BigDecimal("0.00"));
+   535→
+   536→            when(repository.findById(1L)).thenReturn(Optional.of(recorrido));
+   537→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
+   538→
+   539→            service.delete(1L);
+   540→
+   541→            assertFalse(recorrido.getActivo());
+   542→            verify(repository).save(recorrido);
+   543→        }
+   544→
+   545→        @Test
+   546→        void deleteShouldRestoreVehiculoOdometro() {
+   547→            vehiculo.setOdometro(BigInteger.valueOf(50100));
+   548→            vehiculo.setCombustible(new BigDecimal("41.50"));
+   549→
+   550→            Recorrido recorrido = buildRecorrido(1L, vehiculo, FECHA, 100,
+   551→                    BigInteger.valueOf(50000), new BigDecimal("8.50"), new BigDecimal("0.00"));
+   552→
+   553→            when(repository.findById(1L)).thenReturn(Optional.of(recorrido));
+   554→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
+   555→
+   556→            service.delete(1L);
+   557→
+   558→            // odometro: 50100 - 100 = 50000
+   559→            assertEquals(BigInteger.valueOf(50000), vehiculo.getOdometro());
+   560→            verify(vehiculoRepository).save(vehiculo);
+   561→        }
+   562→
+   563→        @Test
+   564→        void deleteShouldRestoreVehiculoCombustible() {
+   565→            vehiculo.setOdometro(BigInteger.valueOf(50100));
+   566→            vehiculo.setCombustible(new BigDecimal("41.50"));
+   567→
+   568→            Recorrido recorrido = buildRecorrido(1L, vehiculo, FECHA, 100,
+   569→                    BigInteger.valueOf(50000), new BigDecimal("8.50"), new BigDecimal("0.00"));
+   570→
+   571→            when(repository.findById(1L)).thenReturn(Optional.of(recorrido));
+   572→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
+   573→
+   574→            service.delete(1L);
+   575→
+   576→            // combustible: 41.50 + 8.50 = 50.00
+   577→            assertEquals(new BigDecimal("50.00"), vehiculo.getCombustible());
+   578→            verify(vehiculoRepository).save(vehiculo);
+   579→        }
+   580→
+   581→        @Test
+   582→        void deleteShouldHandleNullConsumoAsZero() {
+   583→            vehiculo.setCombustible(new BigDecimal("41.50"));
+   584→
+   585→            Recorrido recorrido = buildRecorrido(1L, vehiculo, FECHA, 100,
+   586→                    BigInteger.valueOf(50000), null, new BigDecimal("0.00"));
+   587→
+   588→            when(repository.findById(1L)).thenReturn(Optional.of(recorrido));
+   589→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
+   590→
+   591→            service.delete(1L);
+   592→
+   593→            // combustible: 41.50 + 0.00 = 41.50 (unchanged)
+   594→            assertEquals(new BigDecimal("41.50"), vehiculo.getCombustible());
+   595→        }
+   596→
+   597→        @Test
+   598→        void deleteShouldThrowResourceNotFoundExceptionWhenNotFound() {
+   599→            when(repository.findById(99L)).thenReturn(Optional.empty());
+   600→
+   601→            ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
+   602→                    () -> service.delete(99L));
+   603→            assertTrue(ex.getMessage().contains("Recorrido"));
+   604→            assertTrue(ex.getMessage().contains("99"));
+   605→            verify(repository, never()).save(any());
+   606→            verify(vehiculoRepository, never()).save(any());
+   607→        }
+   608→
+   609→        @Test
+   610→        void deleteShouldRestoreBothOdometroAndCombustibleCorrectly() {
+   611→            // Comprehensive: verify both restores happen together
+   612→            vehiculo.setOdometro(BigInteger.valueOf(50300));
+   613→            vehiculo.setCombustible(new BigDecimal("25.50"));
+   614→
+   615→            // recorrido: 300km, consumo = 8.50 * 300 / 100 = 25.50
+   616→            Recorrido recorrido = buildRecorrido(1L, vehiculo, FECHA, 300,
+   617→                    BigInteger.valueOf(50000), new BigDecimal("25.50"), new BigDecimal("0.00"));
+   618→
+   619→            when(repository.findById(1L)).thenReturn(Optional.of(recorrido));
+   620→            when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
+   621→
+   622→            service.delete(1L);
+   623→
+   624→            assertEquals(BigInteger.valueOf(50000), vehiculo.getOdometro());
+   625→            assertEquals(new BigDecimal("51.00"), vehiculo.getCombustible());
+   626→            assertFalse(recorrido.getActivo());
+   627→        }
+   628→    }
+   629→
+   630→    // =========================================================================
+   631→    // FIND TESTS
+   632→    // =========================================================================
+   633→    @Nested
+   634→    class Find {
+   635→
+   636→        @Test
+   637→        void findByIdShouldReturnResponseWhenFound() {
+   638→            Recorrido recorrido = buildRecorrido(1L, vehiculo, FECHA, 100,
+   639→                    BigInteger.valueOf(50000), new BigDecimal("8.50"), new BigDecimal("0.00"));
+   640→
+   641→            when(repository.findById(1L)).thenReturn(Optional.of(recorrido));
+   642→
+   643→            RecorridoResponse response = service.findById(1L);
+   644→
+   645→            assertEquals(1L, response.getId());
+   646→            assertEquals(FECHA, response.getFecha());
+   647→            assertEquals(100, response.getKilometros());
+   648→            assertEquals(new BigDecimal("8.50"), response.getConsumo());
+   649→            assertNotNull(response.getVehiculo());
+   650→            assertEquals("MAT-001", response.getVehiculo().getMatricula());
+   651→            verify(repository).findById(1L);
+   652→        }
+   653→
+   654→        @Test
+   655→        void findByIdShouldThrowResourceNotFoundExceptionWhenNotFound() {
+   656→            when(repository.findById(99L)).thenReturn(Optional.empty());
+   657→
+   658→            ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
+   659→                    () -> service.findById(99L));
+   660→            assertTrue(ex.getMessage().contains("Recorrido"));
+   661→            assertTrue(ex.getMessage().contains("99"));
+   662→        }
+   663→    }
+   664→}
+   665→
