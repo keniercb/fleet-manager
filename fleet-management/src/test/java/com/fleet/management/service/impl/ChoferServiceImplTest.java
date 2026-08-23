@@ -123,15 +123,15 @@ class ChoferServiceImplTest {
     void findAllShouldReturnPagedResponses() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Chofer> page = new PageImpl<>(List.of(chofer));
-        when(choferRepository.findAll(pageable)).thenReturn(page);
+        when(choferRepository.findAllByActivoTrue(pageable)).thenReturn(page);
 
-        Page<ChoferResponse> result = choferService.findAll(pageable);
+        Page<ChoferResponse> result = choferService.findAll(null, pageable);
 
         assertFalse(result.isEmpty());
         assertEquals(1, result.getTotalElements());
         assertEquals("Carlos", result.getContent().get(0).getNombre());
         assertEquals("Perez", result.getContent().get(0).getApellidos());
-        verify(choferRepository).findAll(pageable);
+        verify(choferRepository).findAllByActivoTrue(pageable);
     }
 
     @Test

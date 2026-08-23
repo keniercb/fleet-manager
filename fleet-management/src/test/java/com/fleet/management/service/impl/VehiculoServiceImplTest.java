@@ -168,15 +168,15 @@ class VehiculoServiceImplTest {
     void findAllShouldReturnPagedResponses() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Vehiculo> page = new PageImpl<>(List.of(vehiculo));
-        when(vehiculoRepository.findAll(pageable)).thenReturn(page);
+        when(vehiculoRepository.findAllByActivoTrue(pageable)).thenReturn(page);
 
-        Page<VehiculoResponse> result = vehiculoService.findAll(pageable);
+        Page<VehiculoResponse> result = vehiculoService.findAll(null, pageable);
 
         assertFalse(result.isEmpty());
         assertEquals(1, result.getTotalElements());
         assertEquals("MAT-001", result.getContent().get(0).getMatricula());
         assertEquals("MOT-001", result.getContent().get(0).getNumeroMotor());
-        verify(vehiculoRepository).findAll(pageable);
+        verify(vehiculoRepository).findAllByActivoTrue(pageable);
     }
 
     @Test

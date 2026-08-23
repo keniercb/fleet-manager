@@ -84,14 +84,14 @@ class UserServiceImplTest {
     void findAllShouldReturnPagedResponses() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<User> page = new PageImpl<>(List.of(user));
-        when(userRepository.findAll(pageable)).thenReturn(page);
+        when(userRepository.findAllByActivoTrue(pageable)).thenReturn(page);
 
-        Page<UserResponse> result = userService.findAll(pageable);
+        Page<UserResponse> result = userService.findAll(null, pageable);
 
         assertFalse(result.isEmpty());
         assertEquals(1, result.getTotalElements());
         assertEquals("admin@test.com", result.getContent().get(0).getEmail());
-        verify(userRepository).findAll(pageable);
+        verify(userRepository).findAllByActivoTrue(pageable);
     }
 
     @Test
