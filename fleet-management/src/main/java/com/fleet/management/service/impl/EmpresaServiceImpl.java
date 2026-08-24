@@ -9,6 +9,8 @@ import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.Empresa;
 import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.service.EmpresaService;
+import com.fleet.management.service.SubscriptionService;
+import com.fleet.management.service.UserService;
 import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ import java.util.List;
 public class EmpresaServiceImpl implements EmpresaService {
 
     private final EmpresaRepository repository;
+    private final SubscriptionService subscriptionService;
+    private final UserService userService;
 
     private static final String EMPRESA_ADMIN_CODIGO = "EMP-ADMIN";
 
@@ -63,7 +67,12 @@ public class EmpresaServiceImpl implements EmpresaService {
                 .email(request.getEmail())
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        entity = repository.save(entity);
+
+        subscriptionService.createTrialSubscription(entity);
+        userService.createAdminUser(entity);
+
+        return toResponse(entity);
     }
 
     @Override

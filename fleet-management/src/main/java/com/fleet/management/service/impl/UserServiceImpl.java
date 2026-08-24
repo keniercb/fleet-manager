@@ -7,6 +7,7 @@ import com.fleet.management.dto.user.UserRequest;
 import com.fleet.management.dto.user.UserResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.model.Empresa;
 import com.fleet.management.model.Role;
 import com.fleet.management.model.User;
 import com.fleet.management.repository.RoleRepository;
@@ -14,6 +15,7 @@ import com.fleet.management.repository.UserRepository;
 import com.fleet.management.service.UserService;
 import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,6 +33,9 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${fleet.subscription.default-admin-password}")
+    private String defaultAdminPassword;
 
     @Override
     @Transactional(readOnly = true)
@@ -72,6 +77,33 @@ public class UserServiceImpl implements UserService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .roles(roles)
+                .activo(true)
+                .build();
+        return toResponse(userRepository.save(entity));
+    }
+
+    @Override
+    @Transactional
+    public UserResponse createAdminUser(Empresa empresa) {
+        if (empresa.getEmail() == null || empresa.getEmail().isBlank()) {
+            throw new BusinessException("La empresa debe tener un email para crear el usuario administrador");
+        }
+
+        if (userRepository.existsByEmail(empresa.getEmail())) {
+            throw new BusinessException("Ya existe un usuario con el email: " + empresa.getEmail());
+        }
+
+        Role adminRole = roleRepository.findByName("ADMIN")
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "name", "ADMIN"));
+
+        Set<Role> roles = new HashSet<>();
+        roles.add(adminRole);
+
+        User entity = User.builder()
+                .email(empresa.getEmail())
+                .password(passwordEncoder.encode(defaultAdminPassword))
+                .roles(roles)
+                .empresa(empresa)
                 .activo(true)
                 .build();
         return toResponse(userRepository.save(entity));
