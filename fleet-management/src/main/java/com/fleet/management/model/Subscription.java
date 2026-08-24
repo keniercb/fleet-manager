@@ -43,6 +43,10 @@ public class Subscription extends BaseEntity {
     @Column(name = "current_vehicle_count")
     private Integer currentVehicleCount;
 
+    @Min(value = 0, message = "La cantidad de usuarios no puede ser negativa")
+    @Column(name = "current_user_count")
+    private Integer currentUserCount;
+
     @Version
     @Column(name = "version")
     private Long version;

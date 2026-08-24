@@ -2,6 +2,7 @@ package com.fleet.management.controller;
 
 import com.fleet.management.dto.subscription.SubscriptionRequest;
 import com.fleet.management.dto.subscription.SubscriptionResponse;
+import com.fleet.management.security.AuthenticatedUser;
 import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.util.PaginationUtils;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Subscriptions")
@@ -29,6 +31,13 @@ public class SubscriptionController {
             @RequestParam(defaultValue = "ASC") String sortOrder) {
         Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
         return ResponseEntity.ok(service.findAll(pageable));
+    }
+
+    @GetMapping("/my-company")
+    public ResponseEntity<SubscriptionResponse> findMyCompanySubscription(
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser) {
+        Long empresaId = authenticatedUser.getUser().getEmpresa().getId();
+        return ResponseEntity.ok(service.findActiveByEmpresa(empresaId));
     }
 
     @GetMapping("/{id}")
