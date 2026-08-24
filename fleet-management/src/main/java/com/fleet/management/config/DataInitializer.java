@@ -21,6 +21,7 @@ public class DataInitializer implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final EmpresaRepository empresaRepository;
+    private final PlanRepository planRepository;
     private final PasswordEncoder passwordEncoder;
 
     private static final String EMPRESA_ADMIN_CODIGO = "EMP-ADMIN";
@@ -49,6 +50,8 @@ public class DataInitializer implements CommandLineRunner {
 
         createOrUpdateAdminUser(superAdminRole, empresaAdmin);
 
+        createTrialPlanIfNotExists();
+
         log.info("=== Datos de bootstrap completados ===");
     }
 
@@ -66,61 +69,35 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private Set<Permission> createDefaultPermissions() {
-        String[][] permissionNames = {
-                {"user:read", "Permite leer usuarios"},
-                {"user:write", "Permite crear y editar usuarios"},
-                {"user:delete", "Permite eliminar usuarios"},
-                {"role:read", "Permite leer roles"},
-                {"role:write", "Permite crear y editar roles"},
-                {"role:delete", "Permite eliminar roles"},
-                {"permission:read", "Permite leer permisos"},
-                {"permission:write", "Permite crear y editar permisos"},
-                {"permission:delete", "Permite eliminar permisos"},
-                {"vehiculo:read", "Permite leer vehiculos"},
-                {"vehiculo:write", "Permite crear y editar vehiculos"},
-                {"vehiculo:delete", "Permite eliminar vehiculos"},
-                {"chofer:read", "Permite leer choferes"},
-                {"chofer:write", "Permite crear y editar choferes"},
-                {"chofer:delete", "Permite eliminar choferes"},
-                {"recorrido:read", "Permite leer recorridos"},
-                {"recorrido:write", "Permite crear y editar recorridos"},
-                {"recorrido:delete", "Permite eliminar recorridos"},
-                {"empresa:read", "Permite leer empresas"},
-                {"empresa:write", "Permite crear y editar empresas"},
-                {"empresa:delete", "Permite eliminar empresas"},
-                {"marca:read", "Permite leer marcas"},
-                {"marca:write", "Permite crear y editar marcas"},
-                {"marca:delete", "Permite eliminar marcas"},
-                {"tipo_vehiculo:read", "Permite leer tipos de vehiculo"},
-                {"tipo_vehiculo:write", "Permite crear y editar tipos de vehiculo"},
-                {"tipo_vehiculo:delete", "Permite eliminar tipos de vehiculo"},
-                {"tipo_combustible:read", "Permite leer tipos de combustible"},
-                {"tipo_combustible:write", "Permite crear y editar tipos de combustible"},
-                {"tipo_combustible:delete", "Permite eliminar tipos de combustible"},
-                {"categoria_licencia:read", "Permite leer categorias de licencia"},
-                {"categoria_licencia:write", "Permite crear y editar categorias de licencia"},
-                {"categoria_licencia:delete", "Permite eliminar categorias de licencia"}
+        String[] modules = {
+                "USER", "ROLE", "PERMISSION", "VEHICULO", "CHOFER",
+                "RECORRIDO", "EMPRESA", "MARCA", "TIPO_VEHICULO",
+                "TIPO_COMBUSTIBLE", "CATEGORIA_LICENCIA"
         };
+        String[] actions = {"READ", "WRITE", "DELETE"};
 
         Set<Permission> permissions = new HashSet<>();
-        for (String[] permData : permissionNames) {
-            Permission permission = permissionRepository.findByName(permData[0])
-                    .orElseGet(() -> {
-                        log.info("Creando permiso: {}", permData[0]);
-                        return permissionRepository.save(Permission.builder()
-                                .name(permData[0])
-                                .description(permData[1])
-                                .activo(true)
-                                .build());
-                    });
-            permissions.add(permission);
+        for (String module : modules) {
+            for (String action : actions) {
+                String permissionName = module + ":" + action;
+                Permission permission = permissionRepository.findByName(permissionName)
+                        .orElseGet(() -> {
+                            log.info("Creando permiso: {}", permissionName);
+                            return permissionRepository.save(Permission.builder()
+                                    .name(permissionName)
+                                    .description("Permite " + action.toLowerCase() + " " + module.toLowerCase())
+                                    .activo(true)
+                                    .build());
+                        });
+                permissions.add(permission);
+            }
         }
         return permissions;
     }
 
     private Set<Permission> filterAdminPermissions(Set<Permission> allPermissions) {
         return allPermissions.stream()
-                .filter(p -> !p.getName().startsWith("role:") && !p.getName().startsWith("permission:"))
+                .filter(p -> !p.getName().startsWith("ROLE:") && !p.getName().startsWith("PERMISSION:"))
                 .collect(Collectors.toSet());
     }
 
@@ -199,6 +176,27 @@ public class DataInitializer implements CommandLineRunner {
                             .build();
                     userRepository.save(admin);
                     log.info("Usuario admin creado con exito. Email: {} / Password: admin123", adminEmail);
+                }
+        );
+    }
+
+    private void createTrialPlanIfNotExists() {
+        String trialPlanName = "Trial";
+        planRepository.findByNombre(trialPlanName).ifPresentOrElse(
+                plan -> log.info("Plan Trial ya existe"),
+                () -> {
+                    log.info("Creando plan Trial");
+                    Plan trialPlan = Plan.builder()
+                            .nombre(trialPlanName)
+                            .precioMensual(java.math.BigDecimal.ZERO)
+                            .maxUsuarios(3)
+                            .maxVehiculos(3)
+                            .duracion(14)
+                            .features(new HashSet<>())
+                            .activo(true)
+                            .build();
+                    planRepository.save(trialPlan);
+                    log.info("Plan Trial creado con exito. MaxUsuarios: 3, MaxVehiculos: 3, Duracion: 14 dias");
                 }
         );
     }
