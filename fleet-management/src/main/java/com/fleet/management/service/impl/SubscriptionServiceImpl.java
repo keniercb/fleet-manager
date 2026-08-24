@@ -49,7 +49,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public SubscriptionResponse create(SubscriptionRequest request) {
         Empresa empresa = resolveEmpresa(request.getEmpresaId());
         Plan plan = resolvePlan(request.getPlanId());
-        return buildAndSave(empresa, plan);
+        SubscriptionStatus status = request.getStatus() != null ? request.getStatus() : SubscriptionStatus.ACTIVE;
+        return buildAndSave(empresa, plan, status);
     }
 
     @Override
@@ -57,7 +58,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public SubscriptionResponse createTrialSubscription(Empresa empresa) {
         Plan trialPlan = planRepository.findByNombre("Trial")
                 .orElseThrow(() -> new ResourceNotFoundException("Plan", "nombre", "Trial"));
-        return buildAndSave(empresa, trialPlan);
+        return buildAndSave(empresa, trialPlan, SubscriptionStatus.TRIAL);
     }
 
     @Override
@@ -158,7 +159,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     // ---- private helpers ----
 
-    private SubscriptionResponse buildAndSave(Empresa empresa, Plan plan) {
+    private SubscriptionResponse buildAndSave(Empresa empresa, Plan plan, SubscriptionStatus status) {
         LocalDate now = LocalDate.now();
         LocalDate endDate = now.plusDays(plan.getDuracion());
 
@@ -167,7 +168,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .plan(plan)
                 .startDate(now)
                 .endDate(endDate)
-                .status(SubscriptionStatus.TRIAL)
+                .status(status)
                 .currentVehicleCount(0)
                 .currentUserCount(0)
                 .activo(true)
