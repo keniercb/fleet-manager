@@ -1,5 +1,6 @@
 package com.fleet.management.service;
 
+import com.fleet.management.dto.subscription.SubscriptionCreateRequest;
 import com.fleet.management.dto.subscription.SubscriptionRequest;
 import com.fleet.management.dto.subscription.SubscriptionResponse;
 import com.fleet.management.model.Empresa;
@@ -15,7 +16,7 @@ public interface SubscriptionService {
 
     SubscriptionResponse findById(Long id);
 
-    SubscriptionResponse create(SubscriptionRequest request);
+    SubscriptionResponse create(SubscriptionCreateRequest request);
 
     SubscriptionResponse createTrialSubscription(Empresa empresa);
 

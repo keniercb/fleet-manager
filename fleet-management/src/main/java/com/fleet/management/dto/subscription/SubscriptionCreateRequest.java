@@ -1,6 +1,5 @@
 package com.fleet.management.dto.subscription;
 
-import com.fleet.management.model.SubscriptionStatus;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -11,14 +10,13 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SubscriptionRequest {
+public class SubscriptionCreateRequest {
+
+    @NotNull(message = "El ID de la empresa es obligatorio")
+    private Long empresaId;
 
     @NotNull(message = "El ID del plan es obligatorio")
     private Long planId;
 
-    private SubscriptionStatus status;
-
-    @DecimalMin(value = "0.00", message = "El porciento de descuento no puede ser negativo")
-    @DecimalMax(value = "100.00", message = "El porciento de descuento no puede superar 100")
     private BigDecimal porcientoDescuentoAnual;
 }

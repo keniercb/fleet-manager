@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -46,6 +47,11 @@ public class Subscription extends BaseEntity {
     @Min(value = 0, message = "La cantidad de usuarios no puede ser negativa")
     @Column(name = "current_user_count")
     private Integer currentUserCount;
+
+    @DecimalMin(value = "0.00", message = "El porciento de descuento no puede ser negativo")
+    @DecimalMax(value = "100.00", message = "El porciento de descuento no puede superar 100")
+    @Column(name = "porciento_descuento_anual", precision = 5, scale = 2)
+    private BigDecimal porcientoDescuentoAnual;
 
     @Version
     @Column(name = "version")

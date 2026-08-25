@@ -1,5 +1,6 @@
 package com.fleet.management.service.impl;
 
+import com.fleet.management.dto.subscription.SubscriptionCreateRequest;
 import com.fleet.management.dto.subscription.SubscriptionRequest;
 import com.fleet.management.dto.subscription.SubscriptionResponse;
 import com.fleet.management.exception.BusinessException;
@@ -47,10 +48,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     @Override
     @Transactional
-    public SubscriptionResponse create(SubscriptionRequest request) {
+    public SubscriptionResponse create(SubscriptionCreateRequest request) {
         Empresa empresa = resolveEmpresa(request.getEmpresaId());
         Plan plan = resolvePlan(request.getPlanId());
-        SubscriptionStatus status = request.getStatus() != null ? request.getStatus() : SubscriptionStatus.ACTIVE;
 
         LocalDate now = LocalDate.now();
         LocalDate endDate;
@@ -71,9 +71,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .plan(plan)
                 .startDate(now)
                 .endDate(endDate)
-                .status(status)
+                .status(SubscriptionStatus.ACTIVE)
                 .currentVehicleCount(0)
                 .currentUserCount(0)
+                .porcientoDescuentoAnual(request.getPorcientoDescuentoAnual())
                 .activo(true)
                 .build();
         return toResponse(repository.save(entity));
@@ -90,14 +91,36 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     @Transactional
     public SubscriptionResponse update(Long id, SubscriptionRequest request) {
-        Empresa empresa = resolveEmpresa(request.getEmpresaId());
-        Plan plan = resolvePlan(request.getPlanId());
-
         try {
             Subscription entity = repository.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
-            entity.setEmpresa(empresa);
-            entity.setPlan(plan);
+
+            if (request.getPlanId() != null) {
+                Plan newPlan = resolvePlan(request.getPlanId());
+                Integer newMaxVehiculos = newPlan.getMaxVehiculos();
+                Integer newMaxUsuarios = newPlan.getMaxUsuarios();
+
+                if (newMaxVehiculos != null && entity.getCurrentVehicleCount() > newMaxVehiculos) {
+                    throw new BusinessException("No se puede cambiar al plan. El plan seleccionado permite maximo "
+                            + newMaxVehiculos + " vehiculos pero la suscripcion actual tiene "
+                            + entity.getCurrentVehicleCount());
+                }
+                if (newMaxUsuarios != null && entity.getCurrentUserCount() > newMaxUsuarios) {
+                    throw new BusinessException("No se puede cambiar al plan. El plan seleccionado permite maximo "
+                            + newMaxUsuarios + " usuarios pero la suscripcion actual tiene "
+                            + entity.getCurrentUserCount());
+                }
+                entity.setPlan(newPlan);
+            }
+
+            if (request.getStatus() != null) {
+                entity.setStatus(request.getStatus());
+            }
+
+            if (request.getPorcientoDescuentoAnual() != null) {
+                entity.setPorcientoDescuentoAnual(request.getPorcientoDescuentoAnual());
+            }
+
             return toResponse(repository.save(entity));
         } catch (OptimisticLockingFailureException ex) {
             throw new BusinessException("La suscripcion fue modificada por otro usuario. Intente nuevamente.");
@@ -250,6 +273,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .status(entity.getStatus())
                 .currentVehicleCount(entity.getCurrentVehicleCount())
                 .currentUserCount(entity.getCurrentUserCount())
+                .porcientoDescuentoAnual(entity.getPorcientoDescuentoAnual())
                 .version(entity.getVersion())
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())

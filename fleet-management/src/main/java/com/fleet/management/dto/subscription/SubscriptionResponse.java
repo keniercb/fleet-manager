@@ -23,6 +23,7 @@ public class SubscriptionResponse {
     private SubscriptionStatus status;
     private Integer currentVehicleCount;
     private Integer currentUserCount;
+    private BigDecimal porcientoDescuentoAnual;
     private Long version;
     private Boolean activo;
     private LocalDateTime fechaCreacion;

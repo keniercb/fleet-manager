@@ -1,5 +1,6 @@
 package com.fleet.management.controller;
 
+import com.fleet.management.dto.subscription.SubscriptionCreateRequest;
 import com.fleet.management.dto.subscription.SubscriptionRequest;
 import com.fleet.management.dto.subscription.SubscriptionResponse;
 import com.fleet.management.security.AuthenticatedUser;
@@ -68,7 +69,7 @@ public class SubscriptionController {
     }
 
     @PostMapping
-    public ResponseEntity<SubscriptionResponse> create(@Valid @RequestBody SubscriptionRequest request) {
+    public ResponseEntity<SubscriptionResponse> create(@Valid @RequestBody SubscriptionCreateRequest request) {
         SubscriptionResponse response = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
