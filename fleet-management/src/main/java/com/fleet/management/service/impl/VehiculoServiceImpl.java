@@ -22,7 +22,9 @@ import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.MarcaRepository;
 import com.fleet.management.repository.TipoCombustibleRepository;
 import com.fleet.management.repository.TipoVehiculoRepository;
+import com.fleet.management.model.Subscription;
 import com.fleet.management.repository.VehiculoRepository;
+import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.service.VehiculoService;
 import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class VehiculoServiceImpl implements VehiculoService {
     private final MarcaRepository marcaRepository;
     private final TipoCombustibleRepository tipoCombustibleRepository;
     private final ChoferRepository choferRepository;
+    private final SubscriptionService subscriptionService;
 
     @Override
     @Transactional(readOnly = true)
@@ -102,6 +105,15 @@ public class VehiculoServiceImpl implements VehiculoService {
     @Override
     @Transactional
     public VehiculoResponse create(VehiculoRequest request) {
+        Subscription activeSubscription = subscriptionService.getActiveSubscriptionEntity(request.getEmpresaId())
+                .orElseThrow(() -> new BusinessException("La empresa no tiene una suscripcion activa"));
+
+        Integer maxVehiculos = activeSubscription.getPlan().getMaxVehiculos();
+        if (maxVehiculos != null && activeSubscription.getCurrentVehicleCount() >= maxVehiculos) {
+            throw new BusinessException("No se puede crear el vehiculo. Se ha alcanzado el limite de "
+                    + maxVehiculos + " vehiculos del plan " + activeSubscription.getPlan().getNombre());
+        }
+
         validateUniqueFields(request, null);
 
         Empresa empresa = empresaRepository.findById(request.getEmpresaId())
@@ -138,7 +150,9 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .indiceConsumo(request.getIndiceConsumo())
                 .activo(true)
                 .build();
-        return toResponse(vehiculoRepository.save(entity));
+        Vehiculo saved = vehiculoRepository.save(entity);
+        subscriptionService.incrementVehicleCount(activeSubscription.getId());
+        return toResponse(saved);
     }
 
     @Override

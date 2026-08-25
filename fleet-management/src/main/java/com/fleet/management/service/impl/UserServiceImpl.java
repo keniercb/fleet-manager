@@ -9,9 +9,12 @@ import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.Empresa;
 import com.fleet.management.model.Role;
+import com.fleet.management.model.Subscription;
 import com.fleet.management.model.User;
+import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.RoleRepository;
 import com.fleet.management.repository.UserRepository;
+import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.service.UserService;
 import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,8 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final EmpresaRepository empresaRepository;
+    private final SubscriptionService subscriptionService;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${fleet.subscription.default-admin-password}")
@@ -71,15 +76,30 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("Ya existe un usuario con el email: " + request.getEmail());
         }
 
+        Subscription activeSubscription = subscriptionService.getActiveSubscriptionEntity(request.getEmpresaId())
+                .orElseThrow(() -> new BusinessException("La empresa no tiene una suscripcion activa"));
+
+        Integer maxUsuarios = activeSubscription.getPlan().getMaxUsuarios();
+        if (maxUsuarios != null && activeSubscription.getCurrentUserCount() >= maxUsuarios) {
+            throw new BusinessException("No se puede crear el usuario. Se ha alcanzado el limite de "
+                    + maxUsuarios + " usuarios del plan " + activeSubscription.getPlan().getNombre());
+        }
+
+        Empresa empresa = empresaRepository.findById(request.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", request.getEmpresaId()));
+
         Set<Role> roles = resolveRoles(request.getRoleIds());
 
         User entity = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .roles(roles)
+                .empresa(empresa)
                 .activo(true)
                 .build();
-        return toResponse(userRepository.save(entity));
+        User saved = userRepository.save(entity);
+        subscriptionService.incrementUserCount(activeSubscription.getId());
+        return toResponse(saved);
     }
 
     @Override

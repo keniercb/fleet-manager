@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -50,7 +51,32 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Empresa empresa = resolveEmpresa(request.getEmpresaId());
         Plan plan = resolvePlan(request.getPlanId());
         SubscriptionStatus status = request.getStatus() != null ? request.getStatus() : SubscriptionStatus.ACTIVE;
-        return buildAndSave(empresa, plan, status);
+
+        LocalDate now = LocalDate.now();
+        LocalDate endDate;
+
+        Optional<Subscription> activeSubscription = repository.findFirstByEmpresaIdAndActivoTrueOrderByIdDesc(empresa.getId());
+        if (activeSubscription.isPresent()) {
+            Subscription current = activeSubscription.get();
+            current.setStatus(SubscriptionStatus.EXPIRED);
+            current.setActivo(false);
+            repository.save(current);
+            endDate = current.getEndDate().plusDays(plan.getDuracion());
+        } else {
+            endDate = now.plusDays(plan.getDuracion());
+        }
+
+        Subscription entity = Subscription.builder()
+                .empresa(empresa)
+                .plan(plan)
+                .startDate(now)
+                .endDate(endDate)
+                .status(status)
+                .currentVehicleCount(0)
+                .currentUserCount(0)
+                .activo(true)
+                .build();
+        return toResponse(repository.save(entity));
     }
 
     @Override
@@ -102,11 +128,15 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     @Transactional(readOnly = true)
     public SubscriptionResponse findActiveByEmpresa(Long empresaId) {
-        Page<SubscriptionResponse> page = repository.findByEmpresaIdAndActivoTrue(empresaId, Pageable.ofSize(1));
-        if (page.isEmpty()) {
-            throw new ResourceNotFoundException("Subscription", "empresaId", empresaId);
-        }
-        return page.getContent().get(0);
+        Subscription subscription = repository.findFirstByEmpresaIdAndActivoTrueOrderByIdDesc(empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription", "empresaId", empresaId));
+        return toResponse(subscription);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Subscription> getActiveSubscriptionEntity(Long empresaId) {
+        return repository.findFirstByEmpresaIdAndActivoTrueOrderByIdDesc(empresaId);
     }
 
     @Override
