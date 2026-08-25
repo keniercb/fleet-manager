@@ -32,7 +32,7 @@ public class PlanServiceImpl implements PlanService {
     @Override
     @Transactional(readOnly = true)
     public Page<PlanResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrueAndNombreNotTrial(pageable).map(this::toResponse);
     }
 
     @Override
