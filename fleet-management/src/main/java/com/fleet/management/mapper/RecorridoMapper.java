@@ -8,6 +8,7 @@ import com.fleet.management.dto.recorrido.RecorridoResponse;
 import com.fleet.management.dto.tarjetacombustible.TarjetaCombustibleResponse;
 import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
+import com.fleet.management.dto.vehiculo.VehiculoResponse;
 import com.fleet.management.model.Chofer;
 import com.fleet.management.model.Currency;
 import com.fleet.management.model.Empresa;
