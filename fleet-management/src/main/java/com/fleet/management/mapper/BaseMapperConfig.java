@@ -8,5 +8,13 @@ import org.mapstruct.ReportingPolicy;
 @MapperConfig(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface BaseMapperConfig {
 
-    UserAuditResponse toAuditResponse(User user);
+    default UserAuditResponse toAuditResponse(User user) {
+        if (user == null) {
+            return null;
+        }
+        return UserAuditResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .build();
+    }
 }
