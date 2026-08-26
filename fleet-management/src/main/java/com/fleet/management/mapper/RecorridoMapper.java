@@ -29,10 +29,10 @@ public interface RecorridoMapper {
     // --- Resumida mappings para relaciones anidadas ---
 
     @BeanMapping(ignoreByDefault = true)
-    @Mapping(target = "id", source = "empresa.id")
-    @Mapping(target = "codigo", source = "empresa.codigo")
-    @Mapping(target = "nombre", source = "empresa.nombre")
-    @Mapping(target = "activo", source = "empresa.activo")
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "codigo", source = "codigo")
+    @Mapping(target = "nombre", source = "nombre")
+    @Mapping(target = "activo", source = "activo")
     EmpresaResponse toEmpresaResumida(Empresa empresa);
 
     @BeanMapping(ignoreByDefault = true)
