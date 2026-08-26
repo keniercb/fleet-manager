@@ -105,25 +105,24 @@ public class PlanServiceImpl implements PlanService {
                 .orElseThrow(() -> new ResourceNotFoundException("Plan", "id", planId));
 
         BigDecimal precio = plan.getPrecioMensual();
-        BigDecimal importe;
 
-        if (facturarAnual) {
-            BigDecimal descuento = plan.getPorcientoDescuentoAnual() != null
-                    ? plan.getPorcientoDescuentoAnual() : BigDecimal.ZERO;
-            // Formula: ((precio * porcientoDescuentoAnual / 100) / 30) * 360
-            importe = precio.multiply(descuento)
-                    .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP)
-                    .divide(BigDecimal.valueOf(30), 10, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(360))
-                    .setScale(2, RoundingMode.HALF_UP);
-        } else {
-            // Formula: (precio / 30) * duracion
-            importe = precio.divide(BigDecimal.valueOf(30), 10, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(plan.getDuracion()))
-                    .setScale(2, RoundingMode.HALF_UP);
+        // 1. Precio base diario
+        BigDecimal precioBase = precio.divide(BigDecimal.valueOf(30), 10, RoundingMode.HALF_UP);
+
+        // 2. Importe del plan
+        int dias = facturarAnual ? 360 : plan.getDuracion();
+        BigDecimal importe = precioBase.multiply(BigDecimal.valueOf(dias));
+
+        // 3. Aplicar descuento anual si corresponde
+        if (facturarAnual && plan.getPorcientoDescuentoAnual() != null
+                && plan.getPorcientoDescuentoAnual().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal descuento = importe.multiply(plan.getPorcientoDescuentoAnual())
+                    .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+            importe = importe.subtract(descuento);
         }
 
-        return importe;
+        // 4. Devolver importe con 2 decimales
+        return importe.setScale(2, RoundingMode.HALF_UP);
     }
 
     private Set<Feature> resolveFeatures(List<Long> featureIds) {
