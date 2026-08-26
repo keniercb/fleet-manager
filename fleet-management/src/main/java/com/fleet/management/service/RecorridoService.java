@@ -21,6 +21,16 @@ public interface RecorridoService {
 
     ReporteMovimientoMensualResponse reporteMovimientoMensual(Long vehiculoId, Integer mes, Integer anio);
 
+    /**
+     * Exporta el reporte de movimiento mensual como PDF.
+     *
+     * @param vehiculoId ID del vehiculo
+     * @param mes        mes (1-12)
+     * @param anio       anio
+     * @return byte[] con el contenido del PDF
+     */
+    byte[] exportarReporteMovimientoMensualPdf(Long vehiculoId, Integer mes, Integer anio);
+
     RecorridoResponse create(RecorridoRequest request);
 
     RecorridoResponse update(Long id, RecorridoRequest request);

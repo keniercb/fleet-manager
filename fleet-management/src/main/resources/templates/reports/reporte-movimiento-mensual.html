@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page {
+            size: landscape;
+            margin: 15mm 12mm 20mm 12mm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 8pt;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        .report-title {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #1a1a2e;
+        }
+        .report-subtitle {
+            text-align: center;
+            font-size: 10pt;
+            color: #4a6fa5;
+            margin-bottom: 12px;
+        }
+
+        /* Dos columnas: empresa + vehiculo */
+        .info-grid {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 12px;
+        }
+        .info-box {
+            flex: 1;
+            border: 1px solid #4a6fa5;
+            border-radius: 4px;
+            padding: 8px 12px;
+            background-color: #f0f4f8;
+        }
+        .info-box-title {
+            font-weight: bold;
+            font-size: 9pt;
+            color: #4a6fa5;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #c0d0e0;
+            padding-bottom: 3px;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 2px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #4a6fa5;
+            min-width: 110px;
+            font-size: 7.5pt;
+        }
+        .info-value {
+            flex: 1;
+            font-size: 7.5pt;
+        }
+
+        /* Tabla de lecturas */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+        }
+        thead th {
+            background-color: #4a6fa5;
+            color: #ffffff;
+            padding: 6px 4px;
+            text-align: center;
+            font-size: 7.5pt;
+            font-weight: bold;
+            border: 1px solid #3a5a8a;
+        }
+        tbody td {
+            padding: 4px;
+            border: 1px solid #ccc;
+            font-size: 7.5pt;
+            text-align: right;
+        }
+        tbody td:first-child,
+        tbody td:nth-child(2) {
+            text-align: center;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .row-with-trip {
+            background-color: #e8f0e8 !important;
+            font-weight: bold;
+        }
+        .row-with-trip td {
+            border-bottom: 2px solid #4a6fa5;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        /* Analisis */
+        .analisis-grid {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        .analisis-box {
+            flex: 1;
+            border: 1px solid #6a8fba;
+            border-radius: 4px;
+            padding: 8px 12px;
+            background-color: #f7f9fc;
+        }
+        .analisis-title {
+            font-weight: bold;
+            font-size: 9pt;
+            color: #1a1a2e;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #c0d0e0;
+            padding-bottom: 3px;
+        }
+        .analisis-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        .analisis-label {
+            color: #555;
+            font-size: 7.5pt;
+        }
+        .analisis-value {
+            font-weight: bold;
+            font-size: 7.5pt;
+        }
+        .negativo { color: #c0392b; }
+        .positivo { color: #27ae60; }
+
+        /* Pie de pagina */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 6.5pt;
+            color: #888;
+            border-top: 1px solid #ddd;
+            padding-top: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Titulo -->
+    <div class="report-title">Reporte de Movimiento Mensual</div>
+    <div class="report-subtitle" th:text="${nombreMes} + ' ' + ${anio}">-</div>
+
+    <!-- Datos de empresa y vehiculo -->
+    <div class="info-grid">
+        <!-- Empresa -->
+        <div class="info-box">
+            <div class="info-box-title">Datos de la Empresa</div>
+            <div class="info-row">
+                <span class="info-label">Codigo:</span>
+                <span class="info-value" th:text="${empresa.codigo}">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Nombre:</span>
+                <span class="info-value" th:text="${empresa.nombre}">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Direccion:</span>
+                <span class="info-value" th:text="${empresa.direccion != null ? empresa.direccion : '-'}">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Telefono:</span>
+                <span class="info-value" th:text="${empresa.telefono != null ? empresa.telefono : '-'}">-</span>
+            </div>
+        </div>
+
+        <!-- Vehiculo -->
+        <div class="info-box">
+            <div class="info-box-title">Datos del Vehiculo</div>
+            <div class="info-row">
+                <span class="info-label">Matricula:</span>
+                <span class="info-value" th:text="${reporte.vehiculo.matricula}">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Marca:</span>
+                <span class="info-value" th:text="${reporte.vehiculo.marca}">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">No. Motor:</span>
+                <span class="info-value" th:text="${reporte.vehiculo.numeroMotor}">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Tipo Combustible:</span>
+                <span class="info-value" th:text="${reporte.vehiculo.tipoCombustible}">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Norma Consumo:</span>
+                <span class="info-value" th:text="${reporte.vehiculo.normaConsumo != null ? reporte.vehiculo.normaConsumo + ' L/100km' : '-'}">-</span>
+            </div>
+            <div class="info-row" th:if="${reporte.vehiculo.chofer != null}">
+                <span class="info-label">Chofer:</span>
+                <span class="info-value" th:text="${reporte.vehiculo.chofer.nombre + ' ' + reporte.vehiculo.chofer.apellidos}">-</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de lecturas diarias -->
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 30px;">Dia</th>
+                <th style="width: 75px;">Odometro</th>
+                <th style="width: 75px;">Comb. Deposito</th>
+                <th style="width: 75px;">Comb. Consumido</th>
+                <th style="width: 75px;">Comb. Abastec.</th>
+                <th style="width: 75px;">Saldo Comb.</th>
+                <th style="width: 55px;">Km Recor.</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="lectura : ${reporte.lecturas}">
+                <td class="text-center" th:text="${lectura.dia}">1</td>
+                <td th:text="${lectura.odometro}">0</td>
+                <td th:text="${lectura.combustibleEnDeposito != null ? #numbers.formatDecimal(lectura.combustibleEnDeposito, 2) : '0.00'}">0.00</td>
+                <td th:text="${lectura.combustibleConsumido != null ? #numbers.formatDecimal(lectura.combustibleConsumido, 2) : '0.00'}">0.00</td>
+                <td th:text="${lectura.combustibleAbastecido != null ? #numbers.formatDecimal(lectura.combustibleAbastecido, 2) : '0.00'}">0.00</td>
+                <td th:text="${lectura.saldoCombustible != null ? #numbers.formatDecimal(lectura.saldoCombustible, 2) : '0.00'}">0.00</td>
+                <td th:text="${lectura.kilometrosRecorridos != null ? lectura.kilometrosRecorridos : '0'}">0</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Analisis de consumo -->
+    <div class="analisis-grid">
+        <div class="analisis-box">
+            <div class="analisis-title">Analisis de Combustible</div>
+            <div class="analisis-row">
+                <span class="analisis-label">Combustible Inicial:</span>
+                <span class="analisis-value" th:text="${#numbers.formatDecimal(reporte.analisis.combustibleInicial, 2) + ' L'}">0.00 L</span>
+            </div>
+            <div class="analisis-row">
+                <span class="analisis-label">Combustible Recibido:</span>
+                <span class="analisis-value" th:text="${#numbers.formatDecimal(reporte.analisis.combustibleRecibido, 2) + ' L'}">0.00 L</span>
+            </div>
+            <div class="analisis-row">
+                <span class="analisis-label">Combustible Consumido:</span>
+                <span class="analisis-value" th:text="${#numbers.formatDecimal(reporte.analisis.combustibleConsumido, 2) + ' L'}">0.00 L</span>
+            </div>
+            <div class="analisis-row">
+                <span class="analisis-label">Existencia Final:</span>
+                <span class="analisis-value" th:text="${#numbers.formatDecimal(reporte.analisis.existenciaFinal, 2) + ' L'}">0.00 L</span>
+            </div>
+        </div>
+        <div class="analisis-box">
+            <div class="analisis-title">Resumen</div>
+            <div class="analisis-row">
+                <span class="analisis-label">Kilometros Recorridos:</span>
+                <span class="analisis-value" th:text="${reporte.analisis.kilometrosRecorridos + ' km'}">0 km</span>
+            </div>
+            <div class="analisis-row">
+                <span class="analisis-label">Consumido segun Norma:</span>
+                <span class="analisis-value" th:text="${#numbers.formatDecimal(reporte.analisis.consumidoSegunNorma, 2) + ' L'}">0.00 L</span>
+            </div>
+            <div class="analisis-row">
+                <span class="analisis-label">Diferencia (Real - Norma):</span>
+                <span class="analisis-value"
+                      th:classappend="${diferencia.compareTo(T(java.math.BigDecimal).ZERO) >= 0 ? 'positivo' : 'negativo'}"
+                      th:text="${signoDiferencia + #numbers.formatDecimal(diferencia, 2) + ' L'}">+0.00 L</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie de pagina -->
+    <div class="footer">
+        <span>Fecha de impresion: </span>
+        <span th:text="${fechaImpresion}">-</span>
+    </div>
+
+</body>
+</html>

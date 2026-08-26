@@ -1,7 +1,9 @@
 package com.fleet.management.config;
 
 import com.fleet.management.security.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -30,6 +33,12 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Value("${fleet.security.rate-limit.max-attempts:5}")
+    private int rateLimitMaxAttempts;
+
+    @Value("${fleet.security.rate-limit.window-seconds:60}")
+    private int rateLimitWindowSeconds;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -55,6 +64,20 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Registra el RateLimitFilter solo para los endpoints de autenticacion sensibles.
+     * Aplica a POST /api/auth/login y PUT /api/auth/cambiar-password.
+     */
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration() {
+        FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(new RateLimitFilter(rateLimitMaxAttempts, rateLimitWindowSeconds));
+        registration.addUrlPatterns("/api/auth/login", "/api/auth/cambiar-password");
+        registration.setOrder(1);
+        registration.setName("rateLimitFilter");
+        return registration;
     }
 
     @Bean

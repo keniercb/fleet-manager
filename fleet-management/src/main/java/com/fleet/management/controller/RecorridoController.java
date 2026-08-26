@@ -10,6 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,6 +46,24 @@ public class RecorridoController {
             return ResponseEntity.ok(service.findByVehiculoIdAndFechaBetween(vehiculoId, from, to, pageable));
         }
         return ResponseEntity.ok(service.findByVehiculoId(vehiculoId, pageable));
+    }
+
+    @GetMapping("/vehiculo/{vehiculoId}/reporte-mensual")
+    public ResponseEntity<?> reporteMovimientoMensual(@PathVariable Long vehiculoId,
+                                                         @RequestParam Integer mes,
+                                                         @RequestParam Integer anio) {
+        return ResponseEntity.ok(service.reporteMovimientoMensual(vehiculoId, mes, anio));
+    }
+
+    @GetMapping("/vehiculo/{vehiculoId}/reporte-mensual/pdf")
+    public ResponseEntity<byte[]> exportarReporteMovimientoMensualPdf(@PathVariable Long vehiculoId,
+                                                                       @RequestParam Integer mes,
+                                                                       @RequestParam Integer anio) {
+        byte[] pdf = service.exportarReporteMovimientoMensualPdf(vehiculoId, mes, anio);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=reporte-movimiento-" + vehiculoId + "-" + anio + "-" + String.format("%02d", mes) + ".pdf")
+                .body(pdf);
     }
 
     @PostMapping

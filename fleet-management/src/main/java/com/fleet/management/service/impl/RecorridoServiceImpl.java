@@ -3,6 +3,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.chofer.ChoferResponse;
+import com.fleet.management.dto.empresa.EmpresaReporteDto;
 import com.fleet.management.dto.recorrido.RecorridoRequest;
 import com.fleet.management.dto.recorrido.RecorridoResponse;
 import com.fleet.management.dto.reporte.*;
@@ -14,8 +15,12 @@ import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.repository.RecorridoRepository;
 import com.fleet.management.repository.TarjetaCombustibleRepository;
 import com.fleet.management.repository.VehiculoRepository;
+import com.fleet.management.security.AuthenticatedUser;
+import com.fleet.management.service.PdfGenerationService;
 import com.fleet.management.service.RecorridoService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +41,7 @@ public class RecorridoServiceImpl implements RecorridoService {
     private final ChoferRepository choferRepository;
     private final TarjetaCombustibleRepository tarjetaCombustibleRepository;
     private final RecorridoMapper mapper;
+    private final PdfGenerationService pdfGenerationService;
 
     private static final BigDecimal CIEN = BigDecimal.valueOf(100);
     private static final BigDecimal CERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -418,6 +424,61 @@ public class RecorridoServiceImpl implements RecorridoService {
 
         // Eliminacion fisica
         repository.delete(entity);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportarReporteMovimientoMensualPdf(Long vehiculoId, Integer mes, Integer anio) {
+        // 1. Obtener datos del reporte
+        ReporteMovimientoMensualResponse reporte = reporteMovimientoMensual(vehiculoId, mes, anio);
+
+        // 2. Obtener empresa del usuario autenticado
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authUser)) {
+            throw new BusinessException("No se pudo determinar la empresa del usuario autenticado");
+        }
+        Empresa empresa = authUser.getUser().getEmpresa();
+        if (empresa == null) {
+            throw new BusinessException("El usuario no tiene una empresa asociada");
+        }
+
+        // 3. Mapear datos del encabezado
+        EmpresaReporteDto empresaDto = EmpresaReporteDto.builder()
+                .codigo(empresa.getCodigo())
+                .nombre(empresa.getNombre())
+                .direccion(empresa.getDireccion())
+                .telefono(empresa.getTelefono())
+                .email(empresa.getEmail())
+                .provincia(empresa.getProvincia() != null ? empresa.getProvincia().getNombre() : null)
+                .municipio(empresa.getMunicipio() != null ? empresa.getMunicipio().getNombre() : null)
+                .build();
+
+        // 4. Nombre del mes en espanol
+        String[] meses = {"Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"};
+        String nombreMes = meses[mes - 1];
+
+        // 5. Fecha de impresion
+        String fechaImpresion = LocalDateTime.now().format(
+                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+
+        // 6. Calcular diferencia entre consumo real y norma
+        BigDecimal diferencia = reporte.getAnalisis().getCombustibleConsumido()
+                .subtract(reporte.getAnalisis().getConsumidoSegunNorma());
+        String signoDiferencia = diferencia.compareTo(BigDecimal.ZERO) >= 0 ? "+" : "";
+
+        // 7. Construir modelo para Thymeleaf
+        Map<String, Object> model = new HashMap<>();
+        model.put("empresa", empresaDto);
+        model.put("reporte", reporte);
+        model.put("nombreMes", nombreMes);
+        model.put("anio", anio);
+        model.put("fechaImpresion", fechaImpresion);
+        model.put("signoDiferencia", signoDiferencia);
+        model.put("diferencia", diferencia.setScale(2, RoundingMode.HALF_UP));
+
+        // 8. Generar PDF
+        return pdfGenerationService.generatePdf("reports/reporte-movimiento-mensual", model);
     }
 
     private Chofer resolverChofer(Long choferId, Vehiculo vehiculo) {
