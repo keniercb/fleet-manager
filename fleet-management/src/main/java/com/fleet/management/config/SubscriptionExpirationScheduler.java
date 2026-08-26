@@ -1,6 +1,5 @@
 package com.fleet.management.config;
 
-import com.fleet.management.model.Subscription;
 import com.fleet.management.model.SubscriptionStatus;
 import com.fleet.management.repository.SubscriptionRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +9,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @Slf4j
 @Component
@@ -23,24 +21,14 @@ public class SubscriptionExpirationScheduler {
     @Transactional
     public void expirarSuscripcionesVencidas() {
         LocalDate diaAnterior = LocalDate.now().minusDays(1);
-        List<Subscription> vencidas = subscriptionRepository
-                .findByStatusAndEndDateAndActivoTrue(SubscriptionStatus.ACTIVE, diaAnterior);
 
-        if (vencidas.isEmpty()) {
+        int actualizadas = subscriptionRepository.expirarSuscripcionesVencidas(
+                SubscriptionStatus.ACTIVE, diaAnterior, SubscriptionStatus.EXPIRED);
+
+        if (actualizadas > 0) {
+            log.info("Se expiraron {} suscripcion(es) con endDate={}", actualizadas, diaAnterior);
+        } else {
             log.info("No hay suscripciones vencidas para expirar");
-            return;
         }
-
-        for (Subscription subscription : vencidas) {
-            subscription.setStatus(SubscriptionStatus.EXPIRED);
-            subscription.setActivo(false);
-            subscriptionRepository.save(subscription);
-            log.info("Suscripcion {} de la empresa {} expirada (endDate={})",
-                    subscription.getId(),
-                    subscription.getEmpresa().getNombre(),
-                    subscription.getEndDate());
-        }
-
-        log.info("Se expiraron {} suscripcion(es)", vencidas.size());
     }
 }

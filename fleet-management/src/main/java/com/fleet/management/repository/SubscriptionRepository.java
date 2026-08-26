@@ -5,6 +5,9 @@ import com.fleet.management.model.SubscriptionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -25,4 +28,11 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     Optional<Subscription> findFirstByEmpresaIdAndActivoTrueOrderByIdDesc(Long empresaId);
 
     List<Subscription> findByStatusAndEndDateAndActivoTrue(SubscriptionStatus status, LocalDate endDate);
+
+    @Modifying
+    @Query("UPDATE Subscription s SET s.status = :nuevoEstado, s.activo = false, s.version = s.version + 1 " +
+            "WHERE s.status = :estadoActual AND s.endDate = :endDate AND s.activo = true")
+    int expirarSuscripcionesVencidas(@Param("estadoActual") SubscriptionStatus estadoActual,
+                                    @Param("endDate") LocalDate endDate,
+                                    @Param("nuevoEstado") SubscriptionStatus nuevoEstado);
 }
