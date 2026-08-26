@@ -1,12 +1,10 @@
 package com.fleet.management.service.impl;
 
-import com.fleet.management.dto.empresa.EmpresaResponse;
-import com.fleet.management.dto.permission.PermissionResponse;
-import com.fleet.management.dto.role.RoleResponse;
 import com.fleet.management.dto.user.UserRequest;
 import com.fleet.management.dto.user.UserResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.UserMapper;
 import com.fleet.management.model.Empresa;
 import com.fleet.management.model.Role;
 import com.fleet.management.model.Subscription;
@@ -16,7 +14,6 @@ import com.fleet.management.repository.RoleRepository;
 import com.fleet.management.repository.UserRepository;
 import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.service.UserService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -38,6 +35,7 @@ public class UserServiceImpl implements UserService {
     private final EmpresaRepository empresaRepository;
     private final SubscriptionService subscriptionService;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapper mapper;
 
     @Value("${fleet.subscription.default-admin-password}")
     private String defaultAdminPassword;
@@ -47,10 +45,10 @@ public class UserServiceImpl implements UserService {
     public Page<UserResponse> findAll(String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
             return userRepository.findAllByActivoTrue(pageable)
-                    .map(this::toResponse);
+                    .map(mapper::toResponse);
         }
         return userRepository.findAllByActivoTrueAndEmailContainingIgnoreCase(filter, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
@@ -58,7 +56,7 @@ public class UserServiceImpl implements UserService {
     public UserResponse findById(Long id) {
         User entity = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -66,7 +64,7 @@ public class UserServiceImpl implements UserService {
     public UserResponse findByEmail(String email) {
         User entity = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -99,7 +97,7 @@ public class UserServiceImpl implements UserService {
                 .build();
         User saved = userRepository.save(entity);
         subscriptionService.incrementUserCount(activeSubscription.getId());
-        return toResponse(saved);
+        return mapper.toResponse(saved);
     }
 
     @Override
@@ -126,7 +124,7 @@ public class UserServiceImpl implements UserService {
                 .empresa(empresa)
                 .activo(true)
                 .build();
-        return toResponse(userRepository.save(entity));
+        return mapper.toResponse(userRepository.save(entity));
     }
 
     @Override
@@ -142,7 +140,7 @@ public class UserServiceImpl implements UserService {
             entity.setRoles(roles);
         }
 
-        return toResponse(userRepository.save(entity));
+        return mapper.toResponse(userRepository.save(entity));
     }
 
     @Override
@@ -150,10 +148,10 @@ public class UserServiceImpl implements UserService {
     public Page<UserResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
             return userRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
-                    .map(this::toResponse);
+                    .map(mapper::toResponse);
         }
         return userRepository.findByEmpresaIdAndActivoTrueAndEmailContainingIgnoreCase(empresaId, filter, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
@@ -173,66 +171,5 @@ public class UserServiceImpl implements UserService {
                 .map(roleId -> roleRepository.findById(roleId)
                         .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId)))
                 .collect(Collectors.toSet());
-    }
-
-    private PermissionResponse toPermissionResponse(com.fleet.management.model.Permission permission) {
-        return PermissionResponse.builder()
-                .id(permission.getId())
-                .name(permission.getName())
-                .description(permission.getDescription())
-                .activo(permission.getActivo())
-                .fechaCreacion(permission.getFechaCreacion())
-                .fechaActualizacion(permission.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(permission.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(permission.getModificadoPor()))
-                .build();
-    }
-
-    private RoleResponse toRoleResponse(Role role) {
-        Set<PermissionResponse> permissionResponses = role.getPermissions().stream()
-                .map(this::toPermissionResponse)
-                .collect(Collectors.toSet());
-
-        return RoleResponse.builder()
-                .id(role.getId())
-                .name(role.getName())
-                .description(role.getDescription())
-                .permissions(permissionResponses)
-                .activo(role.getActivo())
-                .fechaCreacion(role.getFechaCreacion())
-                .fechaActualizacion(role.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(role.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(role.getModificadoPor()))
-                .build();
-    }
-
-    private UserResponse toResponse(User entity) {
-        Set<RoleResponse> roleResponses = entity.getRoles().stream()
-                .map(this::toRoleResponse)
-                .collect(Collectors.toSet());
-
-        return UserResponse.builder()
-                .id(entity.getId())
-                .email(entity.getEmail())
-                .empresa(entity.getEmpresa() != null ? toEmpresaResponse(entity.getEmpresa()) : null)
-                .roles(roleResponses)
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
-    }
-
-    private EmpresaResponse toEmpresaResponse(com.fleet.management.model.Empresa empresa) {
-        return EmpresaResponse.builder()
-                .id(empresa.getId())
-                .codigo(empresa.getCodigo())
-                .nombre(empresa.getNombre())
-                .direccion(empresa.getDireccion())
-                .telefono(empresa.getTelefono())
-                .email(empresa.getEmail())
-                .activo(empresa.getActivo())
-                .build();
     }
 }

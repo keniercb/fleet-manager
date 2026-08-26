@@ -4,10 +4,10 @@ import com.fleet.management.dto.currency.CurrencyRequest;
 import com.fleet.management.dto.currency.CurrencyResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.CurrencyMapper;
 import com.fleet.management.model.Currency;
 import com.fleet.management.repository.CurrencyRepository;
 import com.fleet.management.service.CurrencyService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,11 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class CurrencyServiceImpl implements CurrencyService {
 
     private final CurrencyRepository repository;
+    private final CurrencyMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<CurrencyResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -31,7 +32,7 @@ public class CurrencyServiceImpl implements CurrencyService {
     public CurrencyResponse findById(Long id) {
         Currency entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Currency", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -39,7 +40,7 @@ public class CurrencyServiceImpl implements CurrencyService {
     public CurrencyResponse findByIsoCode(String isoCode) {
         Currency entity = repository.findByIsoCode(isoCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Currency", "isoCode", isoCode));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -53,7 +54,7 @@ public class CurrencyServiceImpl implements CurrencyService {
                 .descripcion(request.getDescripcion())
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -68,7 +69,7 @@ public class CurrencyServiceImpl implements CurrencyService {
 
         entity.setIsoCode(request.getIsoCode());
         entity.setDescripcion(request.getDescripcion());
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -78,18 +79,5 @@ public class CurrencyServiceImpl implements CurrencyService {
                 .orElseThrow(() -> new ResourceNotFoundException("Currency", "id", id));
         entity.setActivo(false);
         repository.save(entity);
-    }
-
-    private CurrencyResponse toResponse(Currency entity) {
-        return CurrencyResponse.builder()
-                .id(entity.getId())
-                .isoCode(entity.getIsoCode())
-                .descripcion(entity.getDescripcion())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }

@@ -6,10 +6,10 @@ import com.fleet.management.dto.provincia.ProvinciaRequest;
 import com.fleet.management.dto.provincia.ProvinciaResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.ProvinciaMapper;
 import com.fleet.management.model.Provincia;
 import com.fleet.management.repository.ProvinciaRepository;
 import com.fleet.management.service.ProvinciaService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,11 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProvinciaServiceImpl implements ProvinciaService {
 
     private final ProvinciaRepository repository;
+    private final ProvinciaMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProvinciaResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -31,7 +32,7 @@ public class ProvinciaServiceImpl implements ProvinciaService {
     public ProvinciaResponse findById(Long id) {
         Provincia entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Provincia", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -45,7 +46,7 @@ public class ProvinciaServiceImpl implements ProvinciaService {
                 .nombre(request.getNombre())
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -60,7 +61,7 @@ public class ProvinciaServiceImpl implements ProvinciaService {
 
         entity.setCodigo(request.getCodigo());
         entity.setNombre(request.getNombre());
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -70,18 +71,5 @@ public class ProvinciaServiceImpl implements ProvinciaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Provincia", "id", id));
         entity.setActivo(false);
         repository.save(entity);
-    }
-
-    private ProvinciaResponse toResponse(Provincia entity) {
-        return ProvinciaResponse.builder()
-                .id(entity.getId())
-                .codigo(entity.getCodigo())
-                .nombre(entity.getNombre())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }

@@ -2,11 +2,6 @@ package com.fleet.management.service.impl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
-import com.fleet.management.dto.chofer.ChoferResponse;
-import com.fleet.management.dto.empresa.EmpresaResponse;
-import com.fleet.management.dto.marca.MarcaResponse;
-import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
-import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
 import com.fleet.management.dto.vehiculo.VehiculoRequest;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
 import com.fleet.management.dto.reporte.EmpresaReporteDto;
@@ -30,7 +25,7 @@ import com.fleet.management.security.AuthenticatedUser;
 import com.fleet.management.service.PdfGenerationService;
 import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.service.VehiculoService;
-import com.fleet.management.util.AuditMapper;
+import com.fleet.management.mapper.VehiculoMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -57,16 +52,17 @@ public class VehiculoServiceImpl implements VehiculoService {
     private final ChoferRepository choferRepository;
     private final SubscriptionService subscriptionService;
     private final PdfGenerationService pdfGenerationService;
+    private final VehiculoMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findAll(String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
             return vehiculoRepository.findAllByActivoTrue(pageable)
-                    .map(this::toResponse);
+                    .map(mapper::toResponse);
         }
         return vehiculoRepository.findAllByActivoTrueAndMatriculaOrNumeroMotor(filter, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
@@ -74,35 +70,35 @@ public class VehiculoServiceImpl implements VehiculoService {
     public VehiculoResponse findById(Long id) {
         Vehiculo entity = vehiculoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehiculo", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findByChoferId(Long choferId, Pageable pageable) {
         return vehiculoRepository.findByChoferId(choferId, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findByTipoVehiculoId(Long tipoVehiculoId, Pageable pageable) {
         return vehiculoRepository.findByTipoVehiculoId(tipoVehiculoId, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findByTipoCombustibleId(Long tipoCombustibleId, Pageable pageable) {
         return vehiculoRepository.findByTipoCombustibleId(tipoCombustibleId, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findSinChoferAsignado(Pageable pageable) {
         return vehiculoRepository.findSinChoferAsignado(pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
@@ -110,10 +106,10 @@ public class VehiculoServiceImpl implements VehiculoService {
     public Page<VehiculoResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
             return vehiculoRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
-                    .map(this::toResponse);
+                    .map(mapper::toResponse);
         }
         return vehiculoRepository.findByEmpresaIdAndActivoTrueAndMatriculaOrNumeroMotor(empresaId, filter, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
@@ -166,7 +162,7 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .build();
         Vehiculo saved = vehiculoRepository.save(entity);
         subscriptionService.incrementVehicleCount(activeSubscription.getId());
-        return toResponse(saved);
+        return mapper.toResponse(saved);
     }
 
     @Override
@@ -208,7 +204,7 @@ public class VehiculoServiceImpl implements VehiculoService {
         entity.setUltimoMantenimiento(request.getUltimoMantenimiento());
         entity.setOdometroUltimoMantenimiento(request.getOdometroUltimoMantenimiento());
         entity.setIndiceConsumo(request.getIndiceConsumo());
-        return toResponse(vehiculoRepository.save(entity));
+        return mapper.toResponse(vehiculoRepository.save(entity));
     }
 
     @Override
@@ -235,105 +231,6 @@ public class VehiculoServiceImpl implements VehiculoService {
                 }
             });
         }
-    }
-
-    private EmpresaResponse toEmpresaResponse(Empresa empresa) {
-        return EmpresaResponse.builder()
-                .id(empresa.getId())
-                .codigo(empresa.getCodigo())
-                .nombre(empresa.getNombre())
-                .direccion(empresa.getDireccion())
-                .telefono(empresa.getTelefono())
-                .email(empresa.getEmail())
-                .activo(empresa.getActivo())
-                .fechaCreacion(empresa.getFechaCreacion())
-                .fechaActualizacion(empresa.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(empresa.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(empresa.getModificadoPor()))
-                .build();
-    }
-
-    private VehiculoResponse toResponse(Vehiculo entity) {
-        EmpresaResponse empresaResp = toEmpresaResponse(entity.getEmpresa());
-
-        TipoVehiculo tv = entity.getTipoVehiculo();
-        TipoVehiculoResponse tipoVehiculoResp = TipoVehiculoResponse.builder()
-                .id(tv.getId())
-                .nombre(tv.getNombre())
-                .descripcion(tv.getDescripcion())
-                .activo(tv.getActivo())
-                .fechaCreacion(tv.getFechaCreacion())
-                .fechaActualizacion(tv.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(tv.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(tv.getModificadoPor()))
-                .build();
-
-        Marca m = entity.getMarca();
-        MarcaResponse marcaResp = MarcaResponse.builder()
-                .id(m.getId())
-                .nombre(m.getNombre())
-                .descripcion(m.getDescripcion())
-                .paisOrigen(m.getPaisOrigen())
-                .activo(m.getActivo())
-                .fechaCreacion(m.getFechaCreacion())
-                .fechaActualizacion(m.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(m.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(m.getModificadoPor()))
-                .build();
-
-        TipoCombustible tc = entity.getTipoCombustible();
-        TipoCombustibleResponse tipoCombustibleResp = TipoCombustibleResponse.builder()
-                .id(tc.getId())
-                .codigo(tc.getCodigo())
-                .denominacion(tc.getDenominacion())
-                .descripcion(tc.getDescripcion())
-                .activo(tc.getActivo())
-                .fechaCreacion(tc.getFechaCreacion())
-                .fechaActualizacion(tc.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(tc.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(tc.getModificadoPor()))
-                .build();
-
-        ChoferResponse choferResp = null;
-        if (entity.getChofer() != null) {
-            Chofer c = entity.getChofer();
-            choferResp = ChoferResponse.builder()
-                    .id(c.getId())
-                    .empresa(toEmpresaResponse(c.getEmpresa()))
-                    .nombre(c.getNombre())
-                    .apellidos(c.getApellidos())
-                    .carneIdentidad(c.getCarneIdentidad())
-                    .numeroLicencia(c.getNumeroLicencia())
-                    .fechaNacimiento(c.getFechaNacimiento())
-                    .activo(c.getActivo())
-                    .fechaCreacion(c.getFechaCreacion())
-                    .fechaActualizacion(c.getFechaActualizacion())
-                    .creadoPor(AuditMapper.toAuditResponse(c.getCreadoPor()))
-                    .modificadoPor(AuditMapper.toAuditResponse(c.getModificadoPor()))
-                    .build();
-        }
-
-        return VehiculoResponse.builder()
-                .id(entity.getId())
-                .empresa(empresaResp)
-                .tipoVehiculo(tipoVehiculoResp)
-                .marca(marcaResp)
-                .chofer(choferResp)
-                .tipoCombustible(tipoCombustibleResp)
-                .matricula(entity.getMatricula())
-                .modelo(entity.getModelo())
-                .numeroMotor(entity.getNumeroMotor())
-                .odometro(entity.getOdometro())
-                .combustible(entity.getCombustible())
-                .ultimoMantenimiento(entity.getUltimoMantenimiento())
-                .odometroUltimoMantenimiento(entity.getOdometroUltimoMantenimiento())
-                .indiceConsumo(entity.getIndiceConsumo())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 
     @Override

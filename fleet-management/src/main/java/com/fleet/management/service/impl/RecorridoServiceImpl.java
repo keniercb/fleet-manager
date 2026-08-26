@@ -3,25 +3,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.chofer.ChoferResponse;
-import com.fleet.management.dto.currency.CurrencyResponse;
-import com.fleet.management.dto.empresa.EmpresaResponse;
-import com.fleet.management.dto.marca.MarcaResponse;
 import com.fleet.management.dto.recorrido.RecorridoRequest;
 import com.fleet.management.dto.recorrido.RecorridoResponse;
 import com.fleet.management.dto.reporte.*;
-import com.fleet.management.dto.tarjetacombustible.TarjetaCombustibleResponse;
-import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
-import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
-import com.fleet.management.dto.vehiculo.VehiculoResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.RecorridoMapper;
 import com.fleet.management.model.*;
 import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.repository.RecorridoRepository;
 import com.fleet.management.repository.TarjetaCombustibleRepository;
 import com.fleet.management.repository.VehiculoRepository;
 import com.fleet.management.service.RecorridoService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +35,7 @@ public class RecorridoServiceImpl implements RecorridoService {
     private final VehiculoRepository vehiculoRepository;
     private final ChoferRepository choferRepository;
     private final TarjetaCombustibleRepository tarjetaCombustibleRepository;
+    private final RecorridoMapper mapper;
 
     private static final BigDecimal CIEN = BigDecimal.valueOf(100);
     private static final BigDecimal CERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -49,7 +43,7 @@ public class RecorridoServiceImpl implements RecorridoService {
     @Override
     @Transactional(readOnly = true)
     public Page<RecorridoResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -57,19 +51,19 @@ public class RecorridoServiceImpl implements RecorridoService {
     public RecorridoResponse findById(Long id) {
         Recorrido entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recorrido", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<RecorridoResponse> findByVehiculoId(Long vehiculoId, Pageable pageable) {
-        return repository.findByVehiculoId(vehiculoId, pageable).map(this::toResponse);
+        return repository.findByVehiculoId(vehiculoId, pageable).map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<RecorridoResponse> findByVehiculoIdAndFechaBetween(Long vehiculoId, LocalDate desde, LocalDate hasta, Pageable pageable) {
-        return repository.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta, pageable).map(this::toResponse);
+        return repository.findByVehiculoIdAndFechaBetween(vehiculoId, desde, hasta, pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -182,7 +176,7 @@ public class RecorridoServiceImpl implements RecorridoService {
                 .build();
 
         // Datos del vehiculo
-        ChoferResponse choferResp = vehiculo.getChofer() != null ? toChoferResumido(vehiculo.getChofer()) : null;
+        ChoferResponse choferResp = vehiculo.getChofer() != null ? mapper.toChoferResumida(vehiculo.getChofer()) : null;
         VehiculoReporteData vehiculoData = VehiculoReporteData.builder()
                 .marca(vehiculo.getMarca().getNombre())
                 .numeroMotor(vehiculo.getNumeroMotor())
@@ -285,7 +279,7 @@ public class RecorridoServiceImpl implements RecorridoService {
         vehiculo.setCombustible(combustibleRestante);
         vehiculoRepository.save(vehiculo);
 
-        return toResponse(saved);
+        return mapper.toResponse(saved);
     }
 
     @Override
@@ -389,7 +383,7 @@ public class RecorridoServiceImpl implements RecorridoService {
         vehiculo.setCombustible(vehiculo.getCombustible().subtract(nuevoConsumo));
         vehiculoRepository.save(vehiculo);
 
-        return toResponse(saved);
+        return mapper.toResponse(saved);
     }
 
     @Override
@@ -426,120 +420,11 @@ public class RecorridoServiceImpl implements RecorridoService {
         repository.delete(entity);
     }
 
-    private RecorridoResponse toResponse(Recorrido entity) {
-        return RecorridoResponse.builder()
-                .id(entity.getId())
-                .vehiculo(toVehiculoResumido(entity.getVehiculo()))
-                .chofer(entity.getChofer() != null ? toChoferResumido(entity.getChofer()) : null)
-                .fecha(entity.getFecha())
-                .kilometros(entity.getKilometros())
-                .odometroInicial(entity.getOdometroInicial())
-                .combustibleInicial(entity.getCombustibleInicial())
-                .consumo(entity.getConsumo())
-                .litrosAbastecidos(entity.getLitrosAbastecidos())
-                .numeroChip(entity.getNumeroChip())
-                .lugarAbastecimiento(entity.getLugarAbastecimiento())
-                .tarjetaCombustible(entity.getTarjetaCombustible() != null ? toTarjetaResumida(entity.getTarjetaCombustible()) : null)
-                .importeAbastecido(entity.getImporteAbastecido())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
-    }
-
-    private ChoferResponse toChoferResumido(Chofer c) {
-        return ChoferResponse.builder()
-                .id(c.getId())
-                .nombre(c.getNombre())
-                .apellidos(c.getApellidos())
-                .carneIdentidad(c.getCarneIdentidad())
-                .numeroLicencia(c.getNumeroLicencia())
-                .fechaNacimiento(c.getFechaNacimiento())
-                .activo(c.getActivo())
-                .build();
-    }
-
     private Chofer resolverChofer(Long choferId, Vehiculo vehiculo) {
         if (choferId != null) {
             return choferRepository.findById(choferId)
                     .orElseThrow(() -> new ResourceNotFoundException("Chofer", "id", choferId));
         }
         return vehiculo.getChofer();
-    }
-
-    private VehiculoResponse toVehiculoResumido(Vehiculo v) {
-        Empresa emp = v.getEmpresa();
-        EmpresaResponse empresaResp = EmpresaResponse.builder()
-                .id(emp.getId())
-                .codigo(emp.getCodigo())
-                .nombre(emp.getNombre())
-                .activo(emp.getActivo())
-                .build();
-
-        TipoVehiculo tv = v.getTipoVehiculo();
-        TipoVehiculoResponse tipoResp = TipoVehiculoResponse.builder()
-                .id(tv.getId())
-                .nombre(tv.getNombre())
-                .activo(tv.getActivo())
-                .build();
-
-        Marca m = v.getMarca();
-        MarcaResponse marcaResp = MarcaResponse.builder()
-                .id(m.getId())
-                .nombre(m.getNombre())
-                .activo(m.getActivo())
-                .build();
-
-        TipoCombustible tc = v.getTipoCombustible();
-        TipoCombustibleResponse combustibleResp = TipoCombustibleResponse.builder()
-                .id(tc.getId())
-                .codigo(tc.getCodigo())
-                .denominacion(tc.getDenominacion())
-                .activo(tc.getActivo())
-                .build();
-
-        return VehiculoResponse.builder()
-                .id(v.getId())
-                .empresa(empresaResp)
-                .tipoVehiculo(tipoResp)
-                .marca(marcaResp)
-                .tipoCombustible(combustibleResp)
-                .matricula(v.getMatricula())
-                .modelo(v.getModelo())
-                .numeroMotor(v.getNumeroMotor())
-                .odometro(v.getOdometro())
-                .combustible(v.getCombustible())
-                .ultimoMantenimiento(v.getUltimoMantenimiento())
-                .odometroUltimoMantenimiento(v.getOdometroUltimoMantenimiento())
-                .indiceConsumo(v.getIndiceConsumo())
-                .activo(v.getActivo())
-                .fechaCreacion(v.getFechaCreacion())
-                .fechaActualizacion(v.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(v.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(v.getModificadoPor()))
-                .build();
-    }
-
-    private TarjetaCombustibleResponse toTarjetaResumida(TarjetaCombustible t) {
-        return TarjetaCombustibleResponse.builder()
-                .id(t.getId())
-                .numero(t.getNumero())
-                .saldo(t.getSaldo())
-                .currency(CurrencyResponse.builder()
-                        .id(t.getCurrency().getId())
-                        .isoCode(t.getCurrency().getIsoCode())
-                        .descripcion(t.getCurrency().getDescripcion())
-                        .activo(t.getCurrency().getActivo())
-                        .build())
-                .empresa(EmpresaResponse.builder()
-                        .id(t.getEmpresa().getId())
-                        .codigo(t.getEmpresa().getCodigo())
-                        .nombre(t.getEmpresa().getNombre())
-                        .activo(t.getEmpresa().getActivo())
-                        .build())
-                .activo(t.getActivo())
-                .build();
     }
 }

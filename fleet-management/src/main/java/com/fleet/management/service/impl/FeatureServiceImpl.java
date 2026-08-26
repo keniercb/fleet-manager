@@ -4,10 +4,10 @@ import com.fleet.management.dto.feature.FeatureRequest;
 import com.fleet.management.dto.feature.FeatureResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.FeatureMapper;
 import com.fleet.management.model.Feature;
 import com.fleet.management.repository.FeatureRepository;
 import com.fleet.management.service.FeatureService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,11 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class FeatureServiceImpl implements FeatureService {
 
     private final FeatureRepository repository;
+    private final FeatureMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<FeatureResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -31,7 +32,7 @@ public class FeatureServiceImpl implements FeatureService {
     public FeatureResponse findById(Long id) {
         Feature entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Feature", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -45,7 +46,7 @@ public class FeatureServiceImpl implements FeatureService {
                 .descripcion(request.getDescripcion())
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -60,7 +61,7 @@ public class FeatureServiceImpl implements FeatureService {
 
         entity.setName(request.getName());
         entity.setDescripcion(request.getDescripcion());
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -70,18 +71,5 @@ public class FeatureServiceImpl implements FeatureService {
                 .orElseThrow(() -> new ResourceNotFoundException("Feature", "id", id));
         entity.setActivo(false);
         repository.save(entity);
-    }
-
-    private FeatureResponse toResponse(Feature entity) {
-        return FeatureResponse.builder()
-                .id(entity.getId())
-                .name(entity.getName())
-                .descripcion(entity.getDescripcion())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }

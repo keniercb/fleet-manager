@@ -4,15 +4,14 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.municipio.MunicipioRequest;
 import com.fleet.management.dto.municipio.MunicipioResponse;
-import com.fleet.management.dto.provincia.ProvinciaResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.MunicipioMapper;
 import com.fleet.management.model.Municipio;
 import com.fleet.management.model.Provincia;
 import com.fleet.management.repository.MunicipioRepository;
 import com.fleet.management.repository.ProvinciaRepository;
 import com.fleet.management.service.MunicipioService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,24 +25,25 @@ public class MunicipioServiceImpl implements MunicipioService {
 
     private final MunicipioRepository repository;
     private final ProvinciaRepository provinciaRepository;
+    private final MunicipioMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<MunicipioResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<MunicipioResponse> findByProvinciaId(Long provinciaId, Pageable pageable) {
-        return repository.findByProvinciaIdAndActivoTrue(provinciaId, pageable).map(this::toResponse);
+        return repository.findByProvinciaIdAndActivoTrue(provinciaId, pageable).map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<MunicipioResponse> listByProvinciaId(Long provinciaId) {
         return repository.findByProvinciaIdAndActivoTrueOrderByIdAsc(provinciaId).stream()
-                .map(this::toResponse)
+                .map(mapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -52,7 +52,7 @@ public class MunicipioServiceImpl implements MunicipioService {
     public MunicipioResponse findById(Long id) {
         Municipio entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Municipio", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -72,7 +72,7 @@ public class MunicipioServiceImpl implements MunicipioService {
                 .nombre(request.getNombre())
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -94,7 +94,7 @@ public class MunicipioServiceImpl implements MunicipioService {
         entity.setProvincia(provincia);
         entity.setCodigo(request.getCodigo());
         entity.setNombre(request.getNombre());
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -104,32 +104,5 @@ public class MunicipioServiceImpl implements MunicipioService {
                 .orElseThrow(() -> new ResourceNotFoundException("Municipio", "id", id));
         entity.setActivo(false);
         repository.save(entity);
-    }
-
-    private ProvinciaResponse toProvinciaResponse(Provincia provincia) {
-        return ProvinciaResponse.builder()
-                .id(provincia.getId())
-                .codigo(provincia.getCodigo())
-                .nombre(provincia.getNombre())
-                .activo(provincia.getActivo())
-                .fechaCreacion(provincia.getFechaCreacion())
-                .fechaActualizacion(provincia.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(provincia.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(provincia.getModificadoPor()))
-                .build();
-    }
-
-    private MunicipioResponse toResponse(Municipio entity) {
-        return MunicipioResponse.builder()
-                .id(entity.getId())
-                .provincia(toProvinciaResponse(entity.getProvincia()))
-                .codigo(entity.getCodigo())
-                .nombre(entity.getNombre())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }

@@ -5,6 +5,7 @@ import com.fleet.management.dto.subscription.SubscriptionRequest;
 import com.fleet.management.dto.subscription.SubscriptionResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.SubscriptionMapper;
 import com.fleet.management.model.Empresa;
 import com.fleet.management.model.Plan;
 import com.fleet.management.model.Subscription;
@@ -13,7 +14,6 @@ import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.PlanRepository;
 import com.fleet.management.repository.SubscriptionRepository;
 import com.fleet.management.service.SubscriptionService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
@@ -31,11 +31,12 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final SubscriptionRepository repository;
     private final EmpresaRepository empresaRepository;
     private final PlanRepository planRepository;
+    private final SubscriptionMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<SubscriptionResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -43,7 +44,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public SubscriptionResponse findById(Long id) {
         Subscription entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -79,7 +80,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .porcientoDescuentoAnual(request.getPorcientoDescuentoAnual())
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -129,7 +130,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 entity.setPorcientoDescuentoAnual(request.getPorcientoDescuentoAnual());
             }
 
-            return toResponse(repository.save(entity));
+            return mapper.toResponse(repository.save(entity));
         } catch (OptimisticLockingFailureException ex) {
             throw new BusinessException("La suscripcion fue modificada por otro usuario. Intente nuevamente.");
         }
@@ -147,13 +148,13 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     @Transactional(readOnly = true)
     public Page<SubscriptionResponse> findByEmpresa(Long empresaId, Pageable pageable) {
-        return repository.findByEmpresaIdAndActivoTrue(empresaId, pageable).map(this::toResponse);
+        return repository.findByEmpresaIdAndActivoTrue(empresaId, pageable).map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<SubscriptionResponse> findByPlan(Long planId, Pageable pageable) {
-        return repository.findByPlanIdAndActivoTrue(planId, pageable).map(this::toResponse);
+        return repository.findByPlanIdAndActivoTrue(planId, pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -161,7 +162,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public SubscriptionResponse findActiveByEmpresa(Long empresaId) {
         Subscription subscription = repository.findFirstByEmpresaIdAndActivoTrueOrderByIdDesc(empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subscription", "empresaId", empresaId));
-        return toResponse(subscription);
+        return mapper.toResponse(subscription);
     }
 
     @Override
@@ -236,7 +237,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .currentUserCount(0)
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     private Empresa resolveEmpresa(Long empresaId) {
@@ -252,46 +253,5 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private Subscription findAndLock(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
-    }
-
-    private SubscriptionResponse toResponse(Subscription entity) {
-        Empresa empresa = entity.getEmpresa();
-        SubscriptionResponse.EmpresaResumidaResponse empresaResumida = SubscriptionResponse.EmpresaResumidaResponse.builder()
-                .id(empresa.getId())
-                .codigo(empresa.getCodigo())
-                .nombre(empresa.getNombre())
-                .activo(empresa.getActivo())
-                .build();
-
-        Plan plan = entity.getPlan();
-        SubscriptionResponse.PlanResumidoResponse planResumido = SubscriptionResponse.PlanResumidoResponse.builder()
-                .id(plan.getId())
-                .nombre(plan.getNombre())
-                .precioMensual(plan.getPrecioMensual())
-                .maxUsuarios(plan.getMaxUsuarios())
-                .maxVehiculos(plan.getMaxVehiculos())
-                .duracion(plan.getDuracion())
-                .activo(plan.getActivo())
-                .build();
-
-        return SubscriptionResponse.builder()
-                .id(entity.getId())
-                .empresa(empresaResumida)
-                .plan(planResumido)
-                .startDate(entity.getStartDate())
-                .endDate(entity.getEndDate())
-                .status(entity.getStatus())
-                .maxVehiculos(entity.getMaxVehiculos())
-                .maxUsuarios(entity.getMaxUsuarios())
-                .currentVehicleCount(entity.getCurrentVehicleCount())
-                .currentUserCount(entity.getCurrentUserCount())
-                .porcientoDescuentoAnual(entity.getPorcientoDescuentoAnual())
-                .version(entity.getVersion())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }

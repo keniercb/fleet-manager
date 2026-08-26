@@ -4,10 +4,9 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.empresa.EmpresaRequest;
 import com.fleet.management.dto.empresa.EmpresaResponse;
-import com.fleet.management.dto.municipio.MunicipioResponse;
-import com.fleet.management.dto.provincia.ProvinciaResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.EmpresaMapper;
 import com.fleet.management.model.Empresa;
 import com.fleet.management.model.Municipio;
 import com.fleet.management.model.Provincia;
@@ -17,12 +16,9 @@ import com.fleet.management.repository.ProvinciaRepository;
 import com.fleet.management.service.EmpresaService;
 import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.service.UserService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +29,7 @@ public class EmpresaServiceImpl implements EmpresaService {
     private final MunicipioRepository municipioRepository;
     private final SubscriptionService subscriptionService;
     private final UserService userService;
+    private final EmpresaMapper mapper;
 
     private static final String EMPRESA_ADMIN_CODIGO = "EMP-ADMIN";
 
@@ -40,9 +37,9 @@ public class EmpresaServiceImpl implements EmpresaService {
     @Transactional(readOnly = true)
     public Page<EmpresaResponse> findAll(String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
-            return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+            return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
         }
-        return repository.findAllByActivoTrueAndNombreContainingIgnoreCase(filter, pageable).map(this::toResponse);
+        return repository.findAllByActivoTrueAndNombreContainingIgnoreCase(filter, pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -50,7 +47,7 @@ public class EmpresaServiceImpl implements EmpresaService {
     public EmpresaResponse findById(Long id) {
         Empresa entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -58,7 +55,7 @@ public class EmpresaServiceImpl implements EmpresaService {
     public EmpresaResponse findByCodigo(String codigo) {
         Empresa entity = repository.findByCodigo(codigo)
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa", "codigo", codigo));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -97,7 +94,7 @@ public class EmpresaServiceImpl implements EmpresaService {
         subscriptionService.createTrialSubscription(entity);
         userService.createAdminUser(entity);
 
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -133,7 +130,7 @@ public class EmpresaServiceImpl implements EmpresaService {
         entity.setEmail(request.getEmail());
         entity.setProvincia(provincia);
         entity.setMunicipio(municipio);
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -152,44 +149,5 @@ public class EmpresaServiceImpl implements EmpresaService {
         if (EMPRESA_ADMIN_CODIGO.equals(entity.getCodigo())) {
             throw new BusinessException("La empresa de administracion no puede ser modificada ni eliminada");
         }
-    }
-
-    private EmpresaResponse toResponse(Empresa entity) {
-        ProvinciaResponse provinciaResp = null;
-        if (entity.getProvincia() != null) {
-            Provincia p = entity.getProvincia();
-            provinciaResp = ProvinciaResponse.builder()
-                    .id(p.getId())
-                    .codigo(p.getCodigo())
-                    .nombre(p.getNombre())
-                    .build();
-        }
-
-        MunicipioResponse municipioResp = null;
-        if (entity.getMunicipio() != null) {
-            Municipio m = entity.getMunicipio();
-            municipioResp = MunicipioResponse.builder()
-                    .id(m.getId())
-                    .codigo(m.getCodigo())
-                    .nombre(m.getNombre())
-                    .provincia(provinciaResp)
-                    .build();
-        }
-
-        return EmpresaResponse.builder()
-                .id(entity.getId())
-                .codigo(entity.getCodigo())
-                .nombre(entity.getNombre())
-                .direccion(entity.getDireccion())
-                .telefono(entity.getTelefono())
-                .email(entity.getEmail())
-                .provincia(provinciaResp)
-                .municipio(municipioResp)
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }
