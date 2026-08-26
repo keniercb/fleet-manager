@@ -87,7 +87,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public SubscriptionResponse createTrialSubscription(Empresa empresa) {
         Plan trialPlan = planRepository.findByNombre("Trial")
                 .orElseThrow(() -> new ResourceNotFoundException("Plan", "nombre", "Trial"));
-        return buildAndSave(empresa, trialPlan, SubscriptionStatus.TRIAL);
+        return buildAndSave(empresa, trialPlan, SubscriptionStatus.ACTIVE);
     }
 
     @Override
