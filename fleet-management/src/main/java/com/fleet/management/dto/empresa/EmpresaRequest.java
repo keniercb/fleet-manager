@@ -27,4 +27,8 @@ public class EmpresaRequest {
     @Email(message = "El email debe tener un formato valido")
     @Size(max = 100, message = "El email no puede exceder 100 caracteres")
     private String email;
+
+    private Long provinciaId;
+
+    private Long municipioId;
 }

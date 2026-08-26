@@ -132,6 +132,14 @@
             <span class="header-label">Email:</span>
             <span class="header-value" th:text="${empresa.email != null ? empresa.email : '-'}">-</span>
         </div>
+        <div th:if="${empresa.provincia != null}" class="header-row">
+            <span class="header-label">Provincia:</span>
+            <span class="header-value" th:text="${empresa.provincia}">-</span>
+        </div>
+        <div th:if="${empresa.municipio != null}" class="header-row">
+            <span class="header-label">Municipio:</span>
+            <span class="header-value" th:text="${empresa.municipio}">-</span>
+        </div>
     </div>
 
     <!-- Tabla de vehiculos -->

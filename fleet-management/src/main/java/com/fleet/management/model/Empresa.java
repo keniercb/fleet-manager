@@ -38,4 +38,14 @@ public class Empresa extends BaseEntity {
     @Size(max = 100, message = "El email no puede exceder 100 caracteres")
     @Column(name = "email", length = 100)
     private String email;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "provincia_id",
+            foreignKey = @ForeignKey(name = "fk_empresa_provincia"))
+    private Provincia provincia;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "municipio_id",
+            foreignKey = @ForeignKey(name = "fk_empresa_municipio"))
+    private Municipio municipio;
 }

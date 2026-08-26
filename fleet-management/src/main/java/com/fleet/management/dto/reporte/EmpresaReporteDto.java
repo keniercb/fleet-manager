@@ -19,4 +19,6 @@ public class EmpresaReporteDto {
     private String direccion;
     private String telefono;
     private String email;
+    private String provincia;
+    private String municipio;
 }

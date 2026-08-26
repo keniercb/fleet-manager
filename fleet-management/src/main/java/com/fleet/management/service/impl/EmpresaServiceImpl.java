@@ -4,10 +4,16 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.empresa.EmpresaRequest;
 import com.fleet.management.dto.empresa.EmpresaResponse;
+import com.fleet.management.dto.municipio.MunicipioResponse;
+import com.fleet.management.dto.provincia.ProvinciaResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.Empresa;
+import com.fleet.management.model.Municipio;
+import com.fleet.management.model.Provincia;
 import com.fleet.management.repository.EmpresaRepository;
+import com.fleet.management.repository.MunicipioRepository;
+import com.fleet.management.repository.ProvinciaRepository;
 import com.fleet.management.service.EmpresaService;
 import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.service.UserService;
@@ -23,6 +29,8 @@ import java.util.List;
 public class EmpresaServiceImpl implements EmpresaService {
 
     private final EmpresaRepository repository;
+    private final ProvinciaRepository provinciaRepository;
+    private final MunicipioRepository municipioRepository;
     private final SubscriptionService subscriptionService;
     private final UserService userService;
 
@@ -59,12 +67,29 @@ public class EmpresaServiceImpl implements EmpresaService {
         if (repository.existsByCodigo(request.getCodigo())) {
             throw new BusinessException("Ya existe una empresa con el codigo: " + request.getCodigo());
         }
+
+        Provincia provincia = null;
+        Municipio municipio = null;
+        if (request.getProvinciaId() != null) {
+            provincia = provinciaRepository.findById(request.getProvinciaId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Provincia", "id", request.getProvinciaId()));
+        }
+        if (request.getMunicipioId() != null) {
+            municipio = municipioRepository.findById(request.getMunicipioId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Municipio", "id", request.getMunicipioId()));
+            if (provincia != null && !municipio.getProvincia().getId().equals(provincia.getId())) {
+                throw new BusinessException("El municipio no pertenece a la provincia seleccionada");
+            }
+        }
+
         Empresa entity = Empresa.builder()
                 .codigo(request.getCodigo())
                 .nombre(request.getNombre())
                 .direccion(request.getDireccion())
                 .telefono(request.getTelefono())
                 .email(request.getEmail())
+                .provincia(provincia)
+                .municipio(municipio)
                 .activo(true)
                 .build();
         entity = repository.save(entity);
@@ -87,11 +112,27 @@ public class EmpresaServiceImpl implements EmpresaService {
             throw new BusinessException("Ya existe una empresa con el codigo: " + request.getCodigo());
         }
 
+        Provincia provincia = null;
+        Municipio municipio = null;
+        if (request.getProvinciaId() != null) {
+            provincia = provinciaRepository.findById(request.getProvinciaId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Provincia", "id", request.getProvinciaId()));
+        }
+        if (request.getMunicipioId() != null) {
+            municipio = municipioRepository.findById(request.getMunicipioId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Municipio", "id", request.getMunicipioId()));
+            if (provincia != null && !municipio.getProvincia().getId().equals(provincia.getId())) {
+                throw new BusinessException("El municipio no pertenece a la provincia seleccionada");
+            }
+        }
+
         entity.setCodigo(request.getCodigo());
         entity.setNombre(request.getNombre());
         entity.setDireccion(request.getDireccion());
         entity.setTelefono(request.getTelefono());
         entity.setEmail(request.getEmail());
+        entity.setProvincia(provincia);
+        entity.setMunicipio(municipio);
         return toResponse(repository.save(entity));
     }
 
@@ -114,6 +155,27 @@ public class EmpresaServiceImpl implements EmpresaService {
     }
 
     private EmpresaResponse toResponse(Empresa entity) {
+        ProvinciaResponse provinciaResp = null;
+        if (entity.getProvincia() != null) {
+            Provincia p = entity.getProvincia();
+            provinciaResp = ProvinciaResponse.builder()
+                    .id(p.getId())
+                    .codigo(p.getCodigo())
+                    .nombre(p.getNombre())
+                    .build();
+        }
+
+        MunicipioResponse municipioResp = null;
+        if (entity.getMunicipio() != null) {
+            Municipio m = entity.getMunicipio();
+            municipioResp = MunicipioResponse.builder()
+                    .id(m.getId())
+                    .codigo(m.getCodigo())
+                    .nombre(m.getNombre())
+                    .provincia(provinciaResp)
+                    .build();
+        }
+
         return EmpresaResponse.builder()
                 .id(entity.getId())
                 .codigo(entity.getCodigo())
@@ -121,6 +183,8 @@ public class EmpresaServiceImpl implements EmpresaService {
                 .direccion(entity.getDireccion())
                 .telefono(entity.getTelefono())
                 .email(entity.getEmail())
+                .provincia(provinciaResp)
+                .municipio(municipioResp)
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())
                 .fechaActualizacion(entity.getFechaActualizacion())

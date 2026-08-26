@@ -359,6 +359,8 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .direccion(empresa.getDireccion())
                 .telefono(empresa.getTelefono())
                 .email(empresa.getEmail())
+                .provincia(empresa.getProvincia() != null ? empresa.getProvincia().getNombre() : null)
+                .municipio(empresa.getMunicipio() != null ? empresa.getMunicipio().getNombre() : null)
                 .build();
 
         // 4. Mapear datos de vehiculos
