@@ -241,10 +241,15 @@ public class VehiculoServiceImpl implements VehiculoService {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authUser)) {
             throw new BusinessException("No se pudo determinar la empresa del usuario autenticado");
         }
-        Empresa empresa = authUser.getUser().getEmpresa();
-        if (empresa == null) {
+        Empresa empresaRef = authUser.getUser().getEmpresa();
+        if (empresaRef == null) {
             throw new BusinessException("El usuario no tiene una empresa asociada");
         }
+
+        // Fetch empresa dentro de la sesion actual para evitar LazyInitializationException
+        // (el proxy del AuthenticatedUser pertenece a la sesion del filtro de autenticacion)
+        Empresa empresa = empresaRepository.findById(empresaRef.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", empresaRef.getId()));
 
         // 2. Obtener vehiculos activos de la empresa
         List<Vehiculo> vehiculos = vehiculoRepository.findByEmpresaIdAndActivoTrueOrderByMatriculaAsc(empresa.getId());

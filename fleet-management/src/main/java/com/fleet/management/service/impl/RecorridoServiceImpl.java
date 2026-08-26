@@ -12,6 +12,7 @@ import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.RecorridoMapper;
 import com.fleet.management.model.*;
 import com.fleet.management.repository.ChoferRepository;
+import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.RecorridoRepository;
 import com.fleet.management.repository.TarjetaCombustibleRepository;
 import com.fleet.management.repository.VehiculoRepository;
@@ -40,6 +41,7 @@ public class RecorridoServiceImpl implements RecorridoService {
     private final VehiculoRepository vehiculoRepository;
     private final ChoferRepository choferRepository;
     private final TarjetaCombustibleRepository tarjetaCombustibleRepository;
+    private final EmpresaRepository empresaRepository;
     private final RecorridoMapper mapper;
     private final PdfGenerationService pdfGenerationService;
 
@@ -437,10 +439,15 @@ public class RecorridoServiceImpl implements RecorridoService {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authUser)) {
             throw new BusinessException("No se pudo determinar la empresa del usuario autenticado");
         }
-        Empresa empresa = authUser.getUser().getEmpresa();
-        if (empresa == null) {
+        Empresa empresaRef = authUser.getUser().getEmpresa();
+        if (empresaRef == null) {
             throw new BusinessException("El usuario no tiene una empresa asociada");
         }
+
+        // Fetch empresa dentro de la sesion actual para evitar LazyInitializationException
+        // (el proxy del AuthenticatedUser pertenece a la sesion del filtro de autenticacion)
+        Empresa empresa = empresaRepository.findById(empresaRef.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", empresaRef.getId()));
 
         // 3. Mapear datos del encabezado
         EmpresaReporteDto empresaDto = EmpresaReporteDto.builder()
