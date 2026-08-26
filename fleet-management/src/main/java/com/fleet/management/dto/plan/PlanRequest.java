@@ -29,5 +29,9 @@ public class PlanRequest {
     @Min(value = 1, message = "La duracion debe ser al menos 1 dia")
     private Integer duracion;
 
+    @DecimalMin(value = "0.00", message = "El porciento de descuento anual no puede ser negativo")
+    @DecimalMax(value = "100.00", message = "El porciento de descuento anual no puede superar 100")
+    private BigDecimal porcientoDescuentoAnual;
+
     private List<Long> featureIds;
 }

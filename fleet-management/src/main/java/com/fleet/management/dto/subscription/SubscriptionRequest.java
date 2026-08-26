@@ -13,8 +13,11 @@ import java.math.BigDecimal;
 @Builder
 public class SubscriptionRequest {
 
-    @NotNull(message = "El ID del plan es obligatorio")
-    private Long planId;
+    @Min(value = 1, message = "La cantidad maxima de vehiculos debe ser al menos 1")
+    private Integer maxVehiculos;
+
+    @Min(value = 1, message = "La cantidad maxima de usuarios debe ser al menos 1")
+    private Integer maxUsuarios;
 
     private SubscriptionStatus status;
 

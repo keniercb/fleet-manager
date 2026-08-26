@@ -72,6 +72,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .startDate(now)
                 .endDate(endDate)
                 .status(SubscriptionStatus.ACTIVE)
+                .maxVehiculos(plan.getMaxVehiculos())
+                .maxUsuarios(plan.getMaxUsuarios())
                 .currentVehicleCount(0)
                 .currentUserCount(0)
                 .porcientoDescuentoAnual(request.getPorcientoDescuentoAnual())
@@ -95,26 +97,32 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             Subscription entity = repository.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
 
-            if (request.getPlanId() != null) {
-                Plan newPlan = resolvePlan(request.getPlanId());
-                Integer newMaxVehiculos = newPlan.getMaxVehiculos();
-                Integer newMaxUsuarios = newPlan.getMaxUsuarios();
-
-                if (newMaxVehiculos != null && entity.getCurrentVehicleCount() > newMaxVehiculos) {
-                    throw new BusinessException("No se puede cambiar al plan. El plan seleccionado permite maximo "
-                            + newMaxVehiculos + " vehiculos pero la suscripcion actual tiene "
-                            + entity.getCurrentVehicleCount());
-                }
-                if (newMaxUsuarios != null && entity.getCurrentUserCount() > newMaxUsuarios) {
-                    throw new BusinessException("No se puede cambiar al plan. El plan seleccionado permite maximo "
-                            + newMaxUsuarios + " usuarios pero la suscripcion actual tiene "
-                            + entity.getCurrentUserCount());
-                }
-                entity.setPlan(newPlan);
-            }
-
             if (request.getStatus() != null) {
                 entity.setStatus(request.getStatus());
+            }
+
+            if (request.getMaxVehiculos() != null) {
+                if (entity.getMaxVehiculos() != null && request.getMaxVehiculos() <= entity.getMaxVehiculos()) {
+                    throw new BusinessException("La cantidad maxima de vehiculos solo puede ser mayor que la actual: "
+                            + entity.getMaxVehiculos());
+                }
+                if (entity.getCurrentVehicleCount() != null && request.getMaxVehiculos() < entity.getCurrentVehicleCount()) {
+                    throw new BusinessException("La cantidad maxima de vehiculos no puede ser menor que los vehiculos actuales: "
+                            + entity.getCurrentVehicleCount());
+                }
+                entity.setMaxVehiculos(request.getMaxVehiculos());
+            }
+
+            if (request.getMaxUsuarios() != null) {
+                if (entity.getMaxUsuarios() != null && request.getMaxUsuarios() <= entity.getMaxUsuarios()) {
+                    throw new BusinessException("La cantidad maxima de usuarios solo puede ser mayor que la actual: "
+                            + entity.getMaxUsuarios());
+                }
+                if (entity.getCurrentUserCount() != null && request.getMaxUsuarios() < entity.getCurrentUserCount()) {
+                    throw new BusinessException("La cantidad maxima de usuarios no puede ser menor que los usuarios actuales: "
+                            + entity.getCurrentUserCount());
+                }
+                entity.setMaxUsuarios(request.getMaxUsuarios());
             }
 
             if (request.getPorcientoDescuentoAnual() != null) {
@@ -166,10 +174,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Transactional
     public void incrementVehicleCount(Long subscriptionId) {
         Subscription subscription = findAndLock(subscriptionId);
-        Integer max = subscription.getPlan().getMaxVehiculos();
+        Integer max = subscription.getMaxVehiculos();
         if (max != null && subscription.getCurrentVehicleCount() + 1 > max) {
             throw new BusinessException("No se puede agregar el vehiculo. Se ha alcanzado el limite de "
-                    + max + " vehiculos del plan " + subscription.getPlan().getNombre());
+                    + max + " vehiculos de la suscripcion");
         }
         subscription.setCurrentVehicleCount(subscription.getCurrentVehicleCount() + 1);
         repository.save(subscription);
@@ -190,10 +198,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Transactional
     public void incrementUserCount(Long subscriptionId) {
         Subscription subscription = findAndLock(subscriptionId);
-        Integer max = subscription.getPlan().getMaxUsuarios();
+        Integer max = subscription.getMaxUsuarios();
         if (max != null && subscription.getCurrentUserCount() + 1 > max) {
             throw new BusinessException("No se puede agregar el usuario. Se ha alcanzado el limite de "
-                    + max + " usuarios del plan " + subscription.getPlan().getNombre());
+                    + max + " usuarios de la suscripcion");
         }
         subscription.setCurrentUserCount(subscription.getCurrentUserCount() + 1);
         repository.save(subscription);
@@ -222,6 +230,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .startDate(now)
                 .endDate(endDate)
                 .status(status)
+                .maxVehiculos(plan.getMaxVehiculos())
+                .maxUsuarios(plan.getMaxUsuarios())
                 .currentVehicleCount(0)
                 .currentUserCount(0)
                 .activo(true)
@@ -271,6 +281,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())
                 .status(entity.getStatus())
+                .maxVehiculos(entity.getMaxVehiculos())
+                .maxUsuarios(entity.getMaxUsuarios())
                 .currentVehicleCount(entity.getCurrentVehicleCount())
                 .currentUserCount(entity.getCurrentUserCount())
                 .porcientoDescuentoAnual(entity.getPorcientoDescuentoAnual())

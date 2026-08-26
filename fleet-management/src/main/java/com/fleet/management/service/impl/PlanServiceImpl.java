@@ -17,6 +17,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -58,6 +60,7 @@ public class PlanServiceImpl implements PlanService {
                 .maxUsuarios(request.getMaxUsuarios())
                 .maxVehiculos(request.getMaxVehiculos())
                 .duracion(request.getDuracion())
+                .porcientoDescuentoAnual(request.getPorcientoDescuentoAnual())
                 .features(features)
                 .activo(true)
                 .build();
@@ -81,6 +84,7 @@ public class PlanServiceImpl implements PlanService {
         entity.setMaxUsuarios(request.getMaxUsuarios());
         entity.setMaxVehiculos(request.getMaxVehiculos());
         entity.setDuracion(request.getDuracion());
+        entity.setPorcientoDescuentoAnual(request.getPorcientoDescuentoAnual());
         entity.setFeatures(features);
         return toResponse(repository.save(entity));
     }
@@ -92,6 +96,34 @@ public class PlanServiceImpl implements PlanService {
                 .orElseThrow(() -> new ResourceNotFoundException("Plan", "id", id));
         entity.setActivo(false);
         repository.save(entity);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal calcularImporteFacturacion(Long planId, boolean facturarAnual) {
+        Plan plan = repository.findById(planId)
+                .orElseThrow(() -> new ResourceNotFoundException("Plan", "id", planId));
+
+        BigDecimal precio = plan.getPrecioMensual();
+        BigDecimal importe;
+
+        if (facturarAnual) {
+            BigDecimal descuento = plan.getPorcientoDescuentoAnual() != null
+                    ? plan.getPorcientoDescuentoAnual() : BigDecimal.ZERO;
+            // Formula: ((precio * porcientoDescuentoAnual / 100) / 30) * 360
+            importe = precio.multiply(descuento)
+                    .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP)
+                    .divide(BigDecimal.valueOf(30), 10, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(360))
+                    .setScale(2, RoundingMode.HALF_UP);
+        } else {
+            // Formula: (precio / 30) * duracion
+            importe = precio.divide(BigDecimal.valueOf(30), 10, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(plan.getDuracion()))
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        return importe;
     }
 
     private Set<Feature> resolveFeatures(List<Long> featureIds) {
@@ -118,6 +150,7 @@ public class PlanServiceImpl implements PlanService {
                 .maxUsuarios(entity.getMaxUsuarios())
                 .maxVehiculos(entity.getMaxVehiculos())
                 .duracion(entity.getDuracion())
+                .porcientoDescuentoAnual(entity.getPorcientoDescuentoAnual())
                 .features(featureResponses)
                 .activo(entity.getActivo())
                 .fechaCreacion(entity.getFechaCreacion())

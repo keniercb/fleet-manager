@@ -14,9 +14,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
+
 @Tag(name = "Plans")
 @RestController
-@RequestMapping("/api/v1/plans")
+@RequestMapping("/api/plans")
 @RequiredArgsConstructor
 public class PlanController {
 
@@ -35,6 +39,18 @@ public class PlanController {
     @GetMapping("/{id}")
     public ResponseEntity<PlanResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(service.findById(id));
+    }
+
+    @GetMapping("/{id}/calcular-importe")
+    public ResponseEntity<Map<String, Object>> calcularImporteFacturacion(
+            @PathVariable Long id,
+            @RequestParam boolean facturarAnual) {
+        BigDecimal importe = service.calcularImporteFacturacion(id, facturarAnual);
+        Map<String, Object> response = new HashMap<>();
+        response.put("planId", id);
+        response.put("facturarAnual", facturarAnual);
+        response.put("importe", importe);
+        return ResponseEntity.ok(response);
     }
 
     @PreAuthorize("hasRole('SUPER_ADMIN')")

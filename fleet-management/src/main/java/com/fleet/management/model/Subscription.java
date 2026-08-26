@@ -40,6 +40,14 @@ public class Subscription extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private SubscriptionStatus status;
 
+    @Min(value = 0, message = "La cantidad maxima de vehiculos no puede ser negativa")
+    @Column(name = "max_vehiculos")
+    private Integer maxVehiculos;
+
+    @Min(value = 0, message = "La cantidad maxima de usuarios no puede ser negativa")
+    @Column(name = "max_usuarios")
+    private Integer maxUsuarios;
+
     @Min(value = 0, message = "La cantidad de vehiculos no puede ser negativa")
     @Column(name = "current_vehicle_count")
     private Integer currentVehicleCount;
