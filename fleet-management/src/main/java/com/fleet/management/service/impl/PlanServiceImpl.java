@@ -105,7 +105,6 @@ public class PlanServiceImpl implements PlanService {
                 .orElseThrow(() -> new ResourceNotFoundException("Plan", "id", planId));
 
         BigDecimal precio = plan.getPrecioMensual();
-
         // 1. Precio base diario
         BigDecimal precioBase = precio.divide(BigDecimal.valueOf(30), 10, RoundingMode.HALF_UP);
 

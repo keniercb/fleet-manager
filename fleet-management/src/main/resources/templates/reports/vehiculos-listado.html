@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page {
+            size: landscape;
+            margin: 20mm 15mm 25mm 15mm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 9pt;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Titulo del reporte */
+        .report-title {
+            text-align: center;
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #1a1a2e;
+        }
+
+        /* Encabezado empresa */
+        .header {
+            border: 1px solid #4a6fa5;
+            border-radius: 4px;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            background-color: #f0f4f8;
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        .header-row:last-child {
+            margin-bottom: 0;
+        }
+        .header-label {
+            font-weight: bold;
+            color: #4a6fa5;
+            min-width: 120px;
+        }
+        .header-value {
+            flex: 1;
+        }
+
+        /* Tabla */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+        thead th {
+            background-color: #4a6fa5;
+            color: #ffffff;
+            padding: 8px 6px;
+            text-align: left;
+            font-size: 8pt;
+            font-weight: bold;
+            border: 1px solid #3a5a8a;
+        }
+        tbody td {
+            padding: 5px 6px;
+            border: 1px solid #ccc;
+            font-size: 8pt;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tbody tr:hover {
+            background-color: #e8edf2;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+
+        /* Pie de pagina fijo */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 7pt;
+            color: #888;
+            border-top: 1px solid #ddd;
+            padding-top: 5px;
+        }
+
+        /* Contador de vehiculos */
+        .total-row {
+            margin-top: 10px;
+            text-align: right;
+            font-weight: bold;
+            font-size: 9pt;
+            color: #1a1a2e;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Titulo -->
+    <div class="report-title">Listado de Vehiculos</div>
+
+    <!-- Encabezado empresa -->
+    <div class="header">
+        <div class="header-row">
+            <span class="header-label">Codigo:</span>
+            <span class="header-value" th:text="${empresa.codigo}">-</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Nombre:</span>
+            <span class="header-value" th:text="${empresa.nombre}">-</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Direccion:</span>
+            <span class="header-value" th:text="${empresa.direccion != null ? empresa.direccion : '-'}">-</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Telefono:</span>
+            <span class="header-value" th:text="${empresa.telefono != null ? empresa.telefono : '-'}">-</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Email:</span>
+            <span class="header-value" th:text="${empresa.email != null ? empresa.email : '-'}">-</span>
+        </div>
+    </div>
+
+    <!-- Tabla de vehiculos -->
+    <table>
+        <thead>
+            <tr>
+                <th class="text-center" style="width: 30px;">#</th>
+                <th>Tipo de Vehiculo</th>
+                <th>Matricula</th>
+                <th>Marca</th>
+                <th>Modelo</th>
+                <th>No. Motor</th>
+                <th class="text-right">Odometro</th>
+                <th class="text-right">Combustible (L)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="vehiculo, iterStat : ${vehiculos}">
+                <td class="text-center" th:text="${iterStat.count}">1</td>
+                <td th:text="${vehiculo.tipoVehiculo}">-</td>
+                <td th:text="${vehiculo.matricula}">-</td>
+                <td th:text="${vehiculo.marca}">-</td>
+                <td th:text="${vehiculo.modelo != null ? vehiculo.modelo : '-'}">-</td>
+                <td th:text="${vehiculo.numeroMotor}">-</td>
+                <td class="text-right" th:text="${vehiculo.odometro}">0</td>
+                <td class="text-right" th:text="${vehiculo.combustibleLitros}">0.00</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(vehiculos)}">
+                <td colspan="8" class="text-center" style="padding: 20px; color: #999;">
+                    No se encontraron vehiculos activos para esta empresa.
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Total de vehiculos -->
+    <div class="total-row" th:if="${!#lists.isEmpty(vehiculos)}">
+        Total vehiculos: <span th:text="${#lists.size(vehiculos)}">0</span>
+    </div>
+
+    <!-- Pie de pagina -->
+    <div class="footer">
+        <span>Fecha de impresion: </span>
+        <span th:text="${fechaImpresion}">-</span>
+    </div>
+
+</body>
+</html>

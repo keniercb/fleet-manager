@@ -47,4 +47,10 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
             "(LOWER(v.matricula) LIKE LOWER(CONCAT('%', :filter, '%')) OR " +
             "LOWER(v.numeroMotor) LIKE LOWER(CONCAT('%', :filter, '%')))")
     Page<Vehiculo> findByEmpresaIdAndActivoTrueAndMatriculaOrNumeroMotor(@Param("empresaId") Long empresaId, @Param("filter") String filter, Pageable pageable);
+
+    /**
+     * Retorna todos los vehiculos activos de una empresa sin paginacion.
+     * Usado para generar reportes PDF.
+     */
+    List<Vehiculo> findByEmpresaIdAndActivoTrueOrderByMatriculaAsc(Long empresaId);
 }

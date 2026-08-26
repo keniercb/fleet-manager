@@ -9,6 +9,8 @@ import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
 import com.fleet.management.dto.vehiculo.VehiculoRequest;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
+import com.fleet.management.dto.reporte.EmpresaReporteDto;
+import com.fleet.management.dto.reporte.VehiculoFilaReporteDto;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.Chofer;
@@ -17,19 +19,30 @@ import com.fleet.management.model.Marca;
 import com.fleet.management.model.TipoCombustible;
 import com.fleet.management.model.TipoVehiculo;
 import com.fleet.management.model.Vehiculo;
+import com.fleet.management.model.Subscription;
 import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.MarcaRepository;
 import com.fleet.management.repository.TipoCombustibleRepository;
 import com.fleet.management.repository.TipoVehiculoRepository;
-import com.fleet.management.model.Subscription;
 import com.fleet.management.repository.VehiculoRepository;
+import com.fleet.management.security.AuthenticatedUser;
+import com.fleet.management.service.PdfGenerationService;
 import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.service.VehiculoService;
 import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -43,6 +56,7 @@ public class VehiculoServiceImpl implements VehiculoService {
     private final TipoCombustibleRepository tipoCombustibleRepository;
     private final ChoferRepository choferRepository;
     private final SubscriptionService subscriptionService;
+    private final PdfGenerationService pdfGenerationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -108,10 +122,10 @@ public class VehiculoServiceImpl implements VehiculoService {
         Subscription activeSubscription = subscriptionService.getActiveSubscriptionEntity(request.getEmpresaId())
                 .orElseThrow(() -> new BusinessException("La empresa no tiene una suscripcion activa"));
 
-        Integer maxVehiculos = activeSubscription.getPlan().getMaxVehiculos();
+        Integer maxVehiculos = activeSubscription.getMaxVehiculos();
         if (maxVehiculos != null && activeSubscription.getCurrentVehicleCount() >= maxVehiculos) {
             throw new BusinessException("No se puede crear el vehiculo. Se ha alcanzado el limite de "
-                    + maxVehiculos + " vehiculos del plan " + activeSubscription.getPlan().getNombre());
+                    + maxVehiculos + " vehiculos");
         }
 
         validateUniqueFields(request, null);
@@ -320,5 +334,57 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
                 .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generarReportePdf() {
+        // 1. Obtener la empresa del usuario autenticado
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authUser)) {
+            throw new BusinessException("No se pudo determinar la empresa del usuario autenticado");
+        }
+        Empresa empresa = authUser.getUser().getEmpresa();
+        if (empresa == null) {
+            throw new BusinessException("El usuario no tiene una empresa asociada");
+        }
+
+        // 2. Obtener vehiculos activos de la empresa
+        List<Vehiculo> vehiculos = vehiculoRepository.findByEmpresaIdAndActivoTrueOrderByMatriculaAsc(empresa.getId());
+
+        // 3. Mapear datos del encabezado
+        EmpresaReporteDto empresaDto = EmpresaReporteDto.builder()
+                .codigo(empresa.getCodigo())
+                .nombre(empresa.getNombre())
+                .direccion(empresa.getDireccion())
+                .telefono(empresa.getTelefono())
+                .email(empresa.getEmail())
+                .build();
+
+        // 4. Mapear datos de vehiculos
+        List<VehiculoFilaReporteDto> vehiculosDto = vehiculos.stream()
+                .map(v -> VehiculoFilaReporteDto.builder()
+                        .tipoVehiculo(v.getTipoVehiculo().getNombre())
+                        .matricula(v.getMatricula())
+                        .marca(v.getMarca().getNombre())
+                        .modelo(v.getModelo())
+                        .numeroMotor(v.getNumeroMotor())
+                        .odometro(v.getOdometro() != null ? v.getOdometro().toString() : "0")
+                        .combustibleLitros(v.getCombustible() != null ? v.getCombustible().toPlainString() : "0.00")
+                        .build())
+                .collect(Collectors.toList());
+
+        // 5. Fecha de impresion
+        String fechaImpresion = LocalDateTime.now().format(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+
+        // 6. Construir modelo para Thymeleaf
+        Map<String, Object> model = new HashMap<>();
+        model.put("empresa", empresaDto);
+        model.put("vehiculos", vehiculosDto);
+        model.put("fechaImpresion", fechaImpresion);
+
+        // 7. Generar PDF
+        return pdfGenerationService.generatePdf("reports/vehiculos-listado", model);
     }
 }
