@@ -5,6 +5,8 @@ import com.fleet.management.dto.plan.PlanResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
+
 public interface PlanService {
 
     Page<PlanResponse> findAll(Pageable pageable);
@@ -16,4 +18,6 @@ public interface PlanService {
     PlanResponse update(Long id, PlanRequest request);
 
     void delete(Long id);
+
+    BigDecimal calcularImporteFacturacion(Long planId, boolean facturarAnual);
 }

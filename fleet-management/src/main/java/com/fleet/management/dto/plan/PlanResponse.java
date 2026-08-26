@@ -21,6 +21,7 @@ public class PlanResponse {
     private Integer maxUsuarios;
     private Integer maxVehiculos;
     private Integer duracion;
+    private BigDecimal porcientoDescuentoAnual;
     private List<FeatureResponse> features;
     private Boolean activo;
     private LocalDateTime fechaCreacion;
