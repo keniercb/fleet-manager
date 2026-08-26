@@ -65,7 +65,7 @@ public class RateLimitFilter implements Filter {
                 log.warn("Rate limit excedido para IP {} en {}. Rechazado. Reintentar en {}s",
                         clientIp, httpRequest.getRequestURI(), retryAfter);
 
-                httpResponse.setStatus(HttpServletResponse.SC_TOO_MANY_REQUESTS);
+                httpResponse.setStatus(429);
                 httpResponse.setContentType("application/json");
                 httpResponse.setHeader("Retry-After", String.valueOf(retryAfter));
 
