@@ -35,4 +35,46 @@ public interface RecorridoRepository extends JpaRepository<Recorrido, Long> {
                                                                          @Param("fecha") LocalDate fecha);
 
     Page<Recorrido> findAllByActivoTrue(Pageable pageable);
+
+    @Query("SELECT r.vehiculo.id AS vehiculoId, " +
+           "v.matricula AS matricula, " +
+           "v.modelo AS modelo, " +
+           "m.nombre AS marcaNombre, " +
+           "tc.codigo AS tipoCombustibleCodigo, " +
+           "e.nombre AS empresaNombre, " +
+           "CAST(SUM(r.kilometros) AS BigDecimal) AS kmTotal, " +
+           "COALESCE(SUM(r.litrosAbastecidos), 0) AS litrosTotal, " +
+           "CAST(SUM(r.kilometros * v.indiceConsumo / 100) AS BigDecimal) AS consumoTeorico " +
+           "FROM Recorrido r " +
+           "JOIN r.vehiculo v " +
+           "JOIN v.marca m " +
+           "JOIN v.tipoCombustible tc " +
+           "JOIN v.empresa e " +
+           "WHERE r.activo = true AND r.fecha BETWEEN :desde AND :hasta " +
+           "AND v.empresa.id = :empresaId " +
+           "AND (:tipoVehiculoId IS NULL OR v.tipoVehiculo.id = :tipoVehiculoId) " +
+           "AND (:marcaId IS NULL OR v.marca.id = :marcaId) " +
+           "AND (:tipoCombustibleId IS NULL OR v.tipoCombustible.id = :tipoCombustibleId) " +
+           "GROUP BY r.vehiculo.id, v.matricula, v.modelo, m.nombre, tc.codigo, e.nombre")
+    List<ConsumoVehiculoProjection> consumoPorVehiculo(@Param("empresaId") Long empresaId,
+                                                      @Param("desde") LocalDate desde,
+                                                      @Param("hasta") LocalDate hasta,
+                                                      @Param("tipoVehiculoId") Long tipoVehiculoId,
+                                                      @Param("marcaId") Long marcaId,
+                                                      @Param("tipoCombustibleId") Long tipoCombustibleId);
+
+    @Query("SELECT COUNT(DISTINCT r.vehiculo.id) " +
+           "FROM Recorrido r " +
+           "JOIN r.vehiculo v " +
+           "WHERE r.activo = true AND r.fecha BETWEEN :desde AND :hasta " +
+           "AND v.empresa.id = :empresaId " +
+           "AND (:tipoVehiculoId IS NULL OR v.tipoVehiculo.id = :tipoVehiculoId) " +
+           "AND (:marcaId IS NULL OR v.marca.id = :marcaId) " +
+           "AND (:tipoCombustibleId IS NULL OR v.tipoCombustible.id = :tipoCombustibleId)")
+    long countConsumoPorVehiculo(@Param("empresaId") Long empresaId,
+                                 @Param("desde") LocalDate desde,
+                                 @Param("hasta") LocalDate hasta,
+                                 @Param("tipoVehiculoId") Long tipoVehiculoId,
+                                 @Param("marcaId") Long marcaId,
+                                 @Param("tipoCombustibleId") Long tipoCombustibleId);
 }
