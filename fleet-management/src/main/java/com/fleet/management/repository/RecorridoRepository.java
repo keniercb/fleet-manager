@@ -77,4 +77,50 @@ public interface RecorridoRepository extends JpaRepository<Recorrido, Long> {
                                  @Param("tipoVehiculoId") Long tipoVehiculoId,
                                  @Param("marcaId") Long marcaId,
                                  @Param("tipoCombustibleId") Long tipoCombustibleId);
+
+    // --- Abastecimiento Report ---
+
+    @Query("SELECT r.vehiculo.id AS vehiculoId, " +
+           "v.matricula AS matricula, " +
+           "v.modelo AS modelo, " +
+           "m.nombre AS marcaNombre, " +
+           "tc.codigo AS tipoCombustibleCodigo, " +
+           "COUNT(r) AS totalAbastecimientos, " +
+           "SUM(r.litrosAbastecidos) AS totalLitros, " +
+           "MIN(r.fecha) AS fechaPrimera, " +
+           "MAX(r.fecha) AS fechaUltima " +
+           "FROM Recorrido r " +
+           "JOIN r.vehiculo v " +
+           "JOIN v.marca m " +
+           "JOIN v.tipoCombustible tc " +
+           "WHERE r.activo = true " +
+           "AND r.litrosAbastecidos IS NOT NULL AND r.litrosAbastecidos > 0 " +
+           "AND r.fecha BETWEEN :desde AND :hasta " +
+           "AND v.empresa.id = :empresaId " +
+           "AND (:vehiculoId IS NULL OR r.vehiculo.id = :vehiculoId) " +
+           "AND (:lugarAbastecimiento IS NULL OR r.lugarAbastecimiento = :lugarAbastecimiento) " +
+           "GROUP BY r.vehiculo.id, v.matricula, v.modelo, m.nombre, tc.codigo")
+    List<AbastecimientoVehiculoProjection> abastecimientoPorVehiculo(@Param("empresaId") Long empresaId,
+                                                                      @Param("vehiculoId") Long vehiculoId,
+                                                                      @Param("lugarAbastecimiento") String lugarAbastecimiento,
+                                                                      @Param("desde") LocalDate desde,
+                                                                      @Param("hasta") LocalDate hasta);
+
+    @Query("SELECT r.vehiculo.id AS vehiculoId, " +
+           "r.lugarAbastecimiento AS lugarAbastecimiento, " +
+           "COUNT(r) AS total " +
+           "FROM Recorrido r " +
+           "WHERE r.activo = true " +
+           "AND r.litrosAbastecidos IS NOT NULL AND r.litrosAbastecidos > 0 " +
+           "AND r.fecha BETWEEN :desde AND :hasta " +
+           "AND r.vehiculo.empresa.id = :empresaId " +
+           "AND r.lugarAbastecimiento IS NOT NULL " +
+           "AND (:vehiculoId IS NULL OR r.vehiculo.id = :vehiculoId) " +
+           "AND (:lugarAbastecimiento IS NULL OR r.lugarAbastecimiento = :lugarAbastecimiento) " +
+           "GROUP BY r.vehiculo.id, r.lugarAbastecimiento")
+    List<AbastecimientoLugarProjection> lugarMasFrecuentePorVehiculo(@Param("empresaId") Long empresaId,
+                                                                      @Param("vehiculoId") Long vehiculoId,
+                                                                      @Param("lugarAbastecimiento") String lugarAbastecimiento,
+                                                                      @Param("desde") LocalDate desde,
+                                                                      @Param("hasta") LocalDate hasta);
 }

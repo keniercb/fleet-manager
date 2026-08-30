@@ -1,6 +1,9 @@
 package com.fleet.management.controller;
 
+import com.fleet.management.dto.reporte.AbastecimientoReporteResponse;
+import com.fleet.management.dto.reporte.MantenimientoReporteResponse;
 import com.fleet.management.dto.reporte.VehiculoConsumoReporteDTO;
+import com.fleet.management.service.ReporteMantenimientoService;
 import com.fleet.management.service.ReporteTransporteService;
 import com.fleet.management.util.PaginationUtils;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,7 +23,8 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class ReporteTransporteController {
 
-    private final ReporteTransporteService service;
+    private final ReporteTransporteService reporteTransporteService;
+    private final ReporteMantenimientoService reporteMantenimientoService;
 
     @GetMapping("/consumo-vehiculo")
     public ResponseEntity<Page<VehiculoConsumoReporteDTO>> consumoPorVehiculo(
@@ -35,8 +39,37 @@ public class ReporteTransporteController {
             @RequestParam(defaultValue = "ASC") String sortOrder) {
 
         Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, size, sort, sortOrder));
-        Page<VehiculoConsumoReporteDTO> resultado = service.consumoPorVehiculo(
+        Page<VehiculoConsumoReporteDTO> resultado = reporteTransporteService.consumoPorVehiculo(
                 fechaDesde, fechaHasta, tipoVehiculoId, marcaId, tipoCombustibleId, pageable);
+        return ResponseEntity.ok(resultado);
+    }
+
+    @GetMapping("/abastecimiento")
+    public ResponseEntity<Page<AbastecimientoReporteResponse>> abastecimientoPorVehiculo(
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long vehiculoId,
+            @RequestParam(required = false) String lugarAbastecimiento,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @RequestParam(defaultValue = "vehiculoResumido.matricula") String sort,
+            @RequestParam(defaultValue = "ASC") String sortOrder) {
+
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, size, sort, sortOrder));
+        Page<AbastecimientoReporteResponse> resultado = reporteTransporteService.abastecimientoPorVehiculo(
+                desde, hasta, vehiculoId, lugarAbastecimiento, pageable);
+        return ResponseEntity.ok(resultado);
+    }
+
+    @GetMapping("/mantenimiento")
+    public ResponseEntity<Page<MantenimientoReporteResponse>> reporteMantenimiento(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @RequestParam(defaultValue = "vehiculoResumido.matricula") String sort,
+            @RequestParam(defaultValue = "ASC") String sortOrder) {
+
+        Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, size, sort, sortOrder));
+        Page<MantenimientoReporteResponse> resultado = reporteMantenimientoService.reporteMantenimiento(pageable);
         return ResponseEntity.ok(resultado);
     }
 }
