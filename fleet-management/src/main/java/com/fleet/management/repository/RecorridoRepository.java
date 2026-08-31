@@ -123,4 +123,47 @@ public interface RecorridoRepository extends JpaRepository<Recorrido, Long> {
                                                                       @Param("lugarAbastecimiento") String lugarAbastecimiento,
                                                                       @Param("desde") LocalDate desde,
                                                                       @Param("hasta") LocalDate hasta);
+
+    // --- Consumo por Tipo de Combustible (SQL Nativo) ---
+
+    @Query(value = "SELECT tc.denominacion AS tipo_combustible, " +
+           "COALESCE(SUM(r.consumo), 0) AS volumen_consumido, " +
+           "COALESCE(SUM(r.litros_abastecidos), 0) AS volumen_abastecido, " +
+           "COALESCE(SUM(r.importe_abastecido), 0) AS costo_estimado, " +
+           "COUNT(r.id) AS cantidad_recorridos " +
+           "FROM recorridos r " +
+           "INNER JOIN vehiculos v ON r.vehiculo_id = v.id " +
+           "INNER JOIN tipos_combustible tc ON v.tipo_combustible_id = tc.id " +
+           "WHERE r.activo = true " +
+           "AND r.fecha BETWEEN :desde AND :hasta " +
+           "AND v.empresa_id = :empresaId " +
+           "AND (:tipoVehiculoId IS NULL OR v.tipo_vehiculo_id = :tipoVehiculoId) " +
+           "GROUP BY tc.denominacion " +
+           "ORDER BY volumen_consumido DESC",
+           nativeQuery = true)
+    List<ConsumoPorCombustibleProjection> consumoPorTipoCombustible(
+            @Param("empresaId") Long empresaId,
+            @Param("desde") LocalDate desde,
+            @Param("hasta") LocalDate hasta,
+            @Param("tipoVehiculoId") Long tipoVehiculoId);
+
+    @Query(value = "SELECT tc.denominacion AS tipo_combustible, " +
+           "COALESCE(SUM(r.consumo), 0) AS volumen_consumido, " +
+           "COALESCE(SUM(r.litros_abastecidos), 0) AS volumen_abastecido, " +
+           "COALESCE(SUM(r.importe_abastecido), 0) AS costo_estimado, " +
+           "COUNT(r.id) AS cantidad_recorridos " +
+           "FROM recorridos r " +
+           "INNER JOIN vehiculos v ON r.vehiculo_id = v.id " +
+           "INNER JOIN tipos_combustible tc ON v.tipo_combustible_id = tc.id " +
+           "WHERE r.activo = true " +
+           "AND r.fecha BETWEEN :desdeAnterior AND :hastaAnterior " +
+           "AND v.empresa_id = :empresaId " +
+           "AND (:tipoVehiculoId IS NULL OR v.tipo_vehiculo_id = :tipoVehiculoId) " +
+           "GROUP BY tc.denominacion",
+           nativeQuery = true)
+    List<ConsumoPorCombustibleProjection> consumoPorTipoCombustiblePeriodoAnterior(
+            @Param("empresaId") Long empresaId,
+            @Param("desdeAnterior") LocalDate desdeAnterior,
+            @Param("hastaAnterior") LocalDate hastaAnterior,
+            @Param("tipoVehiculoId") Long tipoVehiculoId);
 }
