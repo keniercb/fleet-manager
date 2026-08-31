@@ -1,8 +1,10 @@
 package com.fleet.management.controller;
 
 import com.fleet.management.dto.reporte.AbastecimientoReporteResponse;
+import com.fleet.management.dto.reporte.ConsumoCombustibleResponse;
 import com.fleet.management.dto.reporte.MantenimientoReporteResponse;
 import com.fleet.management.dto.reporte.VehiculoConsumoReporteDTO;
+import com.fleet.management.service.ReporteConsumoCombustibleService;
 import com.fleet.management.service.ReporteMantenimientoService;
 import com.fleet.management.service.ReporteTransporteService;
 import com.fleet.management.util.PaginationUtils;
@@ -25,6 +27,7 @@ public class ReporteTransporteController {
 
     private final ReporteTransporteService reporteTransporteService;
     private final ReporteMantenimientoService reporteMantenimientoService;
+    private final ReporteConsumoCombustibleService reporteConsumoCombustibleService;
 
     @GetMapping("/consumo-vehiculo")
     public ResponseEntity<Page<VehiculoConsumoReporteDTO>> consumoPorVehiculo(
@@ -70,6 +73,17 @@ public class ReporteTransporteController {
 
         Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, size, sort, sortOrder));
         Page<MantenimientoReporteResponse> resultado = reporteMantenimientoService.reporteMantenimiento(pageable);
+        return ResponseEntity.ok(resultado);
+    }
+
+    @GetMapping("/consumo-por-combustible")
+    public ResponseEntity<ConsumoCombustibleResponse> consumoPorTipoCombustible(
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta,
+            @RequestParam(required = false) Long tipoVehiculoId) {
+
+        ConsumoCombustibleResponse resultado = reporteConsumoCombustibleService.generarReporte(
+                fechaDesde, fechaHasta, tipoVehiculoId);
         return ResponseEntity.ok(resultado);
     }
 }
