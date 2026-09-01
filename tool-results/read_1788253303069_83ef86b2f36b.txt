@@ -1,0 +1,1190 @@
+     1→# Documento Técnico — Sistema de Gestión del Parque de Vehículos (Fleet Management)
+     2→
+     3→**Versión:** 2.0  
+     4→**Fecha:** 2026-08-26  
+     5→**Estado:** Desarrollo activo  
+     6→**Rama:** `developFT`
+     7→
+     8→---
+     9→
+    10→## Tabla de Contenido
+    11→
+    12→1. [Introducción](#1-introducción)
+    13→2. [Stack Tecnológico](#2-stack-tecnológico)
+    14→3. [Arquitectura del Sistema](#3-arquitectura-del-sistema)
+    15→4. [Estructura del Proyecto](#4-estructura-del-proyecto)
+    16→5. [Modelo de Datos](#5-modelo-de-datos)
+    17→6. [API REST — Endpoints](#6-api-rest--endpoints)
+    18→7. [Seguridad y Autenticación](#7-seguridad-y-autenticación)
+    19→8. [Capa de Servicios — Lógica de Negocio](#8-capa-de-servicios--lógica-de-negocio)
+    20→9. [Reportes](#9-reportes)
+    21→10. [Manejo de Excepciones](#10-manejo-de-excepciones)
+    22→11. [Utilidades y Patrones Comunes](#11-utilidades-y-patrones-comunes)
+    23→12. [Inicialización de Datos](#12-inicialización-de-datos)
+    24→13. [Decisiones de Diseño](#13-decisiones-de-diseño)
+    25→14. [Pruebas Unitarias](#14-pruebas-unitarias)
+    26→15. [Configuración de Entornos](#15-configuración-de-entornos)
+    27→16. [Problemas Conocidos y Mejoras Pendientes](#16-problemas-conocidos-y-mejoras-pendientes)
+    28→
+    29→---
+    30→
+    31→## 1. Introducción
+    32→
+    33→El **Sistema de Gestión del Parque de Vehículos** (Fleet Management) es una aplicación backend construida con Spring Boot que proporciona una API REST para la gestión integral de vehículos, choferes, empresas, recorridos, tarjetas de combustible y los catálogos maestros asociados (marcas, tipos de vehículos, tipos de combustible, categorías de licencia, monedas). El sistema implementa control de acceso basado en roles (RBAC) con tres niveles (SUPER_ADMIN, ADMIN, USER), auditoría automática de entidades, lógica de negocio transaccional para la gestión de recorridos y consumo de combustible, y un módulo de reportes de movimiento mensual.
+    34→
+    35→El sistema está diseñado como un microservicio backend que puede ser consumido por cualquier frontend (Angular, React, Vue) a través de su API REST documentada con OpenAPI/Swagger.
+    36→
+    37→### Alcance Funcional
+    38→
+    39→- Gestión de **Empresas** propietarias de vehículos
+    40→- Gestión de **Vehículos** con control de odómetro y combustible
+    41→- Gestión de **Choferes** con categorías de licencia
+    42→- Registro y control de **Recorridos** con cálculo automático de consumo y validación de saldo de tarjetas de combustible
+    43→- Gestión de **Tarjetas de Combustible** con control de saldo y relación a monedas
+    44→- Gestión de **Monedas (Currency)** como catálogo maestro
+    45→- **Reporte de movimiento mensual** por vehículo con análisis de consumo comparado con la norma
+    46→- Gestión de catálogos maestros: **Marcas**, **Tipos de Vehículo**, **Tipos de Combustible**, **Categorías de Licencia**
+    47→- Sistema de **Autenticación JWT** con tres roles y permisos granulares
+    48→- **Auditoría automática** en todas las entidades (creador, modificador, timestamps)
+    49→- **Baja lógica** (soft delete) en todas las entidades
+    50→- **Filtrado** en endpoints de listado por texto libre
+    51→- Cambio de **contraseña** autenticado
+    52→- Asociación de **usuarios a empresas** con protección de empresa del administrador
+    53→
+    54→---
+    55→
+    56→## 2. Stack Tecnológico
+    57→
+    58→| Componente | Tecnología | Versión | Observaciones |
+    59→|---|---|---|---|
+    60→| Lenguaje | Java | 17 | LTS |
+    61→| Framework | Spring Boot | 3.3.5 | |
+    62→| Build Tool | Maven | — | `pom.xml` |
+    63→| ORM | Spring Data JPA / Hibernate | (managed by Spring Boot) | `ddl-auto=update` |
+    64→| Base de datos (desarrollo) | H2 | (in-memory) | Consola habilitada en `/h2-console` |
+    65→| Base de datos (producción) | PostgreSQL | — | Requiere instalación externa |
+    66→| Seguridad | Spring Security + JWT (jjwt) | 0.12.6 | Sesiones stateless |
+    67→| Validación | Jakarta Bean Validation | (Jakarta EE 10) | Anotaciones en entidades y DTOs |
+    68→| Reducción de boilerplate | Lombok | (managed by Spring Boot) | `@Getter`, `@Setter`, `@SuperBuilder`, `@Builder` |
+    69→| Documentación API | OpenAPI / Swagger v3 | (springdoc) | Tags en controladores |
+    70→| Testing | JUnit 5 + Mockito | (Spring Boot Starter Test) | Solo pruebas unitarias |
+    71→| Logs | SLF4J + Logback | (Spring Boot default) | DEBUG en desarrollo |
+    72→
+    73→**Dependencias NO utilizadas (decisiones conscientes):**
+    74→
+    75→- **MapStruct:** Mapeo entidad-DTO realizado manualmente
+    76→- **QueryDSL:** Consultas construidas con métodos Spring Data JPA derivados y `@Query`
+    77→- **Flyway / Liquibase:** Sin migraciones versionadas de base de datos
+    78→- **Spring Cache:** Sin mecanismo de caché
+    79→- **Thymeleaf / Flying Saucer:** Sin generación de PDF (pendiente)
+    80→
+    81→---
+    82→
+    83→## 3. Arquitectura del Sistema
+    84→
+    85→### 3.1 Patrón Arquitectónico
+    86→
+    87→El sistema sigue una **arquitectura en capas (Layered Architecture)** clásica con separación estricta de responsabilidades:
+    88→
+    89→```
+    90→┌──────────────────────────────────────────────┐
+    91→│              Cliente (Frontend)              │
+    92→│         Angular / React / Vue / cURL         │
+    93→└────────────────────┬─────────────────────────┘
+    94→                     │ HTTP/REST (JSON)
+    95→┌────────────────────▼─────────────────────────┐
+    96→│           Controladores (Controllers)         │
+    97→│      Validación de entrada, paginación,       │
+    98→│      filtrado, mapeo request → servicio      │
+    99→├──────────────────────────────────────────────┤
+   100→│             Servicios (Services)              │
+   101→│      Lógica de negocio, reglas,              │
+   102→│      mapeo entidad ↔ DTO                      │
+   103→├──────────────────────────────────────────────┤
+   104→│            Repositorios (Repositories)        │
+   105→│      Spring Data JPA, consultas,             │
+   106→│      abstracción de acceso a datos            │
+   107→├──────────────────────────────────────────────┤
+   108→│              Modelo de Dominio                 │
+   109→│      Entidades JPA, BaseEntity,              │
+   110→│      relaciones, auditoría                    │
+   111→├──────────────────────────────────────────────┤
+   112→│               Base de Datos                   │
+   113→│        H2 (dev) / PostgreSQL (prod)           │
+   114→└──────────────────────────────────────────────┘
+   115→```
+   116→
+   117→### 3.2 Capas Detalladas
+   118→
+   119→#### Controladores (`controller/`)
+   120→
+   121→- Exponen endpoints REST bajo el prefijo `/api/`
+   122→- Reciben `XRequest` DTOs con anotaciones de validación Jakarta
+   123→- Delegan al servicio correspondiente
+   124→- Retornan `ResponseEntity<XResponse>` con códigos HTTP apropiados
+   125→- Todos los endpoints de listado soportan **paginación** y algunos soportan **filtrado** por texto libre
+   126→- 15 controladores REST en total
+   127→
+   128→#### Servicios (`service/` + `service/impl/`)
+   129→
+   130→- Cada dominio tiene una interfaz `XService` y su implementación `XServiceImpl`
+   131→- 16 servicios en total (incluyendo `AuthService`)
+   132→- Contienen toda la lógica de negocio y reglas de validación
+   133→- Realizan el mapeo manual entre entidades y DTOs mediante métodos `toResponse()` privados
+   134→- Anotados con `@Transactional` para garantizar atomicidad
+   135→
+   136→#### Repositorios (`repository/`)
+   137→
+   138→- 14 interfaces Spring Data JPA que extienden `JpaRepository<Entity, Long>`
+   139→- Proveen métodos de búsqueda por claves naturales (`findByCodigo`, `findByEmail`, `findByMatricula`, `findByNumero`, `findByIsoCode`, etc.)
+   140→- Todos incluyen `findAllByActivoTrue(Pageable)` para soportar baja lógica con paginación
+   141→- Algunos incluyen métodos de búsqueda con filtro: `findAllByActivoTrueAndNombreContainingIgnoreCase(String filter, Pageable)`
+   142→- Algunos incluyen consultas personalizadas con `@Query`
+   143→
+   144→#### Modelo (`model/`)
+   145→
+   146→- 16 entidades JPA que heredan de `BaseEntity`
+   147→- Relaciones mapeadas con `FetchType.LAZY` (excepto `User.roles` y `Role.permissions` que son `EAGER`)
+   148→- Validaciones con anotaciones Jakarta (`@NotNull`, `@NotBlank`, `@Size`, `@Past`, `@PastOrPresent`, `@DecimalMin`, `@Positive`, `@Email`)
+   149→
+   150→---
+   151→
+   152→## 4. Estructura del Proyecto
+   153→
+   154→```
+   155→fleet-management/
+   156→├── pom.xml                                          # Configuración Maven y dependencias
+   157→├── src/
+   158→│   ├── main/
+   159→│   │   ├── java/com/fleet/management/
+   160→│   │   │   ├── FleetManagementApplication.java       # Punto de entrada Spring Boot
+   161→│   │   │   ├── config/                               # Configuración de la aplicación
+   162→│   │   │   │   ├── DataInitializer.java              # Bootstrap de datos iniciales
+   163→│   │   │   │   ├── JpaAuditingConfig.java            # Habilita @EnableJpaAuditing
+   164→│   │   │   │   └── SecurityConfig.java               # Cadena de filtros JWT, CORS, RBAC
+   165→│   │   │   ├── security/                             # Componentes de seguridad
+   166→│   │   │   │   ├── AuthenticatedUser.java            # UserDetails personalizado (envuelve User)
+   167→│   │   │   │   ├── CustomUserDetailsService.java     # Carga de usuario + autoridades
+   168→│   │   │   │   ├── JwtAuthenticationFilter.java      # Filtro OncePerRequest para JWT
+   169→│   │   │   │   └── JwtService.java                   # Generación y validación de tokens JWT
+   170→│   │   │   ├── model/                                # 16 entidades JPA
+   171→│   │   │   │   ├── BaseEntity.java                   # Superclase abstracta (id, audit, soft-delete)
+   172→│   │   │   │   ├── User.java                         # Usuario del sistema (con empresa)
+   173→│   │   │   │   ├── Role.java                         # Rol (RBAC)
+   174→│   │   │   │   ├── Permission.java                   # Permiso granular
+   175→│   │   │   │   ├── Empresa.java                      # Empresa propietaria
+   176→│   │   │   │   ├── Vehiculo.java                     # Vehículo
+   177→│   │   │   │   ├── Chofer.java                       # Chofer / Conductor
+   178→│   │   │   │   ├── ChoferCategoria.java              # Relación chofer-categoría licencia
+   179→│   │   │   │   ├── CategoriaLicencia.java            # Categoría de licencia (A, B, C...)
+   180→│   │   │   │   ├── TipoVehiculo.java                 # Tipo de vehículo (camión, auto...)
+   181→│   │   │   │   ├── Marca.java                        # Marca de vehículo
+   182→│   │   │   │   ├── TipoCombustible.java              # Tipo de combustible
+   183→│   │   │   │   ├── Recorrido.java                    # Recorrido / Viaje
+   184→│   │   │   │   ├── TarjetaCombustible.java           # Tarjeta de combustible
+   185→│   │   │   │   └── Currency.java                     # Moneda (código ISO)
+   186→│   │   │   ├── dto/                                  # DTOs de request/response por dominio
+   187→│   │   │   │   ├── auth/                             # LoginRequestDto, AuthResponseDto, CambioPasswordRequest
+   188→│   │   │   │   ├── user/                             # UserRequest, UserResponse, UserAuditResponse
+   189→│   │   │   │   ├── role/                             # RoleRequest, RoleResponse
+   190→│   │   │   │   ├── permission/                       # PermissionRequest, PermissionResponse
+   191→│   │   │   │   ├── empresa/                          # EmpresaRequest, EmpresaResponse
+   192→│   │   │   │   ├── vehiculo/                         # VehiculoRequest, VehiculoResponse
+   193→│   │   │   │   ├── chofer/                           # ChoferRequest, ChoferResponse
+   194→│   │   │   │   ├── chofercategoria/                  # ChoferCategoriaRequest, ChoferCategoriaResponse, ChoferCategoriaEmbeddedResponse
+   195→│   │   │   │   ├── recorriddo/                      # RecorridoRequest, RecorridoResponse
+   196→│   │   │   │   ├── tipovehiculo/                     # TipoVehiculoRequest, TipoVehiculoResponse
+   197→│   │   │   │   ├── marca/                            # MarcaRequest, MarcaResponse
+   198→│   │   │   │   ├── tipocombustible/                  # TipoCombustibleRequest, TipoCombustibleResponse
+   199→│   │   │   │   ├── categorialicencia/               # CategoriaLicenciaRequest, CategoriaLicenciaResponse
+   200→│   │   │   │   ├── tarjetacombustible/               # TarjetaCombustibleRequest, TarjetaCombustibleResponse
+   201→│   │   │   │   ├── currency/                         # CurrencyRequest, CurrencyResponse
+   202→│   │   │   │   └── reporte/                          # VehiculoReporteData, LecturaDiariaResponse, AnalisisConsumoResponse, ReporteMovimientoMensualResponse
+   203→│   │   │   ├── repository/                           # 14 repositorios Spring Data JPA
+   204→│   │   │   ├── service/                              # 16 interfaces de servicio
+   205→│   │   │   ├── service/impl/                         # 16 implementaciones de servicio
+   206→│   │   │   ├── controller/                           # 15 controladores REST
+   207→│   │   │   ├── exception/                            # Manejo global de excepciones
+   208→│   │   │   │   ├── GlobalExceptionHandler.java       # @RestControllerAdvice
+   209→│   │   │   │   ├── ResourceNotFoundException.java     # Excepción 404
+   210→│   │   │   │   └── BusinessException.java             # Excepción 400
+   211→│   │   │   └── util/                                 # Utilidades compartidas
+   212→│   │   │       ├── PaginationUtils.java              # Conversión de paginación
+   213→│   │   │       ├── PaginationParams.java             # POJO de parámetros de paginación
+   214→│   │   │       └── AuditMapper.java                  # Mapeo User → UserAuditResponse
+   215→│   │   └── resources/
+   216→│   │       ├── application.properties                # Configuración común
+   217→│   │       ├── application-dev.properties            # Perfil desarrollo (H2)
+   218→│   │       └── application-prod.properties           # Perfil producción (PostgreSQL)
+   219→│   └── test/
+   220→│       └── java/com/fleet/management/service/impl/   # 13 clases de prueba unitaria
+   221→└── scripts/                                           # Scripts Python de refactorización
+   222→    ├── replace_to_pagination_utils.py
+   223→    ├── fix_controllers.py
+   224→    ├── fix_tolist.py
+   225→    ├── add_pagination.py
+   226→    └── replace_pageable.py
+   227→```
+   228→
+   229→---
+   230→
+   231→## 5. Modelo de Datos
+   232→
+   233→### 5.1 BaseEntity — Superclase Abstracta
+   234→
+   235→Todas las entidades heredan de `BaseEntity`, la cual proporciona campos comunes de identificación, auditoría y eliminación lógica:
+   236→
+   237→| Campo | Tipo | Restricciones | Descripción |
+   238→|---|---|---|---|
+   239→| `id` | `Long` | PK, auto-increment `IDENTITY` | Identificador único |
+   240→| `activo` | `Boolean` | `NOT NULL`, default `true` | Flag de baja lógica (soft delete) |
+   241→| `fechaCreacion` | `LocalDateTime` | `NOT NULL`, `updatable=false` | Fecha de creación (auto vía `@PrePersist`) |
+   242→| `fechaActualizacion` | `LocalDateTime` | nullable | Fecha de última modificación (auto vía `@PreUpdate`) |
+   243→| `creadoPor` | `User` (lazy) | FK `creado_por_id` | Usuario que creó la entidad |
+   244→| `modificadoPor` | `User` (lazy) | FK `modificado_por_id` | Usuario que modificó la entidad por última vez |
+   245→
+   246→**Mecanismo de auditoría:** Los campos `creadoPor` y `modificadoPor` se pueblan automáticamente en los callbacks `@PrePersist` y `@PreUpdate` de `BaseEntity`, leyendo el `AuthenticatedUser` del `SecurityContextHolder`. Esto permite capturar la entidad `User` completa (no solo el nombre) como referencia de auditoría.
+   247→
+   248→### 5.2 Diagrama de Relaciones Entidad (ER)
+   249→
+   250→```
+   251→                          ┌─────────────┐
+   252→                          │   Permission │
+   253→                          ├─────────────┤
+   254→                          │ id          │
+   255→                          │ name (UQ)   │
+   256→                          │ description │
+   257→                          │ [audit...]  │
+   258→                          └──────┬──────┘
+   259→                                 │ M:N
+   260→                          ┌──────▼──────┐     ┌──────────────────┐
+   261→                          │    Role     │────▶│      User        │
+   262→                          ├─────────────┤ M:N ├──────────────────┤
+   263→                          │ id          │     │ id               │
+   264→                          │ name (UQ)   │     │ email (UQ)      │
+   265→                          │ description │     │ password         │
+   266→                          │ [audit...]  │     │ roles (M:N)      │
+   267→                          └─────────────┘     │ empresa (FK)     │
+   268→                                              │ [audit...]       │
+   269→                                              └──────┬───────────┘
+   270→                                                     │ N:1
+   271→
+   272→┌───────────────────┐        ┌───────────────────┐
+   273→│     Empresa       │        │  TipoVehiculo     │
+   274→├───────────────────┤        ├───────────────────┤
+   275→│ id                │────┐   │ id                │
+   276→│ codigo (UQ)       │    │   │ nombre (UQ)       │
+   277→│ nombre            │    │   │ descripcion       │
+   278→│ direccion         │    │   │ [audit...]        │
+   279→│ telefono          │    │   └────────┬──────────┘
+   280→│ email             │    │            │
+   281→│ [audit...]        │    │            │
+   282→└───────┬───────────┘    │            │
+   283→        │ 1:N            │            │
+   284→        │                │            │
+   285→┌───────▼───────┐  ┌────▼────┐  ┌─────▼──────┐   ┌──────────────────┐
+   286→│   Vehiculo    │  │ Chofer  │  │   Marca    │   │ TipoCombustible  │
+   287→├───────────────┤  ├─────────┤  ├────────────┤   ├──────────────────┤
+   288→│ id            │  │ id      │  │ id         │   │ id               │
+   289→│ matricula(UQ) │  │ empresa │  │ nombre(UQ) │   │ codigo (UQ)      │
+   290→│ numero_motor  │  │ nombre  │  │ descripcion│   │ denominacion     │
+   291→│   (UQ)        │  │ apellidos│ │ paisOrigen │   │ descripcion      │
+   292→│ modelo        │  │ carne_  │  │ [audit...] │   │ [audit...]       │
+   293→│ odometro      │  │ identidad│ └─────┬──────┘   └────────┬─────────┘
+   294→│ combustible   │  │ (UQ)   │        │                   │
+   295→│ indiceConsumo │  │ numero_ │        └──────┐    ┌──────┘
+   296→│ [FKs...]      │  │ licencia│               │    │
+   297→│ [audit...]    │  │ (UQ)   │               │    │
+   298→└───────┬───────┘  │ fecha_  │               │    │
+   299→        │          │ nacimiento│              │    │
+   300→        │ 1:N      │ [audit...]│              │    │
+   301→┌───────▼───────┐  └────┬─────┘              │    │
+   302→│   Recorrido   │       │ 1:N                │    │
+   303→├───────────────┤  ┌────▼──────────────┐     │    │
+   304→│ id            │  │  ChoferCategoria  │     │    │
+   305→│ vehiculo (FK) │  ├───────────────────┤     │    │
+   306→│ fecha         │  │ chofer_id +       │     │    │
+   307→│ kilometros    │  │ categoria_lic_id  │     │    │
+   308→│ odometroInic. │  │ (UQ compuesto)    │     │    │
+   309→│ combustibleIn.│  │ fechaEmision      │     │    │
+   310→│ consumo       │  └────────┬──────────┘     │    │
+   311→│ litrosAbast.  │           │ N:1             │    │
+   312→│ chofer (FK)   │  ┌────────▼──────────┐     │    │
+   313→│ tarjeta (FK)  │  │CategoriaLicencia  │     │    │
+   314→│ numeroChip    │  ├───────────────────┤     │    │
+   315→│ lugarAbast.   │  │ id                │     │    │
+   316→│ importeAbast. │  │ codigo (UQ, 1ch)  │     │    │
+   317→│ [audit...]    │  │ denominacion      │     │    │
+   318→└───────────────┘  │ descripcion       │     │    │
+   319→                   │ [audit...]        │     │    │
+   320→                   └──────────────────┘     │    │
+   321→                                             │    │
+   322→       Vehiculo ──┬── empresa (FK, NOT NULL)  │
+   323→                  ├── tipoVehiculo (FK, NOT NULL)  │
+   324→                  ├── marca (FK, NOT NULL) ──────┘    │
+   325→                  ├── chofer (FK, nullable)             │
+   326→                  └── tipoCombustible (FK, NOT NULL) ───┘
+   327→
+   328→┌───────────────────┐     ┌───────────────┐
+   329→│ TarjetaCombustible│     │   Currency     │
+   330→├───────────────────┤     ├───────────────┤
+   331→│ id                │     │ id            │
+   332→│ numero (UQ)       │────▶│ isoCode (UQ)  │
+   333→│ saldo             │ N:1 │ descripcion   │
+   334→│ empresa (FK)      │     │ [audit...]    │
+   335→│ [audit...]        │     └───────────────┘
+   336→└───────────────────┘
+   337→
+   338→Unicidad compuesta en Recorrido: (vehiculo_id, fecha)
+   339→Unicidad compuesta en ChoferCategoria: (chofer_id, categoria_licencia_id)
+   340→```
+   341→
+   342→### 5.3 Detalle de Entidades
+   343→
+   344→#### 5.3.1 User
+   345→
+   346→| Campo | Tipo | Restricciones | Descripción |
+   347→|---|---|---|---|
+   348→| `email` | `String(100)` | `NOT NULL`, `UNIQUE` | Correo electrónico (login) |
+   349→| `password` | `String(255)` | `NOT NULL` | Contraseña encriptada con BCrypt |
+   350→| `roles` | `Set<Role>` | M:N via `user_roles` | Roles asignados al usuario |
+   351→| `empresa` | `Empresa` | N:1, LAZY, nullable | Empresa a la que pertenece el usuario |
+   352→
+   353→#### 5.3.2 Role
+   354→
+   355→| Campo | Tipo | Restricciones | Descripción |
+   356→|---|---|---|---|
+   357→| `name` | `String(50)` | `NOT NULL`, `UNIQUE` | Nombre del rol (ej: SUPER_ADMIN, ADMIN, USER) |
+   358→| `description` | `String(255)` | nullable | Descripción del rol |
+   359→| `permissions` | `Set<Permission>` | M:N via `role_permissions` | Permisos asignados al rol |
+   360→
+   361→#### 5.3.3 Permission
+   362→
+   363→| Campo | Tipo | Restricciones | Descripción |
+   364→|---|---|---|---|
+   365→| `name` | `String` | `UNIQUE` | Nombre del permiso (ej: `vehiculo:read`) |
+   366→| `description` | `String` | nullable | Descripción del permiso |
+   367→
+   368→#### 5.3.4 Empresa
+   369→
+   370→| Campo | Tipo | Restricciones | Descripción |
+   371→|---|---|---|---|
+   372→| `codigo` | `String(30)` | `NOT NULL`, `UNIQUE` | Código identificador de la empresa |
+   373→| `nombre` | `String(150)` | `NOT NULL` | Nombre de la empresa |
+   374→| `direccion` | `String(255)` | nullable | Dirección física |
+   375→| `telefono` | `String(20)` | nullable | Teléfono de contacto |
+   376→| `email` | `String(100)` | nullable, `@Email` | Correo electrónico |
+   377→
+   378→#### 5.3.5 Vehiculo
+   379→
+   380→| Campo | Tipo | Restricciones | Descripción |
+   381→|---|---|---|---|
+   382→| `empresa` | `Empresa` | `NOT NULL`, FK | Empresa propietaria |
+   383→| `tipoVehiculo` | `TipoVehiculo` | `NOT NULL`, FK | Tipo de vehículo |
+   384→| `marca` | `Marca` | `NOT NULL`, FK | Marca del vehículo |
+   385→| `chofer` | `Chofer` | nullable, FK | Chofer asignado (puede ser null) |
+   386→| `tipoCombustible` | `TipoCombustible` | `NOT NULL`, FK | Tipo de combustible |
+   387→| `matricula` | `String(20)` | `NOT NULL`, `UNIQUE` | Matrícula / placa |
+   388→| `modelo` | `String(100)` | nullable | Modelo del vehículo |
+   389→| `numeroMotor` | `String(50)` | `NOT NULL`, `UNIQUE` | Número de motor |
+   390→| `odometro` | `BigInteger` | `NOT NULL`, `>= 0` | Kilometraje actual del odómetro |
+   391→| `combustible` | `BigDecimal(10,2)` | `NOT NULL`, `>= 0` | Nivel actual de combustible (litros) |
+   392→| `ultimoMantenimiento` | `LocalDate` | `@PastOrPresent` | Fecha del último mantenimiento |
+   393→| `odometroUltimoMantenimiento` | `BigInteger` | `>= 0` | Odómetro en el último mantenimiento |
+   394→| `indiceConsumo` | `BigDecimal(10,2)` | `NOT NULL`, `> 0` | Consumo por cada 100 km (L/100km) |
+   395→
+   396→#### 5.3.6 Chofer
+   397→
+   398→| Campo | Tipo | Restricciones | Descripción |
+   399→|---|---|---|---|
+   400→| `empresa` | `Empresa` | `NOT NULL`, FK | Empresa a la que pertenece |
+   401→| `nombre` | `String(50)` | `NOT NULL` | Nombre del chofer |
+   402→| `apellidos` | `String(100)` | `NOT NULL` | Apellidos del chofer |
+   403→| `carneIdentidad` | `String(20)` | `NOT NULL`, `UNIQUE` | Carné de identidad |
+   404→| `numeroLicencia` | `String(30)` | `NOT NULL`, `UNIQUE` | Número de licencia de conducir |
+   405→| `fechaNacimiento` | `LocalDate` | `NOT NULL`, `@Past` | Fecha de nacimiento |
+   406→| `categorias` | `List<ChoferCategoria>` | 1:N, cascade ALL | Categorías de licencia con fecha de emisión |
+   407→
+   408→#### 5.3.7 ChoferCategoria
+   409→
+   410→| Campo | Tipo | Restricciones | Descripción |
+   411→|---|---|---|---|
+   412→| `chofer` | `Chofer` | FK (parte de UK compuesto) | Chofer |
+   413→| `categoriaLicencia` | `CategoriaLicencia` | FK (parte de UK compuesto) | Categoría de licencia |
+   414→| `fechaEmision` | `LocalDate` | `NOT NULL` | Fecha de emisión de la categoría |
+   415→
+   416→**Unicidad compuesta:** `(chofer_id, categoria_licencia_id)`
+   417→
+   418→#### 5.3.8 CategoriaLicencia
+   419→
+   420→| Campo | Tipo | Restricciones | Descripción |
+   421→|---|---|---|---|
+   422→| `codigo` | `String` | `UNIQUE` (1 carácter) | Código de categoría (A, B, C, D, E...) |
+   423→| `denominacion` | `String` | `NOT NULL` | Denominación de la categoría |
+   424→| `descripcion` | `String` | nullable | Descripción detallada |
+   425→
+   426→#### 5.3.9 TipoVehiculo
+   427→
+   428→| Campo | Tipo | Restricciones | Descripción |
+   429→|---|---|---|---|
+   430→| `nombre` | `String` | `UNIQUE`, `NOT NULL` | Nombre del tipo (Camión, Auto, Ómnibus...) |
+   431→| `descripcion` | `String` | nullable | Descripción del tipo |
+   432→
+   433→#### 5.3.10 Marca
+   434→
+   435→| Campo | Tipo | Restricciones | Descripción |
+   436→|---|---|---|---|
+   437→| `nombre` | `String` | `UNIQUE`, `NOT NULL` | Nombre de la marca |
+   438→| `descripcion` | `String` | nullable | Descripción de la marca |
+   439→| `paisOrigen` | `String` | nullable | País de origen de la marca |
+   440→
+   441→#### 5.3.11 TipoCombustible
+   442→
+   443→| Campo | Tipo | Restricciones | Descripción |
+   444→|---|---|---|---|
+   445→| `codigo` | `String` | `UNIQUE` | Código del tipo (ej: diesel, gasolina) |
+   446→| `denominacion` | `String` | `NOT NULL` | Denominación completa |
+   447→| `descripcion` | `String` | nullable | Descripción del tipo de combustible |
+   448→
+   449→#### 5.3.12 Recorrido
+   450→
+   451→| Campo | Tipo | Restricciones | Descripción |
+   452→|---|---|---|---|
+   453→| `vehiculo` | `Vehiculo` | FK (parte de UK compuesto) | Vehículo que realiza el recorrido |
+   454→| `fecha` | `LocalDate` | FK (parte de UK compuesto), `@PastOrPresent` | Fecha del recorrido |
+   455→| `kilometros` | `Integer` | `NOT NULL`, `>= 1` | Kilómetros recorridos |
+   456→| `odometroInicial` | `BigInteger` | `NOT NULL`, `>= 0` | Odómetro del vehículo antes del recorrido |
+   457→| `combustibleInicial` | `BigDecimal(10,2)` | `NOT NULL`, `>= 0` | Combustible en depósito antes del recorrido |
+   458→| `consumo` | `BigDecimal(10,2)` | `NOT NULL`, `>= 0` | Combustible consumido = (índiceConsumo × km) / 100 |
+   459→| `litrosAbastecidos` | `BigDecimal(10,2)` | `NOT NULL`, `>= 0` | Litros repostados durante el recorrido |
+   460→| `chofer` | `Chofer` | nullable, FK | Chofer que realizó el recorrido |
+   461→| `numeroChip` | `String(50)` | nullable | Número de chip de la tarjeta de combustible |
+   462→| `lugarAbastecimiento` | `String(100)` | nullable | Lugar donde se repostó |
+   463→| `tarjetaCombustible` | `TarjetaCombustible` | nullable, FK | Tarjeta de combustible utilizada |
+   464→| `importeAbastecido` | `Double` | nullable | Importe monetario del abastecimiento |
+   465→
+   466→**Unicidad compuesta:** `(vehiculo_id, fecha)`
+   467→
+   468→#### 5.3.13 TarjetaCombustible
+   469→
+   470→| Campo | Tipo | Restricciones | Descripción |
+   471→|---|---|---|---|
+   472→| `numero` | `String(50)` | `NOT NULL`, `UNIQUE` | Número de tarjeta |
+   473→| `saldo` | `Double` | `NOT NULL`, `> 0` | Saldo disponible en la tarjeta |
+   474→| `currency` | `Currency` | `NOT NULL`, FK | Moneda asociada a la tarjeta |
+   475→| `empresa` | `Empresa` | `NOT NULL`, FK | Empresa propietaria de la tarjeta |
+   476→
+   477→#### 5.3.14 Currency
+   478→
+   479→| Campo | Tipo | Restricciones | Descripción |
+   480→|---|---|---|---|
+   481→| `isoCode` | `String(10)` | `NOT NULL`, `UNIQUE` | Código ISO de la moneda (ej: USD, CUP, EUR) |
+   482→| `descripcion` | `String(100)` | `NOT NULL` | Descripción de la moneda |
+   483→
+   484→---
+   485→
+   486→## 6. API REST — Endpoints
+   487→
+   488→### 6.1 Autenticación
+   489→
+   490→| Método | Ruta | Descripción | Auth | Rol requerido |
+   491→|---|---|---|---|---|
+   492→| `POST` | `/api/auth/login` | Iniciar sesión, retorna JWT | No | — |
+   493→| `POST` | `/api/auth/logout` | Cerrar sesión (no-op, stateless) | No | — |
+   494→| `GET` | `/api/auth/me` | Obtener usuario actual (con empresa) | Sí | Cualquiera |
+   495→| `PUT` | `/api/auth/cambiar-password` | Cambiar contraseña del usuario | Sí | Cualquiera |
+   496→
+   497→**`CambioPasswordRequest`:** `userId`, `passwordAnterior`, `nuevaPassword`, `confirmacionPassword` — valida que la contraseña anterior coincida y que la nueva contraseña y su confirmación sean iguales.
+   498→
+   499→### 6.2 Gestión de Usuarios
+   500→
+   501→| Método | Ruta | Descripción | Rol requerido |
+   502→|---|---|---|---|
+   503→| `GET` | `/api/users` | Listar usuarios (paginado, filtrable) | SUPER_ADMIN, ADMIN |
+   504→| `GET` | `/api/users/{id}` | Obtener usuario por ID | SUPER_ADMIN, ADMIN |
+   505→| `GET` | `/api/users/email/{email}` | Obtener usuario por email | SUPER_ADMIN, ADMIN |
+   506→| `GET` | `/api/users/empresa/{empresaId}` | Usuarios por empresa (paginado, filtrable) | SUPER_ADMIN, ADMIN |
+   507→| `POST` | `/api/users` | Crear usuario | SUPER_ADMIN, ADMIN |
+   508→| `PUT` | `/api/users/{id}` | Actualizar usuario | SUPER_ADMIN, ADMIN |
+   509→| `DELETE` | `/api/users/{id}` | Eliminar usuario (lógico) | SUPER_ADMIN, ADMIN |
+   510→
+   511→### 6.3 Gestión de Roles
+   512→
+   513→| Método | Ruta | Descripción | Rol requerido |
+   514→|---|---|---|---|
+   515→| `GET` | `/api/roles/**` | Listar/obtener roles (solo lectura) | SUPER_ADMIN, ADMIN |
+   516→| `POST/PUT/DELETE` | `/api/roles/**` | Crear, actualizar, eliminar roles | SUPER_ADMIN |
+   517→
+   518→### 6.4 Gestión de Permisos
+   519→
+   520→| Método | Ruta | Descripción | Rol requerido |
+   521→|---|---|---|---|
+   522→| Todos | `/api/permissions/**` | CRUD completo de permisos | SUPER_ADMIN |
+   523→
+   524→### 6.5 Gestión de Empresas
+   525→
+   526→| Método | Ruta | Descripción | Rol requerido |
+   527→|---|---|---|---|
+   528→| `GET` | `/api/empresas` | Listar empresas (paginado, filtrable) | Autenticado |
+   529→| `GET` | `/api/empresas/{id}` | Obtener empresa por ID | Autenticado |
+   530→| `GET` | `/api/empresas/codigo/{codigo}` | Buscar empresa por código | Autenticado |
+   531→| `POST` | `/api/empresas` | Crear empresa | Autenticado |
+   532→| `PUT` | `/api/empresas/{id}` | Actualizar empresa | Autenticado |
+   533→| `DELETE` | `/api/empresas/{id}` | Eliminar empresa (lógico) | Autenticado |
+   534→
+   535→### 6.6 Gestión de Vehículos
+   536→
+   537→| Método | Ruta | Descripción | Rol requerido |
+   538→|---|---|---|---|
+   539→| `GET` | `/api/vehiculos` | Listar vehículos (paginado, filtrable) | Autenticado |
+   540→| `GET` | `/api/vehiculos/{id}` | Obtener vehículo por ID | Autenticado |
+   541→| `GET` | `/api/vehiculos/sin-chofer` | Vehículos sin chofer asignado | Autenticado |
+   542→| `GET` | `/api/vehiculos/chofer/{choferId}` | Vehículos por chofer | Autenticado |
+   543→| `GET` | `/api/vehiculos/tipo-vehiculo/{tipoVehiculoId}` | Vehículos por tipo de vehículo | Autenticado |
+   544→| `GET` | `/api/vehiculos/tipo-combustible/{tipoCombustibleId}` | Vehículos por tipo de combustible | Autenticado |
+   545→| `GET` | `/api/vehiculos/empresa/{empresaId}` | Vehículos por empresa (paginado, filtrable) | Autenticado |
+   546→| `GET` | `/api/vehiculos/reporte-movimiento-mensual/{vehiculoId}?mes=&anio=` | Reporte mensual de movimiento | Autenticado |
+   547→| `POST` | `/api/vehiculos` | Crear vehículo | Autenticado |
+   548→| `PUT` | `/api/vehiculos/{id}` | Actualizar vehículo | Autenticado |
+   549→| `DELETE` | `/api/vehiculos/{id}` | Eliminar vehículo (lógico) | Autenticado |
+   550→
+   551→### 6.7 Gestión de Choferes
+   552→
+   553→| Método | Ruta | Descripción | Rol requerido |
+   554→|---|---|---|---|
+   555→| `GET` | `/api/choferes` | Listar choferes (paginado, filtrable) | Autenticado |
+   556→| `GET` | `/api/choferes/{id}` | Obtener chofer por ID | Autenticado |
+   557→| `GET` | `/api/choferes/empresa/{empresaId}` | Choferes por empresa (paginado, filtrable) | Autenticado |
+   558→| `POST` | `/api/choferes` | Crear chofer (con categorías) | Autenticado |
+   559→| `PUT` | `/api/choferes/{id}` | Actualizar chofer (reemplaza categorías) | Autenticado |
+   560→| `DELETE` | `/api/choferes/{id}` | Eliminar chofer (lógico + categorías) | Autenticado |
+   561→
+   562→### 6.8 Gestión de Recorridos
+   563→
+   564→| Método | Ruta | Descripción | Rol requerido |
+   565→|---|---|---|---|
+   566→| `GET` | `/api/recorridos` | Listar recorridos (paginado) | Autenticado |
+   567→| `GET` | `/api/recorridos/{id}` | Obtener recorrido por ID | Autenticado |
+   568→| `GET` | `/api/recorridos/vehiculo/{vehiculoId}?from=&to=` | Recorridos por vehículo (rango de fechas opcional) | Autenticado |
+   569→| `POST` | `/api/recorridos` | Crear recorrido | Autenticado |
+   570→| `PUT` | `/api/recorridos/{id}` | Actualizar recorrido | Autenticado |
+   571→| `DELETE` | `/api/recorridos/{id}` | Eliminar recorrido (lógico, revierte odómetro/combustible) | Autenticado |
+   572→
+   573→### 6.9 Gestión de Tarjetas de Combustible
+   574→
+   575→| Método | Ruta | Descripción | Rol requerido |
+   576→|---|---|---|---|
+   577→| `GET` | `/api/tarjetas-combustible` | Listar tarjetas (paginado, filtrable) | Autenticado |
+   578→| `GET` | `/api/tarjetas-combustible/{id}` | Obtener por ID | Autenticado |
+   579→| `GET` | `/api/tarjetas-combustible/numero/{numero}` | Buscar por número de tarjeta | Autenticado |
+   580→| `GET` | `/api/tarjetas-combustible/empresa/{empresaId}` | Tarjetas por empresa (paginado, filtrable) | Autenticado |
+   581→| `POST` | `/api/tarjetas-combustible` | Crear tarjeta | Autenticado |
+   582→| `PUT` | `/api/tarjetas-combustible/{id}` | Actualizar tarjeta | Autenticado |
+   583→| `DELETE` | `/api/tarjetas-combustible/{id}` | Eliminar tarjeta (lógico) | Autenticado |
+   584→
+   585→### 6.10 Gestión de Monedas
+   586→
+   587→| Método | Ruta | Descripción | Rol requerido |
+   588→|---|---|---|---|
+   589→| `GET` | `/api/currencies` | Listar monedas (paginado) | Autenticado |
+   590→| `GET` | `/api/currencies/{id}` | Obtener por ID | Autenticado |
+   591→| `GET` | `/api/currencies/iso-code/{isoCode}` | Buscar por código ISO | Autenticado |
+   592→| `POST` | `/api/currencies` | Crear moneda | Autenticado |
+   593→| `PUT` | `/api/currencies/{id}` | Actualizar moneda | Autenticado |
+   594→| `DELETE` | `/api/currencies/{id}` | Eliminar moneda (lógico) | Autenticado |
+   595→
+   596→### 6.11 Catálogos Maestros
+   597→
+   598→Todos los catálogos siguen el patrón CRUD estándar con paginación y requieren autenticación:
+   599→
+   600→- **Tipos de Vehículo:** `/api/tipos-vehiculo`
+   601→- **Marcas:** `/api/marcas`
+   602→- **Tipos de Combustible:** `/api/tipos-combustible`
+   603→- **Categorías de Licencia:** `/api/categorias-licencia`
+   604→- **Categorías de Chofer:** `/api/choferes-categorias`
+   605→
+   606→### 6.12 Parámetros de Paginación y Filtrado
+   607→
+   608→| Parámetro | Default | Descripción |
+   609→|---|---|---|
+   610→| `page` | `0` | Número de página (1-based desde el cliente, convertido a 0-based internamente) |
+   611→| `perPage` | `20` | Elementos por página |
+   612→| `sort` | `id` | Campo de ordenamiento |
+   613→| `sortOrder` | `ASC` | Dirección: `ASC` o `DESC` |
+   614→| `filter` | (none) | Texto libre para filtrado por nombre/código (solo en endpoints que lo soportan) |
+   615→
+   616→**Respuesta paginada estándar (Spring Page):**
+   617→
+   618→```json
+   619→{
+   620→  "content": [...],
+   621→  "pageable": { "pageNumber": 0, "pageSize": 20, ... },
+   622→  "totalElements": 150,
+   623→  "totalPages": 8,
+   624→  "last": false,
+   625→  "first": true,
+   626→  "size": 20,
+   627→  "number": 0,
+   628→  "numberOfElements": 20,
+   629→  "empty": false
+   630→}
+   631→```
+   632→
+   633→---
+   634→
+   635→## 7. Seguridad y Autenticación
+   636→
+   637→### 7.1 Flujo de Autenticación JWT
+   638→
+   639→```
+   640→1. Cliente → POST /api/auth/login { email, password }
+   641→2. AuthenticationManager → authenticate(username, password)
+   642→3. JwtService → generateToken(user)
+   643→   - subject: email del usuario
+   644→   - claim "roles": lista de nombres de roles
+   645→   - expiración: 24 horas
+   646→   - algoritmo: HMAC-SHA
+   647→4. Respuesta → { token: "eyJhbG..." }
+   648→5. Cliente → GET /api/vehiculos con Header: Authorization: Bearer eyJhbG...
+   649→6. JwtAuthenticationFilter → extrae token → valida → carga AuthenticatedUser
+   650→7. AuthenticatedUser envuelve la entidad User de JPA
+   651→8. SecurityContext populated → Authorized
+   652→```
+   653→
+   654→### 7.2 Componentes de Seguridad
+   655→
+   656→| Componente | Responsabilidad |
+   657→|---|---|
+   658→| `SecurityConfig` | Configura la cadena de filtros, CORS, reglas de acceso por rol. Usa `@EnableMethodSecurity` para autorización a nivel de método |
+   659→| `JwtAuthenticationFilter` | `OncePerRequestFilter` que extrae y valida el token Bearer en cada petición |
+   660→| `JwtService` | Genera tokens JWT con claims de roles; valida firma, expiración y sujeto |
+   661→| `AuthenticatedUser` | Implementa `UserDetails` envolviendo la entidad `User` de JPA, permitiendo acceso a la entidad completa desde el `SecurityContext` |
+   662→| `CustomUserDetailsService` | Carga el usuario desde la base de datos, asignando autoridades `ROLE_` + permisos. Verifica que el usuario esté activo |
+   663→
+   664→### 7.3 Reglas de Acceso
+   665→
+   666→| Ruta | Acceso |
+   667→|---|---|
+   668→| `/api/auth/**` | Público (sin autenticación) |
+   669→| `/api/users/**` | Requiere rol `SUPER_ADMIN` o `ADMIN` |
+   670→| `/api/roles/**` (GET) | Requiere rol `SUPER_ADMIN` o `ADMIN` |
+   671→| `/api/roles/**` (POST/PUT/DELETE) | Requiere rol `SUPER_ADMIN` |
+   672→| `/api/permissions/**` | Requiere rol `SUPER_ADMIN` |
+   673→| `/swagger-ui/**`, `/v3/api-docs/**` | Público |
+   674→| `/h2-console/**` | Público (solo desarrollo) |
+   675→| Cualquier otra ruta `/api/**` | Requiere autenticación (cualquier rol) |
+   676→
+   677→### 7.4 Configuración CORS
+   678→
+   679→| Propiedad | Valor |
+   680→|---|---|
+   681→| Orígenes permitidos | `http://localhost:4200`, `http://localhost:3000`, `http://localhost:5173` |
+   682→| Métodos permitidos | GET, POST, PUT, PATCH, DELETE, OPTIONS |
+   683→| Headers permitidos | `*` (todos) |
+   684→| Credenciales | Permitidas |
+   685→| Max-Age | 3600 segundos |
+   686→
+   687→### 7.5 Autoridades Granted
+   688→
+   689→El `CustomUserDetailsService` asigna dos tipos de autoridades al autenticar un usuario:
+   690→
+   691→1. **Autoridades de rol:** `ROLE_SUPER_ADMIN`, `ROLE_ADMIN`, `ROLE_USER` (por cada rol asignado al usuario)
+   692→2. **Autoridades de permiso:** `vehiculo:read`, `vehiculo:write`, etc. (por cada permiso en cada rol)
+   693→
+   694→Esto permite el uso de `@PreAuthorize("hasRole('SUPER_ADMIN')")` o `@PreAuthorize("hasAuthority('vehiculo:write')")` en futuros endpoints granulares.
+   695→
+   696→---
+   697→
+   698→## 8. Capa de Servicios — Lógica de Negocio
+   699→
+   700→### 8.1 Patrón CRUD Estándar
+   701→
+   702→Todos los servicios implementan el siguiente patrón, con variaciones específicas por dominio:
+   703→
+   704→| Operación | Comportamiento general |
+   705→|---|---|
+   706→| `findAll(Pageable)` | `repository.findAllByActivoTrue(pageable)` → mapea a `Page<XResponse>` |
+   707→| `findAll(String filter, Pageable)` | Búsqueda con filtro opcional por texto libre (nombre/código) |
+   708→| `findById(Long)` | Busca por ID, lanza `ResourceNotFoundException` si no existe o está inactivo |
+   709→| `create(XRequest)` | Valida campos únicos, lanza `BusinessException` si hay duplicados, guarda y retorna respuesta |
+   710→| `update(Long, XRequest)` | Valida campos únicos excluyendo la entidad actual, actualiza y retorna respuesta |
+   711→| `delete(Long)` | Baja lógica: establece `activo = false` y guarda |
+   712→
+   713→### 8.2 Lógica de Negocio Específica por Servicio
+   714→
+   715→#### 8.2.1 RecorridoServiceImpl — La lógica más compleja
+   716→
+   717→El servicio de recorridos es el núcleo del dominio de negocio y contiene las reglas transaccionales más críticas del sistema:
+   718→
+   719→**Creación de recorrido (`create`):**
+   720→1. Valida que el vehículo exista
+   721→2. Verifica unicidad: no puede existir más de un recorrido para el mismo vehículo en la misma fecha
+   722→3. Verifica orden cronológico: no se puede insertar un recorrido con fecha anterior si ya existe un recorrido posterior para el mismo vehículo
+   723→4. Registra el `combustibleInicial` como el combustible actual del vehículo
+   724→5. Calcula automáticamente el consumo: `consumo = (índiceConsumo × kilómetros) / 100`, redondeado a 2 decimales
+   725→6. Valida disponibilidad de combustible: `combustibleRestante = combustibleActual - consumo + litrosAbastecidos >= 0`
+   726→7. Registra el `odometroInicial` como el odómetro actual del vehículo
+   727→8. Si se usa tarjeta de combustible, valida que el `importeAbastecido` no exceda el saldo disponible y descuenta del saldo
+   728→9. Actualiza atómicamente el vehículo: incrementa el odómetro y decrementa el combustible
+   729→10. Todas las operaciones se ejecutan dentro de una transacción `@Transactional`
+   730→
+   731→**Actualización de recorrido (`update`):**
+   732→1. No permite cambiar el vehículo ni la fecha del recorrido
+   733→2. Restaura el consumo antiguo al vehículo antes de calcular el nuevo
+   734→3. Restaura el combustible inicial y el saldo de la tarjeta (si aplica)
+   735→4. Recalcula el consumo con los nuevos kilómetros
+   736→5. Verifica disponibilidad de combustible y saldo de tarjeta con los nuevos valores
+   737→6. Restaura y recalcula el odómetro del vehículo
+   738→7. Actualiza atómicamente la entidad y el vehículo
+   739→
+   740→**Eliminación de recorrido (`delete`):**
+   741→1. Restaura los kilómetros al odómetro del vehículo (resta)
+   742→2. Restaura el combustible consumido al vehículo (suma)
+   743→3. Restaura el saldo de la tarjeta de combustible (si aplica)
+   744→4. Ejecuta la baja lógica del recorrido (`activo = false`)
+   745→
+   746→#### 8.2.2 ChoferServiceImpl — Creación anidada de categorías
+   747→
+   748→- El `ChoferRequest` incluye una lista de `CategoriaConFechaRequest` (pares `categoriaLicenciaId` + `fechaEmision`)
+   749→- Al crear un chofer, se crean automáticamente las relaciones `ChoferCategoria` con sus fechas de emisión
+   750→- Al actualizar, se eliminan todas las categorías existentes y se recrean con la nueva lista
+   751→- Al eliminar, se desactivan también todas las categorías del chofer
+   752→
+   753→#### 8.2.3 VehiculoServiceImpl — Validación de doble unicidad
+   754→
+   755→- Valida que tanto la `matrícula` como el `número de motor` sean únicos al crear y actualizar
+   756→- Al actualizar, excluye el ID del vehículo actual de la verificación de unicidad
+   757→- Delega al servicio de recorridos la generación del reporte mensual de movimiento
+   758→
+   759→#### 8.2.4 TarjetaCombustibleServiceImpl — Control de saldo
+   760→
+   761→- Al crear una tarjeta, el saldo inicial debe ser positivo
+   762→- La validación de saldo en recorridos se realiza en `RecorridoServiceImpl`, no aquí
+   763→- Soporta filtrado por empresa y búsqueda por número
+   764→
+   765→#### 8.2.5 AuthServiceImpl — Autenticación y cambio de contraseña
+   766→
+   767→- `login`: Autentica vía `AuthenticationManager`, genera token JWT, retorna `AuthResponseDto` con token, email, roles y permisos
+   768→- `getCurrentUser`: Retorna la entidad `User` del `SecurityContext`
+   769→- `cambiarPassword`: Valida contraseña anterior, verifica coincidencia de nueva contraseña y confirmación, encripta y guarda
+   770→
+   771→### 8.3 Mapeo Entidad ↔ DTO
+   772→
+   773→El mapeo se realiza de forma **manual** en cada `XServiceImpl` mediante métodos privados `toResponse()` y `toEntity()` o `toResumido()`. No se utiliza MapStruct ni ninguna librería de mapeo automático.
+   774→
+   775→**Patrón típico:**
+   776→
+   777→```java
+   778→private XResponse toResponse(X entity) {
+   779→    return XResponse.builder()
+   780→            .id(entity.getId())
+   781→            .campo1(entity.getCampo1())
+   782→            .campo2(entity.getCampo2())
+   783→            .activo(entity.getActivo())
+   784→            .fechaCreacion(entity.getFechaCreacion())
+   785→            .fechaActualizacion(entity.getFechaActualizacion())
+   786→            .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
+   787→            .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
+   788→            .build();
+   789→}
+   790→```
+   791→
+   792→**Para relaciones anidadas**, se crean métodos auxiliares como `toEmpresaResumido()` que construyen respuestas parciales para evitar referencias circulares.
+   793→
+   794→---
+   795→
+   796→## 9. Reportes
+   797→
+   798→### 9.1 Reporte de Movimiento Mensual por Vehículo
+   799→
+   800→**Endpoint:** `GET /api/vehiculos/reporte-movimiento-mensual/{vehiculoId}?mes={mes}&anio={anio}`
+   801→
+   802→Este reporte genera un análisis completo del consumo de combustible de un vehículo durante un mes específico. Se calcula de forma iterativa día a día simulando el estado del depósito de combustible y el odómetro.
+   803→
+   804→**Parámetros:**
+   805→
+   806→| Parámetro | Tipo | Descripción |
+   807→|---|---|---|
+   808→| `vehiculoId` | Long (path) | ID del vehículo |
+   809→| `mes` | Integer (query) | Mes (1-12) |
+   810→| `anio` | Integer (query) | Año (ej: 2026) |
+   811→
+   812→**Respuesta (`ReporteMovimientoMensualResponse`):**
+   813→
+   814→```json
+   815→{
+   816→  "vehiculo": {
+   817→    "marca": "Toyota",
+   818→    "numeroMotor": "ABC123",
+   819→    "tipoCombustible": "Diesel",
+   820→    "normaConsumo": 8.50,
+   821→    "matricula": "A-123-456",
+   822→    "chofer": { ... }
+   823→  },
+   824→  "lecturas": [
+   825→    {
+   826→      "dia": 1,
+   827→      "odometro": 15000,
+   828→      "combustibleEnDeposito": 50.00,
+   829→      "combustibleConsumido": 8.50,
+   830→      "combustibleAbastecido": 0.00,
+   831→      "saldoCombustible": 41.50,
+   832→      "kilometrosRecorridos": 100
+   833→    }
+   834→  ],
+   835→  "analisis": {
+   836→    "combustibleInicial": 50.00,
+   837→    "combustibleRecibido": 20.00,
+   838→    "combustibleConsumido": 45.50,
+   839→    "existenciaFinal": 24.50,
+   840→    "kilometrosRecorridos": 535,
+   841→    "consumidoSegunNorma": 45.48
+   842→  }
+   843→}
+   844→```
+   845→
+   846→**DTOs del reporte:**
+   847→
+   848→| DTO | Campos | Descripción |
+   849→|---|---|---|
+   850→| `VehiculoReporteData` | `marca`, `numeroMotor`, `tipoCombustible`, `normaConsumo`, `matricula`, `chofer` | Datos del vehículo para el encabezado del reporte |
+   851→| `LecturaDiariaResponse` | `dia`, `odometro`, `combustibleEnDeposito`, `combustibleConsumido`, `combustibleAbastecido`, `saldoCombustible`, `kilometrosRecorridos` | Estado diario simulado del depósito |
+   852→| `AnalisisConsumoResponse` | `combustibleInicial`, `combustibleRecibido`, `combustibleConsumido`, `existenciaFinal`, `kilometrosRecorridos`, `consumidoSegunNorma` | Resumen mensual con comparación contra la norma |
+   853→
+   854→**Lógica de cálculo:**
+   855→
+   856→El reporte procesa los recorridos del vehículo ordenados por fecha dentro del mes solicitado. Para cada día del mes, se calcula:
+   857→- Si hay recorrido ese día: se registra el consumo real, los kilómetros recorridos y el abastecimiento
+   858→- Si no hay recorrido: se copian los valores del día anterior (odómetro y combustible se mantienen)
+   859→- El `saldoCombustible` se calcula como: `combustibleEnDeposito - combustibleConsumido + combustibleAbastecido`
+   860→- El análisis final compara el consumo real total con el consumo esperado según la norma (índiceConsumo)
+   861→
+   862→---
+   863→
+   864→## 10. Manejo de Excepciones
+   865→
+   866→### 10.1 Excepciones Personalizadas
+   867→
+   868→| Excepción | Código HTTP | Uso |
+   869→|---|---|---|
+   870→| `ResourceNotFoundException` | 404 Not Found | Entidad no encontrada por ID o búsqueda |
+   871→| `BusinessException` | 400 Bad Request | Violación de regla de negocio (duplicados, reglas de recorrido, etc.) |
+   872→| `MethodArgumentNotValidException` | 400 Bad Request | Errores de validación de campos (Jakarta Bean Validation) |
+   873→| `Exception` (catch-all) | 500 Internal Server Error | Errores no esperados |
+   874→
+   875→### 10.2 Formato de Respuesta de Error (ApiError)
+   876→
+   877→```json
+   878→{
+   879→  "timestamp": "2026-08-26T10:30:00",
+   880→  "status": 404,
+   881→  "error": "Not Found",
+   882→  "message": "Vehiculo no encontrado con id: 999",
+   883→  "path": "/api/vehiculos/999",
+   884→  "fieldErrors": null
+   885→}
+   886→```
+   887→
+   888→Para errores de validación, `fieldErrors` contiene un mapa campo → mensaje:
+   889→
+   890→```json
+   891→{
+   892→  "timestamp": "2026-08-26T10:30:00",
+   893→  "status": 400,
+   894→  "error": "Bad Request",
+   895→  "message": "Errores de validacion",
+   896→  "path": "/api/vehiculos",
+   897→  "fieldErrors": {
+   898→    "matricula": "La matricula es obligatoria",
+   899→    "odometro": "El odometro no puede ser negativo"
+   900→  }
+   901→}
+   902→```
+   903→
+   904→---
+   905→
+   906→## 11. Utilidades y Patrones Comunes
+   907→
+   908→### 11.1 PaginationUtils
+   909→
+   910→Clase utilitaria estática que centraliza la lógica de paginación:
+   911→
+   912→- **`params(int page, int perPage, String sortBy, String sortOrder)`:** Convierte los parámetros del controlador (1-based) a `PaginationParams` (0-based). Resta 1 al número de página para convertir de base-1 a base-0, con un mínimo de 0.
+   913→- **`of(PaginationParams)`:** Convierte `PaginationParams` a Spring `PageRequest` con ordenamiento.
+   914→
+   915→### 11.2 AuditMapper
+   916→
+   917→Utilidad estática que convierte una entidad `User` a `UserAuditResponse` (solo `id` + `email`), evitando referencias circulares en las respuestas DTO que incluyen campos de auditoría.
+   918→
+   919→### 11.3 Patrón de Nombres
+   920→
+   921→| Capa | Convención | Ejemplo |
+   922→|---|---|---|
+   923→| Entidad | Sustantivo singular | `Vehiculo` |
+   924→| Repositorio | Entidad + `Repository` | `VehiculoRepository` |
+   925→| Servicio (interfaz) | Entidad + `Service` | `VehiculoService` |
+   926→| Servicio (impl) | Entidad + `ServiceImpl` | `VehiculoServiceImpl` |
+   927→| Controlador | Entidad + `Controller` | `VehiculoController` |
+   928→| DTO Request | Entidad + `Request` | `VehiculoRequest` |
+   929→| DTO Response | Entidad + `Response` | `VehiculoResponse` |
+   930→| DTO de auditoría | `UserAuditResponse` | Solo `id` + `email` |
+   931→
+   932→### 11.4 Nomenclatura de Tablas
+   933→
+   934→Las tablas en la base de datos siguen la convención de **plural en español con snake_case**:
+   935→
+   936→| Entidad | Tabla |
+   937→|---|---|
+   938→| `User` | `users` |
+   939→| `Role` | `roles` |
+   940→| `Permission` | `permissions` |
+   941→| `Empresa` | `empresas` |
+   942→| `Vehiculo` | `vehiculos` |
+   943→| `Chofer` | `choferes` |
+   944→| `ChoferCategoria` | `choferes_categorias` |
+   945→| `CategoriaLicencia` | `categorias_licencia` |
+   946→| `TipoVehiculo` | `tipos_vehiculo` |
+   947→| `Marca` | `marcas` |
+   948→| `TipoCombustible` | `tipos_combustible` |
+   949→| `Recorrido` | `recorridos` |
+   950→| `TarjetaCombustible` | `tarjetas_combustible` |
+   951→| `Currency` | `currencies` |
+   952→| `User` ↔ `Role` | `user_roles` |
+   953→| `Role` ↔ `Permission` | `role_permissions` |
+   954→
+   955→---
+   956→
+   957→## 12. Inicialización de Datos
+   958→
+   959→### 12.1 DataInitializer (Bootstrap)
+   960→
+   961→Se ejecuta automáticamente al iniciar la aplicación mediante `CommandLineRunner`. Crea los datos iniciales solo si no existen (idempotente):
+   962→
+   963→**Empresa por defecto:**
+   964→
+   965→| Campo | Valor |
+   966→|---|---|
+   967→| Código | `EMP-ADMIN` |
+   968→| Nombre | `Empresa de Administracion` |
+   969→
+   970→**31 Permisos creados:**
+   971→
+   972→| Dominio | Permisos |
+   973→|---|---|
+   974→| `user` | `user:read`, `user:write`, `user:delete` |
+   975→| `role` | `role:read`, `role:write`, `role:delete` |
+   976→| `permission` | `permission:read`, `permission:write`, `permission:delete` |
+   977→| `vehiculo` | `vehiculo:read`, `vehiculo:write`, `vehiculo:delete` |
+   978→| `chofer` | `chofer:read`, `chofer:write`, `chofer:delete` |
+   979→| `recorrido` | `recorrido:read`, `recorrido:write`, `recorrido:delete` |
+   980→| `empresa` | `empresa:read`, `empresa:write`, `empresa:delete` |
+   981→| `marca` | `marca:read`, `marca:write`, `marca:delete` |
+   982→| `tipo_vehiculo` | `tipo_vehiculo:read`, `tipo_vehiculo:write`, `tipo_vehiculo:delete` |
+   983→| `tipo_combustible` | `tipo_combustible:read`, `tipo_combustible:write`, `tipo_combustible:delete` |
+   984→| `categoria_licencia` | `categoria_licencia:read`, `categoria_licencia:write`, `categoria_licencia:delete` |
+   985→
+   986→**Roles creados:**
+   987→
+   988→| Rol | Descripción | Permisos |
+   989→|---|---|---|
+   990→| `SUPER_ADMIN` | Rol con acceso total al sistema incluyendo roles y permisos | Todos los 31 permisos |
+   991→| `ADMIN` | Rol administrativo sin acceso a roles ni permisos | 25 permisos (excluye `role:*` y `permission:*`) |
+   992→| `USER` | Rol de usuario estándar con acceso de lectura | Ninguno (por defecto) |
+   993→
+   994→**Usuario administrador:**
+   995→
+   996→| Campo | Valor |
+   997→|---|---|
+   998→| Email | `admin@fleet.com` |
+   999→| Password | `admin123` (encriptada con BCrypt) |
+  1000→| Rol | `SUPER_ADMIN` |
+  1001→| Empresa | `EMP-ADMIN` (Empresa de Administracion) |
+  1002→
+  1003→---
+  1004→
+  1005→## 13. Decisiones de Diseño
+  1006→
+  1007→### 13.1 Baja Lógica (Soft Delete) Universal
+  1008→
+  1009→**Decisión:** Todas las entidades incluyen un campo `activo` (Boolean, default `true`). La eliminación nunca borra registros físicamente; simplemente cambia `activo` a `false`.
+  1010→
+  1011→**Justificación:** En un sistema de gestión de flotas, la integridad histórica de los datos es crítica. Un vehículo dado de baja puede tener recorridos asociados; eliminarlo físicamente destruiría la cadena de auditoría. La baja lógica permite mantener la trazabilidad completa.
+  1012→
+  1013→**Implementación:** Todos los repositorios exponen `findAllByActivoTrue(Pageable)` y los servicios filtran exclusivamente por `activo = true` en las operaciones de lectura.
+  1014→
+  1015→### 13.2 Auditoría Automática vía BaseEntity + SecurityContext
+  1016→
+  1017→**Decisión:** Los campos de auditoría (`creadoPor`, `modificadoPor`, `fechaCreacion`, `fechaActualizacion`) se pueblan automáticamente en los callbacks JPA `@PrePersist` y `@PreUpdate` de `BaseEntity`, leyendo el `AuthenticatedUser` del `SecurityContextHolder`.
+  1018→
+  1019→**Justificación:** A diferencia del enfoque estándar de Spring Data JPA Auditing (`@CreatedBy`, `@LastModifiedBy`), este diseño permite capturar la entidad `User` completa (no solo el username) como referencia de auditoría. Esto habilita mostrar el nombre y email del auditor en las respuestas DTO sin consultas adicionales.
+  1020→
+  1021→**Trade-off:** El `BaseEntity` tiene una dependencia directa al `SecurityContextHolder`, lo que acopla la capa de modelo al contexto de seguridad de Spring. Durante el bootstrap (`DataInitializer`), el `SecurityContext` está vacío, por lo que los campos de auditoría quedan como `null`.
+  1022→
+  1023→### 13.3 AuthenticatedUser envuelve la entidad User
+  1024→
+  1025→**Decisión:** `AuthenticatedUser` implementa `UserDetails` y envuelve la entidad JPA `User` completa en lugar de solo almacenar credenciales.
+  1026→
+  1027→**Justificación:** Necesario para que `BaseEntity.getAuthenticatedUser()` pueda retornar la entidad `User` y asignarla directamente a los campos `creadoPor`/`modificadoPor`. Esto evita una consulta adicional al repositorio en cada operación de auditoría.
+  1028→
+  1029→### 13.4 Mapeo DTO Manual (sin MapStruct)
+  1030→
+  1031→**Decisión:** El mapeo entre entidades y DTOs se realiza manualmente en cada `ServiceImpl`.
+  1032→
+  1033→**Justificación (presumida):** Simplicidad inicial del proyecto, evitar una dependencia adicional.
+  1034→
+  1035→**Trade-off:** Genera duplicación significativa de código. Por ejemplo, `toEmpresaResponse()` está duplicado en múltiples servicios. Una refactorización futura con MapStruct o con mappers compartidos reduciría el código y mejoraría el mantenimiento.
+  1036→
+  1037→### 13.5 Tres Niveles de Roles (SUPER_ADMIN / ADMIN / USER)
+  1038→
+  1039→**Decisión:** Se introdujo un tercer rol `SUPER_ADMIN` con acceso total, diferenciándolo del rol `ADMIN` que no puede gestionar roles ni permisos.
+  1040→
+  1041→**Justificación:** En un sistema multi-empresa, el rol `ADMIN` se reserva para administradores de empresa que no deben poder modificar la estructura de roles y permisos del sistema. Solo el `SUPER_ADMIN` tiene control total sobre la configuración de seguridad.
+  1042→
+  1043→**Implementación:** `SecurityConfig` utiliza reglas diferenciadas: `GET /api/roles/**` permite ambos roles, pero operaciones de escritura requieren `SUPER_ADMIN` exclusivamente.
+  1044→
+  1045→### 13.6 Asociación Usuario-Empresa
+  1046→
+  1047→**Decisión:** Se agregó un campo `empresa` (nullable, LAZY) a la entidad `User`, permitiendo asociar usuarios a empresas.
+  1048→
+  1049→**Justificación:** Necesario para el modelo multi-empresa donde los usuarios (choferes, administradores de empresa) pertenecen a una empresa específica.
+  1050→
+  1051→**Protección:** El `DataInitializer` crea automáticamente la empresa por defecto (`EMP-ADMIN`) y la asigna al usuario administrador. El endpoint `/api/auth/me` retorna la información de la empresa del usuario autenticado.
+  1052→
+  1053→### 13.7 Filtrado por Texto Libre en Endpoints de Listado
+  1054→
+  1055→**Decisión:** Los endpoints de listado principales soportan un parámetro `filter` opcional que permite buscar por texto libre (coincidencia parcial, case-insensitive) en campos de nombre o código.
+  1056→
+  1057→**Justificación:** Mejora significativamente la experiencia del usuario al permitir búsquedas rápidas sin necesidad de endpoints dedicados para cada criterio de búsqueda.
+  1058→
+  1059→### 13.8 Sin Migraciones de Base de Datos (ddl-auto=update)
+  1060→
+  1061→**Decisión:** Se utiliza `spring.jpa.hibernate.ddl-auto=update` para generar y actualizar el esquema automáticamente.
+  1062→
+  1063→**Justificación:** Rapidez en el desarrollo inicial.
+  1064→
+  1065→**Trade-off:** Este enfoque es frágil para cambios de esquema en producción (no genera `ALTER TABLE` para renombrar o eliminar columnas). Para producción, se recomienda migrar a Flyway o Liquibase.
+  1066→
+  1067→### 13.9 Respuestas DTO Anidadas Completas
+  1068→
+  1069→**Decisión:** Los DTOs de respuesta incluyen objetos anidados completos. Por ejemplo, `RecorridoResponse` contiene un `VehiculoResponse` completo, que a su vez contiene `EmpresaResponse`, `MarcaResponse`, etc.
+  1070→
+  1071→**Justificación:** Simplifica el consumo del API para el frontend, evitando múltiples llamadas para obtener datos relacionados.
+  1072→
+  1073→**Trade-off:** Riesgo de problemas de rendimiento por lazy loading (N+1 queries) y respuestas muy grandes. El setting `spring.jpa.open-in-view=false` ayuda a detectar estos problemas en tiempo de desarrollo.
+  1074→
+  1075→### 13.10 Paginación 1-based desde el Cliente
+  1076→
+  1077→**Decisión:** Los controladores exponen parámetros de paginación 1-based (page=1 es la primera página) y `PaginationUtils.params()` convierte internamente a 0-based para Spring Data.
+  1078→
+  1079→**Justificación:** Más intuitivo para los consumidores del API.
+  1080→
+  1081→**Trade-off:** Si el cliente envía `page=0`, `PaginationUtils.params()` lo convierte a `Math.max(0, 0-1) = 0`, lo que es correcto pero podría confundir. La consistencia del API depende de la documentación.
+  1082→
+  1083→### 13.11 Sesiones Stateless con JWT
+  1084→
+  1085→**Decisión:** La configuración de seguridad establece `SessionCreationPolicy.STATELESS` y no se almacena estado de sesión en el servidor.
+  1086→
+  1087→**Justificación:** Facilita la escalabilidad horizontal y es el patrón estándar para APIs REST consumidas por frontends SPA o móviles. El estado se codifica en el propio token JWT.
+  1088→
+  1089→---
+  1090→
+  1091→## 14. Pruebas Unitarias
+  1092→
+  1093→### 14.1 Configuración de Pruebas
+  1094→
+  1095→- **Framework:** JUnit 5 + Mockito
+  1096→- **Estrategia:** Pruebas unitarias puras con `@ExtendWith(MockitoExtension.class)`
+  1097→- **Mocking:** `@Mock` para dependencias, `@InjectMocks` para la clase bajo prueba
+  1098→- **No hay pruebas de integración** (`@SpringBootTest` no se utiliza)
+  1099→
+  1100→### 14.2 Cobertura de Pruebas
+  1101→
+  1102→| Clase de Prueba | Operaciones Probadas | Estado |
+  1103→|---|---|---|
+  1104→| `AuthServiceImplTest` | login, getCurrentUser, cambiarPassword (~10 tests) | ✅ Funcional |
+  1105→| `RecorridoServiceImplTest` | CRUD + reglas de negocio (~15 tests, anidados) | ✅ Funcional |
+  1106→| `UserServiceImplTest` | CRUD estándar + filtro (~12 tests) | ✅ Funcional |
+  1107→| `VehiculoServiceImplTest` | CRUD + validaciones + filtro (~14 tests) | ✅ Funcional |
+  1108→| `ChoferServiceImplTest` | CRUD + categorías + filtro (~12 tests) | ✅ Funcional |
+  1109→| `EmpresaServiceImplTest` | CRUD estándar + filtro (~11 tests) | ✅ Funcional |
+  1110→| `RoleServiceImplTest` | CRUD estándar (~10 tests) | ✅ Funcional |
+  1111→| `PermissionServiceImplTest` | CRUD estándar (~11 tests) | ✅ Funcional |
+  1112→| `MarcaServiceImplTest` | CRUD estándar (~10 tests) | ✅ Funcional |
+  1113→| `TipoVehiculoServiceImplTest` | CRUD estándar (~10 tests) | ✅ Funcional |
+  1114→| `TipoCombustibleServiceImplTest` | CRUD estándar (~10 tests) | ✅ Funcional |
+  1115→| `CategoriaLicenciaServiceImplTest` | CRUD estándar (~10 tests) | ✅ Funcional |
+  1116→| `ChoferCategoriaServiceImplTest` | CRUD estándar (~10 tests) | ✅ Funcional |
+  1117→
+  1118→**Nota:** No existen pruebas unitarias para `CurrencyServiceImpl` ni `TarjetaCombustibleServiceImpl`.
+  1119→
+  1120→---
+  1121→
+  1122→## 15. Configuración de Entornos
+  1123→
+  1124→### 15.1 Configuración Común (`application.properties`)
+  1125→
+  1126→| Propiedad | Valor | Descripción |
+  1127→|---|---|---|
+  1128→| `server.port` | `8080` | Puerto del servidor |
+  1129→| `spring.application.name` | `fleet-management` | Nombre de la aplicación |
+  1130→| `spring.jpa.hibernate.ddl-auto` | `update` | Generación automática de esquema |
+  1131→| `spring.jpa.show-sql` | `true` | Muestra SQL en consola |
+  1132→| `spring.jpa.properties.hibernate.format_sql` | `true` | Formatea SQL en consola |
+  1133→| `spring.jpa.open-in-view` | `false` | Desactiva Open Session in View |
+  1134→| `jwt.secret` | (64-char hex string) | Clave HMAC para JWT (hardcoded) |
+  1135→| `jwt.expiration` | `86400000` (24h) | Expiración del token en milisegundos |
+  1136→| `spring.profiles.active` | `dev` | Perfil activo por defecto |
+  1137→
+  1138→### 15.2 Perfil Desarrollo (`application-dev.properties`)
+  1139→
+  1140→| Propiedad | Valor |
+  1141→|---|---|
+  1142→| `spring.datasource.url` | `jdbc:h2:mem:fleetdb` |
+  1143→| `spring.datasource.driver-class-name` | `org.h2.Driver` |
+  1144→| `spring.h2.console.enabled` | `true` |
+  1145→| `spring.h2.console.path` | `/h2-console` |
+  1146→| Logging | DEBUG para `com.fleet.management` y SQL Hibernate |
+  1147→
+  1148→### 15.3 Perfil Producción (`application-prod.properties`)
+  1149→
+  1150→| Propiedad | Valor |
+  1151→|---|---|
+  1152→| `spring.datasource.url` | `jdbc:postgresql://localhost:5432/fleetdb` |
+  1153→| `spring.datasource.driver-class-name` | `org.postgresql.Driver` |
+  1154→| `spring.datasource.username` | `fleet_user` |
+  1155→| `spring.datasource.password` | `cambiar_password` (placeholder) |
+  1156→| `spring.jpa.hibernate.ddl-auto` | `update` |
+  1157→| `spring.h2.console.enabled` | `false` |
+  1158→| Logging | Nivel INFO |
+  1159→
+  1160→---
+  1161→
+  1162→## 16. Problemas Conocidos y Mejoras Pendientes
+  1163→
+  1164→### 16.1 Problemas Conocidos
+  1165→
+  1166→| # | Severidad | Problema | Descripción |
+  1167→|---|---|---|---|
+  1168→| 1 | 🟡 Media | JWT secret hardcoded | La clave JWT está en `application.properties` como texto plano. Debería usarse variable de entorno o vault |
+  1169→| 2 | 🟡 Media | Contraseña admin hardcoded | `admin123` en `DataInitializer.java` es una contraseña por defecto insegura |
+  1170→| 3 | 🟡 Media | Duplicación de mapeo DTO | `toEmpresaResponse()` y otros mappers están duplicados en múltiples servicios |
+  1171→| 4 | 🟠 Baja | Sin migraciones DB | `ddl-auto=update` es frágil para producción; no controla cambios de esquema |
+  1172→| 5 | 🟠 Baja | Riesgo N+1 queries | Respuestas DTO con anidamiento profundo + lazy loading pueden causar problemas de rendimiento |
+  1173→| 6 | 🟠 Baja | Sin caché | Cada llamada al servicio impacta la base de datos sin capa de caché |
+  1174→| 7 | 🟠 Baja | Page 0 API inconsistency | Si el cliente envía `page=0`, la conversión 1→0-based da 0 (funciona pero es confuso) |
+  1175→| 8 | 🟠 Baja | Pruebas faltantes | No existen pruebas para `CurrencyServiceImpl` ni `TarjetaCombustibleServiceImpl` |
+  1176→
+  1177→### 16.2 Mejoras Recomendadas
+  1178→
+  1179→1. **Introducir MapStruct** — Eliminar duplicación de mapeo DTO, generar mappers en tiempo de compilación
+  1180→2. **Externalizar credenciales** — Mover JWT secret y contraseña admin a variables de entorno
+  1181→3. **Adoptar Flyway o Liquibase** — Control versionado del esquema de base de datos para producción
+  1182→4. **Implementar `@EntityGraph` o FETCH JOIN** — Evitar problemas N+1 en respuestas anidadas
+  1183→5. **Crear mappers compartidos** — Como paso intermedio antes de MapStruct, extraer mapeos comunes a clases utilitarias
+  1184→6. **Agregar pruebas de integración** — Al menos para los flujos críticos (recorridos, autenticación)
+  1185→7. **Implementar rate limiting** — Proteger los endpoints de autenticación contra ataques de fuerza bruta
+  1186→8. **Completar cobertura de pruebas** — Agregar tests para `CurrencyServiceImpl` y `TarjetaCombustibleServiceImpl`
+  1187→9. **Generación de reportes PDF** — Implementar exportación a PDF del reporte de movimiento mensual usando Thymeleaf + Flying Saucer (OpenPDF)
+  1188→10. **Sistema de suscripciones/planes** — Implementar modelo de suscripción por empresa con límites de vehículos y planes de facturación
+  1189→11. **Modelo geográfico (Provincia/Municipio)** — Agregar provincias y municipios como catálogos maestros y asociarlos a la entidad Empresa
+  1190→
