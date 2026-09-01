@@ -59,19 +59,21 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
         }
 
         // 4. Calcular totales generales
-        BigDecimal volumenConsumidoTotal = BigDecimal.ZERO;
+        var ref = new Object() {
+            BigDecimal volumenConsumidoTotal = BigDecimal.ZERO;
+        };
         BigDecimal volumenAbastecidoTotal = BigDecimal.ZERO;
         BigDecimal costoEstimadoTotal = BigDecimal.ZERO;
         int totalRecorridos = 0;
 
         for (ConsumoPorCombustibleProjection fila : datosActuales) {
-            volumenConsumidoTotal = volumenConsumidoTotal.add(
+            ref.volumenConsumidoTotal = ref.volumenConsumidoTotal.add(
                     safeBigDecimal(fila.getVolumenConsumido()));
             volumenAbastecidoTotal = volumenAbastecidoTotal.add(
                     safeBigDecimal(fila.getVolumenAbastecido()));
             costoEstimadoTotal = costoEstimadoTotal.add(
                     safeBigDecimal(fila.getCostoEstimado()));
-            totalRecorridos += fila.getCantidadRecorridos() != null ? fila.getCantidadRecorridos() : 0;
+            totalRecorridos += fila.getCantidadRecorridos() != null ? fila.getCantidadRecorridos().intValue() : 0;
         }
 
         // 5. Costo promedio por litro a nivel general
@@ -85,7 +87,7 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
         ResumenEjecutivo resumen = ResumenEjecutivo.builder()
                 .periodo(periodo)
                 .totalTiposCombustible(datosActuales.size())
-                .volumenConsumidoTotal(volumenConsumidoTotal)
+                .volumenConsumidoTotal(ref.volumenConsumidoTotal)
                 .volumenAbastecidoTotal(volumenAbastecidoTotal)
                 .costoEstimadoTotal(costoEstimadoTotal)
                 .totalRecorridos(totalRecorridos)
@@ -101,9 +103,9 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
 
                     // Porcentaje del total
                     BigDecimal porcentaje = BigDecimal.ZERO;
-                    if (volumenConsumidoTotal.compareTo(BigDecimal.ZERO) > 0) {
+                    if (ref.volumenConsumidoTotal.compareTo(BigDecimal.ZERO) > 0) {
                         porcentaje = volumenConsumido.multiply(BigDecimal.valueOf(100))
-                                .divide(volumenConsumidoTotal, 2, RoundingMode.HALF_UP);
+                                .divide(ref.volumenConsumidoTotal, 2, RoundingMode.HALF_UP);
                     }
 
                     // Variacion vs periodo anterior
@@ -139,7 +141,7 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
                             .porcentajeDelTotal(porcentaje)
                             .variacionVsPeriodoAnterior(variacion)
                             .cantidadRecorridos(fila.getCantidadRecorridos() != null
-                                    ? fila.getCantidadRecorridos() : 0)
+                                    ? fila.getCantidadRecorridos().intValue() : 0)
                             .costoPromedioPorLitro(costoPromedioLitro)
                             .build();
                 })
