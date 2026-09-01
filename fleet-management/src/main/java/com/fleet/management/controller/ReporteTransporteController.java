@@ -2,9 +2,11 @@ package com.fleet.management.controller;
 
 import com.fleet.management.dto.reporte.AbastecimientoReporteResponse;
 import com.fleet.management.dto.reporte.ConsumoCombustibleResponse;
+import com.fleet.management.dto.reporte.DashboardEjecutivoResponse;
 import com.fleet.management.dto.reporte.MantenimientoReporteResponse;
 import com.fleet.management.dto.reporte.VehiculoConsumoReporteDTO;
 import com.fleet.management.service.ReporteConsumoCombustibleService;
+import com.fleet.management.service.ReporteDashboardEjecutivoService;
 import com.fleet.management.service.ReporteMantenimientoService;
 import com.fleet.management.service.ReporteTransporteService;
 import com.fleet.management.util.PaginationUtils;
@@ -28,6 +30,7 @@ public class ReporteTransporteController {
     private final ReporteTransporteService reporteTransporteService;
     private final ReporteMantenimientoService reporteMantenimientoService;
     private final ReporteConsumoCombustibleService reporteConsumoCombustibleService;
+    private final ReporteDashboardEjecutivoService reporteDashboardEjecutivoService;
 
     @GetMapping("/consumo-vehiculo")
     public ResponseEntity<Page<VehiculoConsumoReporteDTO>> consumoPorVehiculo(
@@ -84,6 +87,15 @@ public class ReporteTransporteController {
 
         ConsumoCombustibleResponse resultado = reporteConsumoCombustibleService.generarReporte(
                 fechaDesde, fechaHasta, tipoVehiculoId);
+        return ResponseEntity.ok(resultado);
+    }
+
+    @GetMapping("/dashboard-ejecutivo")
+    public ResponseEntity<DashboardEjecutivoResponse> dashboardEjecutivo(
+            @RequestParam @NotNull Integer mes,
+            @RequestParam @NotNull Integer anio) {
+
+        DashboardEjecutivoResponse resultado = reporteDashboardEjecutivoService.generarDashboard(mes, anio);
         return ResponseEntity.ok(resultado);
     }
 }

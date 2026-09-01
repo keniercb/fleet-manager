@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigInteger;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,4 +55,24 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
      * Usado para generar reportes PDF.
      */
     List<Vehiculo> findByEmpresaIdAndActivoTrueOrderByMatriculaAsc(Long empresaId);
+
+    // --- Dashboard Ejecutivo ---
+
+    @Query("SELECT v FROM Vehiculo v " +
+           "WHERE v.empresa.id = :empresaId AND v.activo = true " +
+           "AND v.id IN (SELECT DISTINCT r.vehiculo.id FROM Recorrido r " +
+           "WHERE r.activo = true AND r.fecha BETWEEN :desde AND :hasta)")
+    List<Vehiculo> findVehiculosConRecorridoEnPeriodo(@Param("empresaId") Long empresaId,
+                                                       @Param("desde") LocalDate desde,
+                                                       @Param("hasta") LocalDate hasta);
+
+    @Query("SELECT COUNT(v) FROM Vehiculo v " +
+           "WHERE v.empresa.id = :empresaId AND v.activo = true " +
+           "AND (v.odometro - COALESCE(v.odometroUltimoMantenimiento, 0)) > :umbralKm")
+    long countVehiculosAlertaMantenimiento(@Param("empresaId") Long empresaId,
+                                            @Param("umbralKm") BigInteger umbralKm);
+
+    @Query("SELECT COUNT(v) FROM Vehiculo v " +
+           "WHERE v.empresa.id = :empresaId AND v.activo = true")
+    long countActivosByEmpresaId(@Param("empresaId") Long empresaId);
 }
