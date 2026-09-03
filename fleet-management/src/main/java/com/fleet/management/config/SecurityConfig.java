@@ -53,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/plans/**").hasRole("SUPER_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/plans/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payments/webhook/enzona").permitAll()
                         .requestMatchers("/api/users/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/roles/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/roles/**").hasRole("SUPER_ADMIN")
