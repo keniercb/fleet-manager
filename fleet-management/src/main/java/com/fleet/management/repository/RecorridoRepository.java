@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -166,4 +167,42 @@ public interface RecorridoRepository extends JpaRepository<Recorrido, Long> {
             @Param("desdeAnterior") LocalDate desdeAnterior,
             @Param("hastaAnterior") LocalDate hastaAnterior,
             @Param("tipoVehiculoId") Long tipoVehiculoId);
+
+    // --- Dashboard Ejecutivo ---
+
+    @Query("SELECT COALESCE(SUM(r.importeAbastecido), 0) " +
+           "FROM Recorrido r " +
+           "JOIN r.vehiculo v " +
+           "WHERE r.activo = true AND r.fecha BETWEEN :desde AND :hasta " +
+           "AND v.empresa.id = :empresaId")
+    Double sumCostoCombustible(@Param("empresaId") Long empresaId,
+                               @Param("desde") LocalDate desde,
+                               @Param("hasta") LocalDate hasta);
+
+    @Query("SELECT COALESCE(SUM(r.kilometros), 0) " +
+           "FROM Recorrido r " +
+           "JOIN r.vehiculo v " +
+           "WHERE r.activo = true AND r.fecha BETWEEN :desde AND :hasta " +
+           "AND v.empresa.id = :empresaId")
+    Long sumKmTotales(@Param("empresaId") Long empresaId,
+                      @Param("desde") LocalDate desde,
+                      @Param("hasta") LocalDate hasta);
+
+    @Query("SELECT COALESCE(SUM(r.consumo), 0) " +
+           "FROM Recorrido r " +
+           "JOIN r.vehiculo v " +
+           "WHERE r.activo = true AND r.fecha BETWEEN :desde AND :hasta " +
+           "AND v.empresa.id = :empresaId")
+    BigDecimal sumConsumoTotal(@Param("empresaId") Long empresaId,
+                               @Param("desde") LocalDate desde,
+                               @Param("hasta") LocalDate hasta);
+
+    @Query("SELECT r " +
+           "FROM Recorrido r " +
+           "JOIN r.vehiculo v " +
+           "WHERE r.activo = true AND r.fecha BETWEEN :desde AND :hasta " +
+           "AND v.empresa.id = :empresaId")
+    List<Recorrido> findRecorridosPorPeriodo(@Param("empresaId") Long empresaId,
+                                             @Param("desde") LocalDate desde,
+                                             @Param("hasta") LocalDate hasta);
 }

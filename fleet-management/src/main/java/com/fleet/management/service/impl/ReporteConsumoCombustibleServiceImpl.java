@@ -6,11 +6,9 @@ import com.fleet.management.dto.reporte.ConsumoCombustibleResponse.ResumenEjecut
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.repository.ConsumoPorCombustibleProjection;
 import com.fleet.management.repository.RecorridoRepository;
-import com.fleet.management.security.AuthenticatedUser;
 import com.fleet.management.service.ReporteConsumoCombustibleService;
+import com.fleet.management.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +37,7 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
             throw new BusinessException("fechaDesde no puede ser mayor que fechaHasta");
         }
 
-        Long empresaId = resolveEmpresaId();
+        Long empresaId = SecurityUtils.resolveEmpresaId();
 
         // 1. Datos del periodo actual (ya ordenados por volumen_consumido DESC en SQL)
         List<ConsumoPorCombustibleProjection> datosActuales =
@@ -61,19 +59,21 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
         }
 
         // 4. Calcular totales generales
-        BigDecimal volumenConsumidoTotal = BigDecimal.ZERO;
+        var ref = new Object() {
+            BigDecimal volumenConsumidoTotal = BigDecimal.ZERO;
+        };
         BigDecimal volumenAbastecidoTotal = BigDecimal.ZERO;
         BigDecimal costoEstimadoTotal = BigDecimal.ZERO;
         int totalRecorridos = 0;
 
         for (ConsumoPorCombustibleProjection fila : datosActuales) {
-            volumenConsumidoTotal = volumenConsumidoTotal.add(
+            ref.volumenConsumidoTotal = ref.volumenConsumidoTotal.add(
                     safeBigDecimal(fila.getVolumenConsumido()));
             volumenAbastecidoTotal = volumenAbastecidoTotal.add(
                     safeBigDecimal(fila.getVolumenAbastecido()));
             costoEstimadoTotal = costoEstimadoTotal.add(
                     safeBigDecimal(fila.getCostoEstimado()));
-            totalRecorridos += fila.getCantidadRecorridos() != null ? fila.getCantidadRecorridos() : 0;
+            totalRecorridos += fila.getCantidadRecorridos() != null ? fila.getCantidadRecorridos().intValue() : 0;
         }
 
         // 5. Costo promedio por litro a nivel general
@@ -87,7 +87,7 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
         ResumenEjecutivo resumen = ResumenEjecutivo.builder()
                 .periodo(periodo)
                 .totalTiposCombustible(datosActuales.size())
-                .volumenConsumidoTotal(volumenConsumidoTotal)
+                .volumenConsumidoTotal(ref.volumenConsumidoTotal)
                 .volumenAbastecidoTotal(volumenAbastecidoTotal)
                 .costoEstimadoTotal(costoEstimadoTotal)
                 .totalRecorridos(totalRecorridos)
@@ -103,9 +103,9 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
 
                     // Porcentaje del total
                     BigDecimal porcentaje = BigDecimal.ZERO;
-                    if (volumenConsumidoTotal.compareTo(BigDecimal.ZERO) > 0) {
+                    if (ref.volumenConsumidoTotal.compareTo(BigDecimal.ZERO) > 0) {
                         porcentaje = volumenConsumido.multiply(BigDecimal.valueOf(100))
-                                .divide(volumenConsumidoTotal, 2, RoundingMode.HALF_UP);
+                                .divide(ref.volumenConsumidoTotal, 2, RoundingMode.HALF_UP);
                     }
 
                     // Variacion vs periodo anterior
@@ -141,7 +141,7 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
                             .porcentajeDelTotal(porcentaje)
                             .variacionVsPeriodoAnterior(variacion)
                             .cantidadRecorridos(fila.getCantidadRecorridos() != null
-                                    ? fila.getCantidadRecorridos() : 0)
+                                    ? fila.getCantidadRecorridos().intValue() : 0)
                             .costoPromedioPorLitro(costoPromedioLitro)
                             .build();
                 })
@@ -157,15 +157,4 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
         return value != null ? value : BigDecimal.ZERO;
     }
 
-    private Long resolveEmpresaId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authUser)) {
-            throw new BusinessException("No se pudo determinar la empresa del usuario autenticado");
-        }
-        var empresaRef = authUser.getUser().getEmpresa();
-        if (empresaRef == null) {
-            throw new BusinessException("El usuario no tiene una empresa asociada");
-        }
-        return empresaRef.getId();
-    }
 }

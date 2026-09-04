@@ -7,15 +7,13 @@ import com.fleet.management.repository.AbastecimientoLugarProjection;
 import com.fleet.management.repository.AbastecimientoVehiculoProjection;
 import com.fleet.management.repository.ConsumoVehiculoProjection;
 import com.fleet.management.repository.RecorridoRepository;
-import com.fleet.management.security.AuthenticatedUser;
 import com.fleet.management.service.ReporteTransporteService;
+import com.fleet.management.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,7 +48,7 @@ public class ReporteTransporteServiceImpl implements ReporteTransporteService {
         }
 
         // 2. Obtener empresa del usuario autenticado
-        Long empresaId = resolveEmpresaId();
+        Long empresaId = SecurityUtils.resolveEmpresaId();
 
         // 3. Obtener datos agregados de la BD
         List<ConsumoVehiculoProjection> datos = recorridoRepository.consumoPorVehiculo(
@@ -157,7 +155,7 @@ public class ReporteTransporteServiceImpl implements ReporteTransporteService {
             throw new BusinessException("La fecha desde no puede ser mayor que la fecha hasta");
         }
 
-        Long empresaId = resolveEmpresaId();
+        Long empresaId = SecurityUtils.resolveEmpresaId();
 
         // 1. Obtener datos agregados por vehiculo
         List<AbastecimientoVehiculoProjection> datos = recorridoRepository.abastecimientoPorVehiculo(
@@ -280,15 +278,4 @@ public class ReporteTransporteServiceImpl implements ReporteTransporteService {
         return new PageImpl<>(pageContent, pageable, total);
     }
 
-    private Long resolveEmpresaId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authUser)) {
-            throw new BusinessException("No se pudo determinar la empresa del usuario autenticado");
-        }
-        var empresaRef = authUser.getUser().getEmpresa();
-        if (empresaRef == null) {
-            throw new BusinessException("El usuario no tiene una empresa asociada");
-        }
-        return empresaRef.getId();
-    }
 }
