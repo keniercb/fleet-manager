@@ -12,6 +12,9 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -20,16 +23,26 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Cliente REST para la API de Enzona QR.
+ *
+ * <p>FX-22: se inyecta un unico {@link RestTemplate} configurado con timeouts
+ * y pool de conexiones (bean {@code enzonaRestTemplate}).
+ *
+ * <p>FX-23: eliminado el codigo muerto {@code buildAuthenticatedRestTemplate()}
+ * y el interceptor {@code EnzonaAuthInterceptor}; ya no son necesarios porque
+ * el token se inyecta directamente en cada llamada via header.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class EnzonaQrClientImpl implements EnzonaQrClient {
 
     private final PaymentConfig config;
+    // FX-22: RestTemplate unico inyectado con timeouts y pool
+    private final RestTemplate enzonaRestTemplate;
 
     private final AtomicReference<CachedToken> cachedToken = new AtomicReference<>();
-
-    private RestTemplate authenticatedRestTemplate;
 
     @Override
     public synchronized String obtenerToken() {
@@ -51,8 +64,7 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 
         try {
-            RestTemplate rt = new RestTemplate();
-            ResponseEntity<EnzonaTokenResponse> response = rt.exchange(
+            ResponseEntity<EnzonaTokenResponse> response = enzonaRestTemplate.exchange(
                     config.getTokenUrl(),
                     HttpMethod.POST,
                     request,
@@ -66,12 +78,12 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
             Instant expiresAt = Instant.now().plusSeconds(tokenResponse.getExpiresIn());
             cachedToken.set(new CachedToken(tokenResponse.getAccessToken(), expiresAt));
 
-            // Reconstruir RestTemplate autenticado con el nuevo token
-            buildAuthenticatedRestTemplate();
-
             return tokenResponse.getAccessToken();
         } catch (BusinessException e) {
             throw e;
+        } catch (ResourceAccessException e) {
+            log.error("Timeout o error de conexion al obtener token de Enzona", e);
+            throw new BusinessException("No se pudo conectar con el servicio de pagos de Enzona (timeout)");
         } catch (Exception e) {
             log.error("Error de conexion al obtener token de Enzona", e);
             throw new BusinessException("No se pudo conectar con el servicio de pagos de Enzona");
@@ -103,7 +115,7 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
 
             HttpEntity<EnzonaQrMerchantRequest> request = new HttpEntity<>(body, headers);
 
-            ResponseEntity<EnzonaQrMerchantResponse> response = new RestTemplate().exchange(
+            ResponseEntity<EnzonaQrMerchantResponse> response = enzonaRestTemplate.exchange(
                     url, HttpMethod.POST, request, EnzonaQrMerchantResponse.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
@@ -113,6 +125,12 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
             throw new BusinessException("Error al crear QR en Enzona: " + response.getStatusCode());
         } catch (BusinessException e) {
             throw e;
+        } catch (HttpClientErrorException e) {
+            log.error("Error 4xx de Enzona al crear QR: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BusinessException("Error al crear QR en Enzona: " + e.getStatusCode());
+        } catch (HttpServerErrorException | ResourceAccessException e) {
+            log.error("Error de conexion / 5xx de Enzona al crear QR", e);
+            throw new BusinessException("No se pudo generar el codigo QR de pago");
         } catch (Exception e) {
             log.error("Error al crear QR de comercio en Enzona", e);
             throw new BusinessException("No se pudo generar el codigo QR de pago");
@@ -132,7 +150,7 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
 
             HttpEntity<Void> request = new HttpEntity<>(headers);
 
-            ResponseEntity<EnzonaQrInfoResponse> response = new RestTemplate().exchange(
+            ResponseEntity<EnzonaQrInfoResponse> response = enzonaRestTemplate.exchange(
                     url, HttpMethod.GET, request, EnzonaQrInfoResponse.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
@@ -159,7 +177,7 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
 
             HttpEntity<Void> request = new HttpEntity<>(headers);
 
-            ResponseEntity<Object> response = new RestTemplate().exchange(
+            ResponseEntity<Object> response = enzonaRestTemplate.exchange(
                     url, HttpMethod.GET, request, Object.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
@@ -171,15 +189,6 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
             log.error("Error al consultar pagos del QR {} en Enzona", qrCode, e);
             return null;
         }
-    }
-
-    private void buildAuthenticatedRestTemplate() {
-        EnzonaAuthInterceptor interceptor = new EnzonaAuthInterceptor(() -> {
-            CachedToken ct = cachedToken.get();
-            return ct != null ? ct.accessToken : null;
-        });
-        this.authenticatedRestTemplate = new RestTemplate();
-        this.authenticatedRestTemplate.getInterceptors().add(interceptor);
     }
 
     private record CachedToken(String accessToken, Instant expiresAt) {

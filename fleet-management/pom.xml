@@ -102,6 +102,11 @@
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
         </dependency>
+        <!-- FX-22: Apache HttpClient5 para pool de conexiones y timeouts configurables -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
         <!-- MapStruct para mapeo Entity ↔ DTO -->
         <dependency>
             <groupId>org.mapstruct</groupId>
