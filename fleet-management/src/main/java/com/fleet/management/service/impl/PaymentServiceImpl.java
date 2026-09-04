@@ -123,6 +123,7 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse findById(Long id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+        validateOwnership(payment);
         return toResponse(payment);
     }
 
@@ -140,6 +141,12 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional(readOnly = true)
     public Page<PaymentResponse> findByEmpresa(Long empresaId, String status, Pageable pageable) {
+        // FX-02: validacion IDOR: solo SUPER_ADMIN puede consultar pagos de cualquier empresa;
+        // ADMIN/USER solo pueden consultar los de su propia empresa.
+        Long currentUserEmpresaId = SecurityUtils.resolveEmpresaId();
+        if (!empresaId.equals(currentUserEmpresaId) && !isSuperAdmin()) {
+            throw new BusinessException("No tiene permisos para consultar pagos de otra empresa");
+        }
         Page<Payment> page;
         if (status != null && !status.isBlank()) {
             PaymentStatus paymentStatus = PaymentStatus.valueOf(status.toUpperCase());
@@ -158,6 +165,7 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             Payment payment = paymentRepository.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+            validateOwnership(payment);
 
             if (payment.getStatus() != PaymentStatus.PENDIENTE
                     && payment.getStatus() != PaymentStatus.QR_GENERADO) {
@@ -177,6 +185,7 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             Payment payment = paymentRepository.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+            validateOwnership(payment);
 
             if (payment.getStatus() != PaymentStatus.FALLIDO) {
                 throw new BusinessException("Solo se pueden reintentar pagos en estado FALLIDO");
@@ -263,6 +272,7 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse consultarEstadoExterno(Long id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+        validateOwnership(payment);
 
         if (payment.getQrCode() == null) {
             return toResponse(payment);
@@ -321,6 +331,34 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     // ---- Private helpers ----
+
+    /**
+     * FX-02: valida que el pago pertenezca a la empresa del usuario autenticado.
+     * SUPER_ADMIN puede operar sobre pagos de cualquier empresa.
+     */
+    private void validateOwnership(Payment payment) {
+        if (isSuperAdmin()) {
+            return;
+        }
+        Long currentUserEmpresaId = SecurityUtils.resolveEmpresaId();
+        if (payment.getEmpresa() == null
+                || !currentUserEmpresaId.equals(payment.getEmpresa().getId())) {
+            throw new BusinessException("No tiene permisos para operar sobre este pago");
+        }
+    }
+
+    /**
+     * FX-02: determina si el usuario autenticado tiene rol SUPER_ADMIN.
+     */
+    private boolean isSuperAdmin() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
+    }
 
     private void ejecutarAccionPostPago(Payment payment) {
         try {

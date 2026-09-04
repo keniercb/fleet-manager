@@ -2,6 +2,7 @@ package com.fleet.management.controller;
 import com.fleet.management.util.PaginationUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import com.fleet.management.dto.recorrido.RecorridoRequest;
 import com.fleet.management.dto.recorrido.RecorridoResponse;
@@ -22,11 +23,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RestController
 @RequestMapping("/api/recorridos")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class RecorridoController {
 
     private final RecorridoService service;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<Page<RecorridoResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
         Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
@@ -67,18 +70,21 @@ public class RecorridoController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<RecorridoResponse> create(@Valid @RequestBody RecorridoRequest request) {
         RecorridoResponse response = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<RecorridoResponse> update(@PathVariable Long id,
                                                     @Valid @RequestBody RecorridoRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
