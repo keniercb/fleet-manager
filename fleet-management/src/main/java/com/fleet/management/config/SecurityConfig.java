@@ -40,6 +40,10 @@ public class SecurityConfig {
     @Value("${fleet.security.rate-limit.window-seconds:60}")
     private int rateLimitWindowSeconds;
 
+    // FX-20: si es true, se confia en X-Forwarded-For; default false para evitar bypass
+    @Value("${fleet.security.rate-limit.trust-forwarded-for:false}")
+    private boolean rateLimitTrustForwardedFor;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -74,7 +78,7 @@ public class SecurityConfig {
     @Bean
     public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration() {
         FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(new RateLimitFilter(rateLimitMaxAttempts, rateLimitWindowSeconds));
+        registration.setFilter(new RateLimitFilter(rateLimitMaxAttempts, rateLimitWindowSeconds, rateLimitTrustForwardedFor));
         registration.addUrlPatterns("/api/auth/login", "/api/auth/cambiar-password");
         registration.setOrder(1);
         registration.setName("rateLimitFilter");
