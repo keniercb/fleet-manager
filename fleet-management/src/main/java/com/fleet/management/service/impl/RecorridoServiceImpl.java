@@ -424,8 +424,11 @@ public class RecorridoServiceImpl implements RecorridoService {
             tarjetaCombustibleRepository.save(tarjeta);
         }
 
-        // Eliminacion fisica
-        repository.delete(entity);
+        // FX-15: Baja logica (soft delete) en lugar de eliminacion fisica.
+        // Preserva la trazabilidad del historial (audit, reportes) consistente con
+        // el documento de arquitectura §13.1 (soft delete universal).
+        entity.setActivo(false);
+        repository.save(entity);
     }
 
     @Override
