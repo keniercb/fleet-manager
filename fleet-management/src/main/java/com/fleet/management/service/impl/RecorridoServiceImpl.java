@@ -379,16 +379,22 @@ public class RecorridoServiceImpl implements RecorridoService {
         // Actualizar la entidad
         entity.setChofer(chofer);
         entity.setKilometros(request.getKilometros());
+        // FX-31: snapshot actualizado del combustible inicial del vehiculo antes de aplicar el nuevo consumo.
+        entity.setCombustibleInicial(vehiculo.getCombustible());
         entity.setOdometroInicial(vehiculo.getOdometro());
         entity.setConsumo(nuevoConsumo);
         entity.setTarjetaCombustible(tarjetaCombustible);
         entity.setImporteAbastecido(request.getImporteAbastecido());
+        // FX-10: persistir litrosAbastecidos desde el request (antes era silenciosamente ignorado en update).
+        entity.setLitrosAbastecidos(request.getLitrosAbastecidos() != null ? request.getLitrosAbastecidos() : CERO);
 
         Recorrido saved = repository.save(entity);
 
-        // Sumar kilometros al odometro y restar consumo al combustible del vehiculo
+        // Sumar kilometros al odometro y restar consumo al combustible del vehiculo.
+        // FX-10: el combustible abastecido se suma al tanque (litrosAbastecidos).
         vehiculo.setOdometro(vehiculo.getOdometro().add(BigInteger.valueOf(request.getKilometros())));
-        vehiculo.setCombustible(vehiculo.getCombustible().subtract(nuevoConsumo));
+        BigDecimal litrosAbastecidos = entity.getLitrosAbastecidos() != null ? entity.getLitrosAbastecidos() : CERO;
+        vehiculo.setCombustible(vehiculo.getCombustible().subtract(nuevoConsumo).add(litrosAbastecidos));
         vehiculoRepository.save(vehiculo);
 
         return mapper.toResponse(saved);

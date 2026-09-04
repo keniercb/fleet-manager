@@ -199,8 +199,21 @@ public class VehiculoServiceImpl implements VehiculoService {
         entity.setMatricula(request.getMatricula());
         entity.setModelo(request.getModelo());
         entity.setNumeroMotor(request.getNumeroMotor());
-        entity.setOdometro(request.getOdometro());
-        entity.setCombustible(request.getCombustible());
+        // FX-11: odometro y combustible son calculados por RecorridoServiceImpl.
+        // No se permiten cambios directos desde el endpoint de update porque
+        // corrompen la trazabilidad de la flota.
+        if (request.getOdometro() != null
+                && entity.getOdometro() != null
+                && !request.getOdometro().equals(entity.getOdometro())) {
+            throw new BusinessException("El odometro no se puede modificar directamente; "
+                    + "se actualiza automaticamente al registrar recorridos.");
+        }
+        if (request.getCombustible() != null
+                && entity.getCombustible() != null
+                && request.getCombustible().compareTo(entity.getCombustible()) != 0) {
+            throw new BusinessException("El combustible no se puede modificar directamente; "
+                    + "se actualiza automaticamente al registrar recorridos.");
+        }
         entity.setUltimoMantenimiento(request.getUltimoMantenimiento());
         entity.setOdometroUltimoMantenimiento(request.getOdometroUltimoMantenimiento());
         entity.setIndiceConsumo(request.getIndiceConsumo());
