@@ -3,7 +3,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
 import com.fleet.management.model.Vehiculo;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -55,6 +57,15 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
      * Usado para generar reportes PDF.
      */
     List<Vehiculo> findByEmpresaIdAndActivoTrueOrderByMatriculaAsc(Long empresaId);
+
+    /**
+     * FX-12: carga un vehiculo con SELECT ... FOR UPDATE para evitar
+     * race conditions en read-modify-write del odometro y combustible.
+     * Usar solo dentro de una transaccion activa.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT v FROM Vehiculo v WHERE v.id = :id")
+    Optional<Vehiculo> findByIdForUpdate(@Param("id") Long id);
 
     // --- Dashboard Ejecutivo ---
 

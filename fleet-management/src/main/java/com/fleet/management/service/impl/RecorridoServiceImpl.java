@@ -204,7 +204,9 @@ public class RecorridoServiceImpl implements RecorridoService {
     @Override
     @Transactional
     public RecorridoResponse create(RecorridoRequest request) {
-        Vehiculo vehiculo = vehiculoRepository.findById(request.getVehiculoId())
+        // FX-12: lock pesimista sobre el vehiculo para evitar race conditions
+        // en read-modify-write del odometro y combustible.
+        Vehiculo vehiculo = vehiculoRepository.findByIdForUpdate(request.getVehiculoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Vehiculo", "id", request.getVehiculoId()));
 
         // Validar unicidad: solo un recorrido por vehiculo por fecha
@@ -306,7 +308,9 @@ public class RecorridoServiceImpl implements RecorridoService {
             throw new BusinessException("No se permite cambiar la fecha del recorrido");
         }
 
-        Vehiculo vehiculo = entity.getVehiculo();
+        // FX-12: lock pesimista sobre el vehiculo para evitar race conditions
+        Vehiculo vehiculo = vehiculoRepository.findByIdForUpdate(entity.getVehiculo().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Vehiculo", "id", entity.getVehiculo().getId()));
 
         // No se permite modificar si existe un recorrido con fecha posterior
         if (repository.existsByVehiculoIdAndFechaAfter(vehiculo.getId(), entity.getFecha())) {
