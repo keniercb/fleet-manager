@@ -21,6 +21,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     boolean existsByQrCode(String qrCode);
 
+    // FX-06: soporte para idempotencia por external_transaction_id
+    boolean existsByExternalTransactionId(String externalTransactionId);
+
+    boolean existsByExternalTransactionIdAndIdNot(String externalTransactionId, Long id);
+
     @Query("SELECT p FROM Payment p " +
            "WHERE p.empresa.id = :empresaId AND p.activo = true " +
            "AND p.status IN :estadosActivos " +
