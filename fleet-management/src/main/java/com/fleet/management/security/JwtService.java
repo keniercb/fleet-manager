@@ -71,7 +71,7 @@ public class JwtService {
                 .claim("roles", roles)
                 // FX-32: claims estándar para trazabilidad y validación
                 .issuer(issuer)
-                .audience().add(audience).and()
+                .audience(audience)
                 .id(UUID.randomUUID().toString())  // jti: identificador único del token
                 .issuedAt(now)
                 .notBefore(now)
@@ -98,8 +98,7 @@ public class JwtService {
             // filtro no autenticará.
             Claims claims = extractAllClaims(token);
             boolean issuerOk = issuer.equals(claims.getIssuer());
-            boolean audienceOk = claims.getAudience() != null
-                    && claims.getAudience().contains(audience);
+            boolean audienceOk = audience.equals(claims.getAudience());
             return username.equals(userDetails.getUsername())
                     && issuerOk
                     && audienceOk
@@ -127,7 +126,6 @@ public class JwtService {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .requireIssuer(issuer)
-                .requireAudience(audience)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
