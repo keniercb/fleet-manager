@@ -265,7 +265,7 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", empresaRef.getId()));
 
         // 2. Obtener vehiculos activos de la empresa
-        List<Vehiculo> vehiculos = vehiculoRepository.findByEmpresaIdAndActivoTrueOrderByMatriculaAsc(empresa.getId());
+        List<Vehiculo> vehiculos = vehiculoRepository.findForReporteByEmpresaId(empresa.getId());
 
         // 3. Mapear datos del encabezado
         EmpresaReporteDto empresaDto = EmpresaReporteDto.builder()
