@@ -20,7 +20,9 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
+        // FX-18: usar findWithRolesAndPermissionsByEmail para cargar roles,
+        // permisos y empresa en una sola query (evita N+1).
+        User user = userRepository.findWithRolesAndPermissionsByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
 
         if (!user.getActivo()) {
