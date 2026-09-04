@@ -3,18 +3,15 @@ package com.fleet.management.service.impl;
 import com.fleet.management.dto.reporte.MantenimientoReporteResponse;
 import com.fleet.management.dto.reporte.MantenimientoReporteResponse.EmpresaResumidoDTO;
 import com.fleet.management.dto.reporte.MantenimientoReporteResponse.VehiculoResumidoDTO;
-import com.fleet.management.exception.BusinessException;
 import com.fleet.management.model.Vehiculo;
 import com.fleet.management.repository.VehiculoRepository;
-import com.fleet.management.security.AuthenticatedUser;
 import com.fleet.management.service.ReporteMantenimientoService;
+import com.fleet.management.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +35,7 @@ public class ReporteMantenimientoServiceImpl implements ReporteMantenimientoServ
     @Override
     @Transactional(readOnly = true)
     public Page<MantenimientoReporteResponse> reporteMantenimiento(Pageable pageable) {
-        Long empresaId = resolveEmpresaId();
+        Long empresaId = SecurityUtils.resolveEmpresaId();
 
         // Obtener vehiculos activos de la empresa con paginacion
         Page<Vehiculo> vehiculos = vehiculoRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable);
@@ -121,15 +118,4 @@ public class ReporteMantenimientoServiceImpl implements ReporteMantenimientoServ
         }
     }
 
-    private Long resolveEmpresaId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authUser)) {
-            throw new BusinessException("No se pudo determinar la empresa del usuario autenticado");
-        }
-        var empresaRef = authUser.getUser().getEmpresa();
-        if (empresaRef == null) {
-            throw new BusinessException("El usuario no tiene una empresa asociada");
-        }
-        return empresaRef.getId();
-    }
 }
