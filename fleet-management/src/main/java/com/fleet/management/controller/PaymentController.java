@@ -69,7 +69,18 @@ public class PaymentController {
 
     @GetMapping("/{id}/status")
     public ResponseEntity<PaymentResponse> consultarEstadoExterno(@PathVariable Long id) {
+        // FX-24: este endpoint persiste el estado si detecta pago confirmado en Enzona.
         return ResponseEntity.ok(paymentService.consultarEstadoExterno(id));
+    }
+
+    /**
+     * FX-24: consultar estado local del pago sin llamar a Enzona ni persistir cambios.
+     * Solo lectura, no tiene side-effects. Útil para consultar rápidamente el estado
+     * sin forzar una llamada a la API externa.
+     */
+    @GetMapping("/{id}/local-status")
+    public ResponseEntity<PaymentResponse> consultarEstadoLocal(@PathVariable Long id) {
+        return ResponseEntity.ok(paymentService.consultarEstadoLocal(id));
     }
 
     /**

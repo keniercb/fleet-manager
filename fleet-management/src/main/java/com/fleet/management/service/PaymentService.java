@@ -45,8 +45,17 @@ public interface PaymentService {
 
     /**
      * Consultar estado del pago en Enzona (polling manual).
+     * <p>FX-24: este método ahora persiste el estado si detecta pago confirmado
+     * en Enzona. Para solo lectura (sin side-effects), usar
+     * {@link #consultarEstadoLocal(Long)}.
      */
     PaymentResponse consultarEstadoExterno(Long id);
+
+    /**
+     * FX-24: consultar estado local del pago sin llamar a Enzona ni persistir
+     * cambios. Solo lectura, no tiene side-effects.
+     */
+    PaymentResponse consultarEstadoLocal(Long id);
 
     /**
      * Expirar pagos con QR vencido (usado por scheduler).

@@ -14,6 +14,7 @@ import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.PaymentRepository;
 import com.fleet.management.repository.PlanRepository;
 import com.fleet.management.repository.SubscriptionRepository;
+import com.fleet.management.service.PaymentErrorRecoveryService;
 import com.fleet.management.service.PaymentPostPagoService;
 import com.fleet.management.service.PaymentService;
 import com.fleet.management.service.SubscriptionService;
@@ -49,6 +50,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final SubscriptionService subscriptionService;
     // FX-05: servicio separado para ejecutar la accion post-pago en REQUIRES_NEW
     private final PaymentPostPagoService paymentPostPagoService;
+    // FX-21: servicio separado para persistir estado FALLIDO en REQUIRES_NEW
+    private final PaymentErrorRecoveryService paymentErrorRecoveryService;
 
     @Override
     @Transactional
@@ -221,11 +224,10 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessException("El pago fue modificado por otro proceso. Intente nuevamente.");
         } catch (Exception e) {
             log.error("Error al reintentar pago {}: {}", id, e.getMessage());
-            // Marcar como FALLIDO de nuevo
-            Payment payment = paymentRepository.findById(id).orElseThrow();
-            payment.setStatus(PaymentStatus.FALLIDO);
-            payment.setErrorMessage(e.getMessage());
-            paymentRepository.save(payment);
+            // FX-21: persistir estado FALLIDO en tx nueva (REQUIRES_NEW) para
+            // evitar que el rollback de la tx original deje el pago en estado
+            // intermedio. El bean separado evita el problema de self-invocation.
+            paymentErrorRecoveryService.markAsFailed(id, e.getMessage());
             throw new BusinessException("Error al reintentar la generacion del QR: " + e.getMessage());
         }
     }
@@ -303,8 +305,11 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public PaymentResponse consultarEstadoExterno(Long id) {
+        // FX-24: este método ahora persiste el estado si detecta pago confirmado
+        // en Enzona. Antes estaba marcado @Transactional(readOnly=true) lo cual
+        // era contradictorio con el comportamiento de actualización.
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
         validateOwnership(payment);
@@ -315,8 +320,17 @@ public class PaymentServiceImpl implements PaymentService {
 
         try {
             Object pagos = enzonaQrClient.consultarPagos(payment.getQrCode());
-            // Si la API retorna datos, el pago fue completado
             boolean pagadoEnzona = pagos != null;
+
+            // FX-24: si Enzona confirma el pago y el estado local no es PAGADO,
+            // persistir la actualización y ejecutar acción post-pago.
+            if (pagadoEnzona && payment.getStatus() != PaymentStatus.PAGADO) {
+                payment.setStatus(PaymentStatus.PAGADO);
+                payment.setPaidAt(LocalDateTime.now());
+                paymentRepository.save(payment);
+                log.info("Pago {} confirmado como PAGADO via consulta manual", payment.getId());
+                paymentPostPagoService.ejecutar(payment);
+            }
 
             return PaymentResponse.builder()
                     .id(payment.getId())
@@ -324,12 +338,22 @@ public class PaymentServiceImpl implements PaymentService {
                     .qrCode(payment.getQrCode())
                     .amount(payment.getAmount())
                     .externalStatus(pagadoEnzona ? "COMPLETED" : "PENDING")
-                    .confirmed(payment.getStatus() == PaymentStatus.PAGADO || pagadoEnzona)
+                    .confirmed(payment.getStatus() == PaymentStatus.PAGADO)
                     .build();
         } catch (Exception e) {
             log.error("Error al consultar estado externo del pago {}", id, e);
             return toResponse(payment);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentResponse consultarEstadoLocal(Long id) {
+        // FX-24: método de solo lectura, sin side-effects.
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+        validateOwnership(payment);
+        return toResponse(payment);
     }
 
     @Override

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.model.Vehiculo;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -57,6 +58,15 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
      * Usado para generar reportes PDF.
      */
     List<Vehiculo> findByEmpresaIdAndActivoTrueOrderByMatriculaAsc(Long empresaId);
+
+    /**
+     * FX-34: variante con @EntityGraph que carga marca, tipoVehiculo,
+     * tipoCombustible, empresa y chofer en una sola query, evitando N+1
+     * en la generación del reporte PDF.
+     */
+    @EntityGraph(attributePaths = {"marca", "tipoVehiculo", "tipoCombustible", "empresa", "empresa.provincia", "empresa.municipio", "chofer"})
+    @Query("SELECT v FROM Vehiculo v WHERE v.empresa.id = :empresaId AND v.activo = true ORDER BY v.matricula ASC")
+    List<Vehiculo> findForReporteByEmpresaId(@Param("empresaId") Long empresaId);
 
     /**
      * FX-12: carga un vehiculo con SELECT ... FOR UPDATE para evitar
