@@ -251,7 +251,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     private Subscription findAndLock(Long id) {
-        return repository.findById(id)
+        // FX-25: lock pesimista real (SELECT ... FOR UPDATE) para evitar TOCTOU
+        // en increment/decrementVehicleCount y increment/decrementUserCount.
+        return repository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
     }
 }

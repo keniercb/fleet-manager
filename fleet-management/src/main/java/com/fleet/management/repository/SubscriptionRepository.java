@@ -2,9 +2,11 @@ package com.fleet.management.repository;
 
 import com.fleet.management.model.Subscription;
 import com.fleet.management.model.SubscriptionStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -35,4 +37,12 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     int expirarSuscripcionesVencidas(@Param("estadoActual") SubscriptionStatus estadoActual,
                                     @Param("endDate") LocalDate endDate,
                                     @Param("nuevoEstado") SubscriptionStatus nuevoEstado);
+
+    /**
+     * FX-25: carga una suscripcion con SELECT ... FOR UPDATE para evitar
+     * race conditions en increment/decrementVehicleCount (TOCTOU).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Subscription s WHERE s.id = :id")
+    Optional<Subscription> findByIdForUpdate(@Param("id") Long id);
 }

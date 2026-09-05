@@ -14,11 +14,13 @@ import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.PaymentRepository;
 import com.fleet.management.repository.PlanRepository;
 import com.fleet.management.repository.SubscriptionRepository;
+import com.fleet.management.service.PaymentPostPagoService;
 import com.fleet.management.service.PaymentService;
 import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -45,6 +47,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final EnzonaQrClient enzonaQrClient;
     private final PaymentConfig paymentConfig;
     private final SubscriptionService subscriptionService;
+    // FX-05: servicio separado para ejecutar la accion post-pago en REQUIRES_NEW
+    private final PaymentPostPagoService paymentPostPagoService;
 
     @Override
     @Transactional
@@ -123,6 +127,7 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse findById(Long id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+        validateOwnership(payment);
         return toResponse(payment);
     }
 
@@ -140,6 +145,12 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional(readOnly = true)
     public Page<PaymentResponse> findByEmpresa(Long empresaId, String status, Pageable pageable) {
+        // FX-02: validacion IDOR: solo SUPER_ADMIN puede consultar pagos de cualquier empresa;
+        // ADMIN/USER solo pueden consultar los de su propia empresa.
+        Long currentUserEmpresaId = SecurityUtils.resolveEmpresaId();
+        if (!empresaId.equals(currentUserEmpresaId) && !isSuperAdmin()) {
+            throw new BusinessException("No tiene permisos para consultar pagos de otra empresa");
+        }
         Page<Payment> page;
         if (status != null && !status.isBlank()) {
             PaymentStatus paymentStatus = PaymentStatus.valueOf(status.toUpperCase());
@@ -158,6 +169,7 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             Payment payment = paymentRepository.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+            validateOwnership(payment);
 
             if (payment.getStatus() != PaymentStatus.PENDIENTE
                     && payment.getStatus() != PaymentStatus.QR_GENERADO) {
@@ -177,6 +189,7 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             Payment payment = paymentRepository.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+            validateOwnership(payment);
 
             if (payment.getStatus() != PaymentStatus.FALLIDO) {
                 throw new BusinessException("Solo se pueden reintentar pagos en estado FALLIDO");
@@ -237,6 +250,19 @@ public class PaymentServiceImpl implements PaymentService {
             return;
         }
 
+        // FX-06: Idempotencia DB. Si externalTransactionId ya existe en otro pago,
+        // el INSERT/UPDATE violara la constraint uk_payment_external_txn_id.
+        // Pre-verificamos para retornar idempotente sin lanzar excepcion.
+        if (notification.getTransactionId() != null && !notification.getTransactionId().isBlank()) {
+            boolean txnYaProcesada = paymentRepository
+                    .existsByExternalTransactionIdAndIdNot(notification.getTransactionId(), payment.getId());
+            if (txnYaProcesada) {
+                log.info("Notificacion con transactionId={} ya procesada en otro pago, ignorando",
+                        notification.getTransactionId());
+                return;
+            }
+        }
+
         // Validar monto
         if (notification.getAmount() != null
                 && notification.getAmount().compareTo(payment.getAmount()) != 0) {
@@ -245,17 +271,35 @@ public class PaymentServiceImpl implements PaymentService {
             return;
         }
 
+        // Validar moneda si viene en la notificacion
+        if (notification.getCurrency() != null && !notification.getCurrency().isBlank()
+                && !notification.getCurrency().equalsIgnoreCase(payment.getCurrency())) {
+            log.error("Moneda mismatch en notificacion: esperada={}, recibida={}",
+                    payment.getCurrency(), notification.getCurrency());
+            return;
+        }
+
         // Marcar como pagado
         payment.setStatus(PaymentStatus.PAGADO);
         payment.setPaidAt(LocalDateTime.now());
         payment.setExternalTransactionId(notification.getTransactionId());
-        paymentRepository.save(payment);
+        try {
+            payment = paymentRepository.save(payment);
+        } catch (DataIntegrityViolationException ex) {
+            // FX-06: la constraint uk_payment_external_txn_id se violo por concurrencia
+            // (otra notificacion con mismo txnId proceso el pago primero).
+            log.warn("Conflicto de idempotencia al procesar notificacion (txnId={}): {}",
+                    notification.getTransactionId(), ex.getMessage());
+            return;
+        }
 
         log.info("Pago {} marcado como PAGADO via webhook, txn={}",
                 payment.getId(), notification.getTransactionId());
 
-        // Ejecutar accion post-pago
-        ejecutarAccionPostPago(payment);
+        // FX-05: ejecutar accion post-pago en tx nueva (REQUIRES_NEW).
+        // Si la accion falla, el pago queda PAGADO y la accion puede reintentarse
+        // posteriormente (scheduler de reconciliacion T-PAY-15).
+        paymentPostPagoService.ejecutar(payment);
     }
 
     @Override
@@ -263,6 +307,7 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse consultarEstadoExterno(Long id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+        validateOwnership(payment);
 
         if (payment.getQrCode() == null) {
             return toResponse(payment);
@@ -312,7 +357,8 @@ public class PaymentServiceImpl implements PaymentService {
                     p.setPaidAt(LocalDateTime.now());
                     paymentRepository.save(p);
                     log.info("Pago {} confirmado via polling", p.getId());
-                    ejecutarAccionPostPago(p);
+                    // FX-05: ejecutar accion post-pago en tx nueva
+                    paymentPostPagoService.ejecutar(p);
                 }
             } catch (Exception e) {
                 log.error("Error en polling de pago {}: {}", p.getId(), e.getMessage());
@@ -322,52 +368,32 @@ public class PaymentServiceImpl implements PaymentService {
 
     // ---- Private helpers ----
 
-    private void ejecutarAccionPostPago(Payment payment) {
-        try {
-            Long empresaId = payment.getEmpresa().getId();
-            Long planId = payment.getPlan().getId();
-
-            switch (payment.getType()) {
-                case NUEVA_SUSCRIPCION -> {
-                    SubscriptionCreateRequest req = SubscriptionCreateRequest.builder()
-                            .empresaId(empresaId)
-                            .planId(planId)
-                            .build();
-                    subscriptionService.create(req);
-                    log.info("Suscripcion creada para empresa {} (plan {}) por pago {}",
-                            empresaId, planId, payment.getId());
-                }
-                case RENOVACION -> {
-                    if (payment.getSubscription() != null) {
-                        Subscription sub = subscriptionRepository.findById(payment.getSubscription().getId())
-                                .orElse(null);
-                        if (sub != null) {
-                            sub.setEndDate(sub.getEndDate().plusDays(payment.getPlan().getDuracion()));
-                            sub.setStatus(SubscriptionStatus.ACTIVE);
-                            subscriptionRepository.save(sub);
-                            log.info("Suscripcion {} renovada por pago {}", sub.getId(), payment.getId());
-                        }
-                    }
-                }
-                case UPGRADE -> {
-                    if (payment.getSubscription() != null) {
-                        Subscription sub = subscriptionRepository.findById(payment.getSubscription().getId())
-                                .orElse(null);
-                        if (sub != null) {
-                            sub.setPlan(payment.getPlan());
-                            sub.setMaxVehiculos(payment.getPlan().getMaxVehiculos());
-                            sub.setMaxUsuarios(payment.getPlan().getMaxUsuarios());
-                            subscriptionRepository.save(sub);
-                            log.info("Suscripcion {} upgradeada al plan {} por pago {}",
-                                    sub.getId(), payment.getPlan().getNombre(), payment.getId());
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.error("Error al ejecutar accion post-pago para pago {}: {}",
-                    payment.getId(), e.getMessage(), e);
+    /**
+     * FX-02: valida que el pago pertenezca a la empresa del usuario autenticado.
+     * SUPER_ADMIN puede operar sobre pagos de cualquier empresa.
+     */
+    private void validateOwnership(Payment payment) {
+        if (isSuperAdmin()) {
+            return;
         }
+        Long currentUserEmpresaId = SecurityUtils.resolveEmpresaId();
+        if (payment.getEmpresa() == null
+                || !currentUserEmpresaId.equals(payment.getEmpresa().getId())) {
+            throw new BusinessException("No tiene permisos para operar sobre este pago");
+        }
+    }
+
+    /**
+     * FX-02: determina si el usuario autenticado tiene rol SUPER_ADMIN.
+     */
+    private boolean isSuperAdmin() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
     }
 
     private PaymentResponse toResponse(Payment p) {

@@ -1,6 +1,8 @@
 package com.fleet.management.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,20 +11,28 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Deque;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
  * Filtro de rate limiting basado en ventana deslizante por IP.
  * Protege endpoints sensibles (login, cambio de password) contra ataques de fuerza bruta.
+ *
+ * <p>FX-19: reemplazada la {@code ConcurrentHashMap<String, Deque<Long>>} sin
+ * eviccion por un {@link Cache} de Caffeine con TTL de 5 minutos. Elimina el
+ * memory leak ilimitado del filtro original.
+ *
+ * <p>FX-20: la resolucion de IP del cliente solo confia en {@code X-Forwarded-For}
+ * si {@code trustForwardedFor=true} (propiedad
+ * {@code fleet.security.rate-limit.trust-forwarded-for}). Por defecto es false
+ * para evitar bypass del rate limit via header spoofing.
  */
 @Slf4j
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
@@ -30,12 +40,21 @@ public class RateLimitFilter implements Filter {
 
     private final int maxRequests;
     private final int windowSeconds;
-    private final ConcurrentHashMap<String, Deque<Long>> requestLog = new ConcurrentHashMap<>();
+    private final boolean trustForwardedFor;
+    // FX-19: cache Caffeine con expiracion, evita memory leak
+    private final Cache<String, Deque<Long>> requestLog;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public RateLimitFilter(int maxRequests, int windowSeconds) {
+    public RateLimitFilter(int maxRequests, int windowSeconds, boolean trustForwardedFor) {
         this.maxRequests = maxRequests;
         this.windowSeconds = windowSeconds;
+        this.trustForwardedFor = trustForwardedFor;
+        // TTL de 5 minutos: cualquier IP sin actividad reciente se evicta.
+        // Suficiente para ventana deslizante de 60s y previene crecimiento ilimitado.
+        this.requestLog = Caffeine.newBuilder()
+                .expireAfterAccess(Duration.ofMinutes(5))
+                .maximumSize(10_000)
+                .build();
     }
 
     @Override
@@ -49,16 +68,16 @@ public class RateLimitFilter implements Filter {
         long now = Instant.now().getEpochSecond();
         long windowStart = now - windowSeconds;
 
-        Deque<Long> timestamps = requestLog.computeIfAbsent(clientIp, k -> new ConcurrentLinkedDeque<>());
+        // computeIfAbsent de Caffeine es thread-safe y atomica.
+        Deque<Long> timestamps = requestLog.get(clientIp, k -> new ConcurrentLinkedDeque<>());
 
-        // Limpiar timestamps expirados (fuera de la ventana)
- synchronized (timestamps) {
+        synchronized (timestamps) {
+            // Limpiar timestamps expirados
             while (!timestamps.isEmpty() && timestamps.peekFirst() < windowStart) {
                 timestamps.pollFirst();
             }
 
             if (timestamps.size() >= maxRequests) {
-                // Calcular segundos restantes hasta que se libere el primer slot
                 long retryAfter = timestamps.peekFirst() + windowSeconds - now;
                 if (retryAfter < 1) retryAfter = 1;
 
@@ -86,16 +105,24 @@ public class RateLimitFilter implements Filter {
     }
 
     /**
-     * Resuelve la IP real del cliente considerando proxys reversos.
+     * FX-20: resuelve la IP real del cliente.
+     *
+     * <p>Solo confia en {@code X-Forwarded-For} y {@code X-Real-IP} si
+     * {@code trustForwardedFor=true}. Por defecto es false, por lo que el
+     * filtro usa directamente {@link HttpServletRequest#getRemoteAddr()}.
+     * Esto evita que un atacante rote el header {@code X-Forwarded-For} en
+     * cada request para evadir el rate limit.
      */
     private String resolveClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isBlank()) {
-            return xRealIp.trim();
+        if (trustForwardedFor) {
+            String xForwardedFor = request.getHeader("X-Forwarded-For");
+            if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+                return xForwardedFor.split(",")[0].trim();
+            }
+            String xRealIp = request.getHeader("X-Real-IP");
+            if (xRealIp != null && !xRealIp.isBlank()) {
+                return xRealIp.trim();
+            }
         }
         return request.getRemoteAddr();
     }

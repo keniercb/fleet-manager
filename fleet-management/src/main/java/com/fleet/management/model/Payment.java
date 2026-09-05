@@ -10,7 +10,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "pay_payments", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_payment_qr_code", columnNames = "qr_code")
+        @UniqueConstraint(name = "uk_payment_qr_code", columnNames = "qr_code"),
+        // FX-06: idempotencia. external_transaction_id debe ser unico (cuando no es null).
+        // Postgres permite multiples NULLs en una constraint UNIQUE.
+        @UniqueConstraint(name = "uk_payment_external_txn_id", columnNames = "external_transaction_id")
 })
 @Getter
 @Setter

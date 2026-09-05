@@ -19,4 +19,23 @@ public class PaymentConfig {
     private int qrTimeoutHours = 24;
     private String notifyUrl;
     private String returnUrl;
+
+    // FX-03: seguridad del webhook
+    /**
+     * Lista de IPs autorizadas a invocar el webhook, separadas por coma.
+     * Si está vacía, la validación de IP se omite (solo dev).
+     */
+    private String allowedIps;
+
+    /**
+     * Secreto compartido con Enzona para validar la firma HMAC-SHA256 del webhook.
+     * Si está vacío, la validación de firma se omite (solo dev).
+     */
+    private String webhookSecret;
+
+    /**
+     * Si es true, se confía en el header X-Forwarded-For para resolver la IP
+     * del cliente. Por defecto false para evitar bypass (FX-20).
+     */
+    private Boolean trustForwardedFor = false;
 }

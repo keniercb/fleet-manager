@@ -204,7 +204,9 @@ public class RecorridoServiceImpl implements RecorridoService {
     @Override
     @Transactional
     public RecorridoResponse create(RecorridoRequest request) {
-        Vehiculo vehiculo = vehiculoRepository.findById(request.getVehiculoId())
+        // FX-12: lock pesimista sobre el vehiculo para evitar race conditions
+        // en read-modify-write del odometro y combustible.
+        Vehiculo vehiculo = vehiculoRepository.findByIdForUpdate(request.getVehiculoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Vehiculo", "id", request.getVehiculoId()));
 
         // Validar unicidad: solo un recorrido por vehiculo por fecha
@@ -306,7 +308,9 @@ public class RecorridoServiceImpl implements RecorridoService {
             throw new BusinessException("No se permite cambiar la fecha del recorrido");
         }
 
-        Vehiculo vehiculo = entity.getVehiculo();
+        // FX-12: lock pesimista sobre el vehiculo para evitar race conditions
+        Vehiculo vehiculo = vehiculoRepository.findByIdForUpdate(entity.getVehiculo().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Vehiculo", "id", entity.getVehiculo().getId()));
 
         // No se permite modificar si existe un recorrido con fecha posterior
         if (repository.existsByVehiculoIdAndFechaAfter(vehiculo.getId(), entity.getFecha())) {
@@ -379,16 +383,22 @@ public class RecorridoServiceImpl implements RecorridoService {
         // Actualizar la entidad
         entity.setChofer(chofer);
         entity.setKilometros(request.getKilometros());
+        // FX-31: snapshot actualizado del combustible inicial del vehiculo antes de aplicar el nuevo consumo.
+        entity.setCombustibleInicial(vehiculo.getCombustible());
         entity.setOdometroInicial(vehiculo.getOdometro());
         entity.setConsumo(nuevoConsumo);
         entity.setTarjetaCombustible(tarjetaCombustible);
         entity.setImporteAbastecido(request.getImporteAbastecido());
+        // FX-10: persistir litrosAbastecidos desde el request (antes era silenciosamente ignorado en update).
+        entity.setLitrosAbastecidos(request.getLitrosAbastecidos() != null ? request.getLitrosAbastecidos() : CERO);
 
         Recorrido saved = repository.save(entity);
 
-        // Sumar kilometros al odometro y restar consumo al combustible del vehiculo
+        // Sumar kilometros al odometro y restar consumo al combustible del vehiculo.
+        // FX-10: el combustible abastecido se suma al tanque (litrosAbastecidos).
         vehiculo.setOdometro(vehiculo.getOdometro().add(BigInteger.valueOf(request.getKilometros())));
-        vehiculo.setCombustible(vehiculo.getCombustible().subtract(nuevoConsumo));
+        BigDecimal litrosAbastecidos = entity.getLitrosAbastecidos() != null ? entity.getLitrosAbastecidos() : CERO;
+        vehiculo.setCombustible(vehiculo.getCombustible().subtract(nuevoConsumo).add(litrosAbastecidos));
         vehiculoRepository.save(vehiculo);
 
         return mapper.toResponse(saved);
@@ -424,8 +434,11 @@ public class RecorridoServiceImpl implements RecorridoService {
             tarjetaCombustibleRepository.save(tarjeta);
         }
 
-        // Eliminacion fisica
-        repository.delete(entity);
+        // FX-15: Baja logica (soft delete) en lugar de eliminacion fisica.
+        // Preserva la trazabilidad del historial (audit, reportes) consistente con
+        // el documento de arquitectura §13.1 (soft delete universal).
+        entity.setActivo(false);
+        repository.save(entity);
     }
 
     @Override
