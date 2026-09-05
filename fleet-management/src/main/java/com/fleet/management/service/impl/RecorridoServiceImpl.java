@@ -245,15 +245,17 @@ public class RecorridoServiceImpl implements RecorridoService {
         // Validar tarjeta de combustible y descontar importe
         TarjetaCombustible tarjetaCombustible = null;
         if (request.getTarjetaCombustibleId() != null) {
-            if (request.getImporteAbastecido() == null || request.getImporteAbastecido() <= 0) {
+            // FX-13: usar BigDecimal para comparaciones y aritmetica monetaria.
+            if (request.getImporteAbastecido() == null
+                    || request.getImporteAbastecido().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new BusinessException("Si se envia tarjeta de combustible, el importe abastecido es obligatorio y debe ser mayor a cero");
             }
             tarjetaCombustible = tarjetaCombustibleRepository.findById(request.getTarjetaCombustibleId())
                     .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "id", request.getTarjetaCombustibleId()));
-            if (tarjetaCombustible.getSaldo() <= request.getImporteAbastecido()) {
+            if (tarjetaCombustible.getSaldo().compareTo(request.getImporteAbastecido()) <= 0) {
                 throw new BusinessException("El saldo de la tarjeta no puede quedar en cero o negativo tras el descuento");
             }
-            tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo() - request.getImporteAbastecido());
+            tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo().subtract(request.getImporteAbastecido()));
             tarjetaCombustibleRepository.save(tarjetaCombustible);
         } else if (request.getImporteAbastecido() != null) {
             throw new BusinessException("Si se envia importe abastecido, debe enviarse la tarjeta de combustible");
@@ -343,40 +345,43 @@ public class RecorridoServiceImpl implements RecorridoService {
         // Manejar tarjeta de combustible: restablecer saldo anterior y descontar nuevo importe
         TarjetaCombustible tarjetaCombustible = null;
         TarjetaCombustible tarjetaAnterior = entity.getTarjetaCombustible();
-        Double importeAnterior = entity.getImporteAbastecido() != null ? entity.getImporteAbastecido() : 0.0;
+        // FX-13: importeAnterior como BigDecimal.
+        BigDecimal importeAnterior = entity.getImporteAbastecido() != null
+                ? entity.getImporteAbastecido() : BigDecimal.ZERO;
 
         if (request.getTarjetaCombustibleId() != null) {
-            if (request.getImporteAbastecido() == null || request.getImporteAbastecido() <= 0) {
+            if (request.getImporteAbastecido() == null
+                    || request.getImporteAbastecido().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new BusinessException("Si se envia tarjeta de combustible, el importe abastecido es obligatorio y debe ser mayor a cero");
             }
             tarjetaCombustible = tarjetaCombustibleRepository.findById(request.getTarjetaCombustibleId())
                     .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "id", request.getTarjetaCombustibleId()));
 
-            Double nuevoImporte = request.getImporteAbastecido();
+            BigDecimal nuevoImporte = request.getImporteAbastecido();
 
             // Restablecer saldo de tarjeta anterior si existe
             if (tarjetaAnterior != null) {
                 if (tarjetaAnterior.getId().equals(tarjetaCombustible.getId())) {
                     // Misma tarjeta: restaurar importe anterior al saldo actual
-                    tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo() + importeAnterior);
+                    tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo().add(importeAnterior));
                 } else {
                     // Tarjeta diferente: restaurar en la anterior
-                    tarjetaAnterior.setSaldo(tarjetaAnterior.getSaldo() + importeAnterior);
+                    tarjetaAnterior.setSaldo(tarjetaAnterior.getSaldo().add(importeAnterior));
                     tarjetaCombustibleRepository.save(tarjetaAnterior);
                 }
             }
 
             // Validar y restar nuevo importe
-            if (tarjetaCombustible.getSaldo() <= nuevoImporte) {
+            if (tarjetaCombustible.getSaldo().compareTo(nuevoImporte) <= 0) {
                 throw new BusinessException("El saldo de la tarjeta no puede quedar en cero o negativo tras el descuento");
             }
-            tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo() - nuevoImporte);
+            tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo().subtract(nuevoImporte));
             tarjetaCombustibleRepository.save(tarjetaCombustible);
         } else if (request.getImporteAbastecido() != null) {
             throw new BusinessException("Si se envia importe abastecido, debe enviarse la tarjeta de combustible");
         } else if (tarjetaAnterior != null) {
             // Se elimino la tarjeta: restablecer saldo de la tarjeta anterior
-            tarjetaAnterior.setSaldo(tarjetaAnterior.getSaldo() + importeAnterior);
+            tarjetaAnterior.setSaldo(tarjetaAnterior.getSaldo().add(importeAnterior));
             tarjetaCombustibleRepository.save(tarjetaAnterior);
         }
 
@@ -430,7 +435,8 @@ public class RecorridoServiceImpl implements RecorridoService {
         // Restablecer saldo de tarjeta de combustible si existe
         if (entity.getTarjetaCombustible() != null && entity.getImporteAbastecido() != null) {
             TarjetaCombustible tarjeta = entity.getTarjetaCombustible();
-            tarjeta.setSaldo(tarjeta.getSaldo() + entity.getImporteAbastecido());
+            // FX-13: aritmetica BigDecimal.
+            tarjeta.setSaldo(tarjeta.getSaldo().add(entity.getImporteAbastecido()));
             tarjetaCombustibleRepository.save(tarjeta);
         }
 
