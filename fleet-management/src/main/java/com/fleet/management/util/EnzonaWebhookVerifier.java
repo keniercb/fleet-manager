@@ -6,12 +6,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.util.DigestUtils;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.Set;
@@ -87,7 +86,10 @@ public class EnzonaWebhookVerifier {
         }
         try {
             String computed = hmacSha256Hex(body, secret);
-            boolean ok = DigestUtils.equals(computed.getBytes(StandardCharsets.UTF_8),
+            // FX-fix: MessageDigest.isEqual para comparacion en tiempo constante
+            // (DigestUtils.equals no existe en Spring).
+            boolean ok = MessageDigest.isEqual(
+                    computed.getBytes(StandardCharsets.UTF_8),
                     normalizeHeader(signatureHeader).getBytes(StandardCharsets.UTF_8));
             if (!ok) {
                 log.warn("Webhook Enzona rechazado: firma HMAC mismatch (header={}, computed={})",
