@@ -175,7 +175,8 @@ public interface RecorridoRepository extends JpaRepository<Recorrido, Long> {
            "JOIN r.vehiculo v " +
            "WHERE r.activo = true AND r.fecha BETWEEN :desde AND :hasta " +
            "AND v.empresa.id = :empresaId")
-    Double sumCostoCombustible(@Param("empresaId") Long empresaId,
+    // FX-13: retornado como BigDecimal para consistencia monetaria.
+    BigDecimal sumCostoCombustible(@Param("empresaId") Long empresaId,
                                @Param("desde") LocalDate desde,
                                @Param("hasta") LocalDate hasta);
 

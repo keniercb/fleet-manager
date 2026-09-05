@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,7 +21,8 @@ public class TarjetaCombustibleRequest {
 
     @NotNull(message = "El saldo es obligatorio")
     @Positive(message = "El saldo debe ser mayor a cero")
-    private Double saldo;
+    // FX-13: migrado de Double a BigDecimal para precision monetaria.
+    private BigDecimal saldo;
 
     @NotNull(message = "La moneda es obligatoria")
     private Long currencyId;

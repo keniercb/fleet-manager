@@ -55,8 +55,9 @@ public class ReporteDashboardEjecutivoServiceImpl implements ReporteDashboardEje
         LocalDate hastaAnterior = periodoAnterior.atEndOfMonth();
 
         // --- KPI 1: costoTotalCombustible ---
-        Double costoActual = recorridoRepository.sumCostoCombustible(empresaId, desde, hasta);
-        BigDecimal costoTotalCombustible = BigDecimal.valueOf(costoActual != null ? costoActual : 0)
+        // FX-13: sumCostoCombustible ahora retorna BigDecimal directamente.
+        BigDecimal costoActual = recorridoRepository.sumCostoCombustible(empresaId, desde, hasta);
+        BigDecimal costoTotalCombustible = (costoActual != null ? costoActual : BigDecimal.ZERO)
                 .setScale(2, RoundingMode.HALF_UP);
 
         // --- KPI 2: kmTotalesFlota ---
@@ -163,8 +164,9 @@ public class ReporteDashboardEjecutivoServiceImpl implements ReporteDashboardEje
      */
     private BigDecimal calcularVariacionCosto(Long empresaId, LocalDate desdeAnterior,
                                                LocalDate hastaAnterior, BigDecimal costoActual) {
-        Double costoAnteriorDouble = recorridoRepository.sumCostoCombustible(empresaId, desdeAnterior, hastaAnterior);
-        BigDecimal costoAnterior = BigDecimal.valueOf(costoAnteriorDouble != null ? costoAnteriorDouble : 0)
+        // FX-13: sumCostoCombustible ahora retorna BigDecimal directamente.
+        BigDecimal costoAnteriorRaw = recorridoRepository.sumCostoCombustible(empresaId, desdeAnterior, hastaAnterior);
+        BigDecimal costoAnterior = (costoAnteriorRaw != null ? costoAnteriorRaw : BigDecimal.ZERO)
                 .setScale(2, RoundingMode.HALF_UP);
 
         if (costoAnterior.compareTo(BigDecimal.ZERO) <= 0) {
