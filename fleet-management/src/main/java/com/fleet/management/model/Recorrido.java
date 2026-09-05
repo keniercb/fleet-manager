@@ -71,6 +71,7 @@ public class Recorrido extends BaseEntity {
             foreignKey = @ForeignKey(name = "fk_recorrido_tarjeta_combustible"))
     private TarjetaCombustible tarjetaCombustible;
 
-    @Column(name = "importe_abastecido")
-    private Double importeAbastecido;
+    // FX-13: migrado de Double a BigDecimal para precision monetaria.
+    @Column(name = "importe_abastecido", precision = 12, scale = 2)
+    private BigDecimal importeAbastecido;
 }

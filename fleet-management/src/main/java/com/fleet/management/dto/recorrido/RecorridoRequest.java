@@ -38,5 +38,6 @@ public class RecorridoRequest {
     private Long tarjetaCombustibleId;
 
     @Positive(message = "El importe abastecido debe ser mayor a cero")
-    private Double importeAbastecido;
+    // FX-13: migrado de Double a BigDecimal para precision monetaria.
+    private BigDecimal importeAbastecido;
 }

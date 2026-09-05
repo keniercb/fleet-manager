@@ -30,7 +30,8 @@ public class RecorridoResponse {
     private String numeroChip;
     private String lugarAbastecimiento;
     private TarjetaCombustibleResponse tarjetaCombustible;
-    private Double importeAbastecido;
+    // FX-13: migrado de Double a BigDecimal para precision monetaria.
+    private BigDecimal importeAbastecido;
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
