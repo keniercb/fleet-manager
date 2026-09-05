@@ -5,7 +5,6 @@ import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider;
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
@@ -34,7 +33,8 @@ import javax.sql.DataSource;
  *
  * <p>Si {@code spring.jpa.hibernate.ddl-auto=update} está activo, Hibernate no
  * crea esta tabla automáticamente (no es una entidad JPA). Ejecutar el DDL
- * manualmente o incluirlo en un script Flyway/Liquibase.
+ * manualmente o incluirlo en un script Flyway/Liquibase (migración V1 incluida
+ * con FX-13).
  */
 @Configuration
 @EnableSchedulerLock(defaultLockAtMostFor = "PT5M")  // default 5 minutos
@@ -42,10 +42,13 @@ public class SchedulerLockConfig {
 
     @Bean
     public LockProvider lockProvider(DataSource dataSource) {
-        return JdbcTemplateLockProvider.builder()
+        // FX-fix: ShedLock 5.16.0 usa JdbcTemplateLockProvider.Configuration.builder()
+        // en lugar de JdbcTemplateLockProvider.builder() (que no existe).
+        JdbcTemplateLockProvider.Configuration configuration = JdbcTemplateLockProvider.Configuration.builder()
                 .withTableName("shedlock")
                 .withDataSource(dataSource)
                 .usingDbTime()
                 .build();
+        return new JdbcTemplateLockProvider(configuration);
     }
 }
