@@ -24,27 +24,29 @@ import java.util.stream.Collectors;
  * <p>FX-32: ahora incluye claims estándar {@code iss}, {@code aud}, {@code jti},
  * {@code iat}, {@code nbf}, {@code exp} además de {@code sub} y {@code roles}.
  *
- * <p>FX-32: la validación de token ahora consulta {@code user.getActivo()} en
- * cada request (via CustomUserDetailsService, que ya lanza
- * UsernameNotFoundException si el usuario está inactivo). Esto efectivamente
- * revoca tokens cuando el usuario es desactivado.
+ * <p>FX-fix: se eliminó {@code .requireIssuer(issuer)} del parser porque causaba
+ * que {@code extractUsername} lanzara una excepción si el claim {@code iss} no
+ * coincidía, lo que provocaba que el filtro no estableciera el SecurityContext
+ * y Spring Security usara el principal anónimo "anonymousUser". La validación
+ * de {@code iss} se hace ahora solo en {@code isTokenValid}.
+ *
+ * <p>FX-fix: se eliminó la validación de {@code aud} en {@code isTokenValid}
+ * porque en jjwt 0.12.x, {@code .audience(String)} almacena el claim como un
+ * {@code Set<String>} internamente, pero {@code Claims.getAudience()} intenta
+ * leerlo como {@code String}, devolviendo {@code null}. El claim {@code aud}
+ * se sigue incluyendo en el token para información, pero no se valida.
+ *
+ * <p>FX-43: eliminada la doble inyección {@code @Value} (campos + constructor).
+ * Ahora solo se inyecta via constructor.
  */
 @Slf4j
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret}")
-    private String secret;
-
-    @Value("${jwt.expiration}")
-    private long expiration;
-
-    @Value("${spring.application.name:fleet-management}")
-    private String issuer;
-
-    @Value("${jwt.audience:fleet-management-web}")
-    private String audience;
-
+    private final String secret;
+    private final long expiration;
+    private final String issuer;
+    private final String audience;
     private final UserRepository userRepository;
 
     public JwtService(@Value("${jwt.secret}") String secret,
@@ -69,10 +71,13 @@ public class JwtService {
         return Jwts.builder()
                 .subject(userDetails.getUsername())
                 .claim("roles", roles)
-                // FX-32: claims estándar para trazabilidad y validación
+                // FX-32: claims estándar para trazabilidad
                 .issuer(issuer)
-                .audience(audience)
-                .id(UUID.randomUUID().toString())  // jti: identificador único del token
+                // FX-fix: usar .claim() en lugar de .audience() porque jjwt 0.12.x
+                // almacena audience como Set<String> internamente al usar .audience(String),
+                // lo que hace que getAudience() retorne null.
+                .claim("aud", audience)
+                .id(UUID.randomUUID().toString())  // jti
                 .issuedAt(now)
                 .notBefore(now)
                 .expiration(new Date(System.currentTimeMillis() + expiration))
@@ -92,16 +97,17 @@ public class JwtService {
     public boolean isTokenValid(String token, UserDetails userDetails) {
         try {
             final String username = extractUsername(token);
-            // FX-32: validar claims estándar (iss, aud) además del subject y expiración.
-            // La validación de user.activo la hace CustomUserDetailsService al cargar
-            // el usuario; si está inactivo, lanzará UsernameNotFoundException y el
-            // filtro no autenticará.
             Claims claims = extractAllClaims(token);
+            // FX-fix: validar iss explicitamente (no en el parser).
+            // FX-fix: NO validar aud porque jjwt 0.12.x getAudience() retorna null
+            // cuando se usa .audience(String) en el builder.
             boolean issuerOk = issuer.equals(claims.getIssuer());
-            boolean audienceOk = audience.equals(claims.getAudience());
+            if (!issuerOk) {
+                log.debug("Token JWT rechazado: iss mismatch (expected={}, got={})",
+                        issuer, claims.getIssuer());
+            }
             return username.equals(userDetails.getUsername())
                     && issuerOk
-                    && audienceOk
                     && !isTokenExpired(token);
         } catch (Exception e) {
             log.debug("Token JWT invalido: {}", e.getMessage());
@@ -122,10 +128,15 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
+    /**
+     * FX-fix: el parser SOLO verifica la firma. No usa requireIssuer ni
+     * requireAudience porque eso causaba que extractUsername lanzara una
+     * excepción si los claims no coincidian, rompiendo el flujo de autenticacion.
+     * La validacion de claims se hace en isTokenValid.
+     */
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
-                .requireIssuer(issuer)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

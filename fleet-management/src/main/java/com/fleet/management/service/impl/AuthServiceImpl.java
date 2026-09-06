@@ -63,8 +63,15 @@ public class AuthServiceImpl implements AuthService {
         }
 
         Object principal = authentication.getPrincipal();
-        String email;
 
+        // FX-fix: detectar principal anonimo (Spring Security usa "anonymousUser"
+        // cuando el JWT fue rechazado por el filtro).
+        if ("anonymousUser".equals(principal)) {
+            throw new BusinessException(
+                    "Token JWT invalido o expirado. No se pudo autenticar al usuario.");
+        }
+
+        String email;
         if (principal instanceof UserDetails) {
             email = ((UserDetails) principal).getUsername();
         } else {
@@ -72,7 +79,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessException("Usuario autenticado no encontrado en la base de datos"));
+                .orElseThrow(() -> new BusinessException(
+                        "Usuario autenticado no encontrado en la base de datos: " + email));
     }
 
     @Override
