@@ -6,7 +6,7 @@ import com.fleet.management.dto.payment.PaymentResponse;
 import com.fleet.management.service.PaymentService;
 import com.fleet.management.util.EnzonaWebhookVerifier;
 import com.fleet.management.util.PaginationUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -27,7 +27,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final EnzonaWebhookVerifier webhookVerifier;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
 
     @PostMapping
     public ResponseEntity<PaymentResponse> crearPago(@Valid @RequestBody PaymentCreateRequest request) {
