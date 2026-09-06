@@ -5,6 +5,7 @@ import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider;
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
@@ -43,12 +44,13 @@ public class SchedulerLockConfig {
     @Bean
     public LockProvider lockProvider(DataSource dataSource) {
         // FX-fix: ShedLock 5.16.0 usa JdbcTemplateLockProvider.Configuration.builder()
-        // en lugar de JdbcTemplateLockProvider.builder() (que no existe).
-        JdbcTemplateLockProvider.Configuration configuration = JdbcTemplateLockProvider.Configuration.builder()
-                .withTableName("shedlock")
-                .withDataSource(dataSource)
-                .usingDbTime()
-                .build();
-        return new JdbcTemplateLockProvider(configuration);
+        // con withJdbcTemplate(new JdbcTemplate(dataSource)) en lugar de withDataSource.
+        // usingDbTime() recomendado para usar el reloj de la BD y evitar drift de时钟 entre nodos.
+        return new JdbcTemplateLockProvider(
+                JdbcTemplateLockProvider.Configuration.builder()
+                        .withJdbcTemplate(new JdbcTemplate(dataSource))
+                        .usingDbTime()
+                        .build()
+        );
     }
 }
