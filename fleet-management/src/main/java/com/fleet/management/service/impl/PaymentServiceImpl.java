@@ -62,12 +62,15 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse crearPago(PaymentCreateRequest request) {
         Long empresaId = SecurityUtils.resolveEmpresaId();
 
-        // Validar que no exista un pago activo para la misma empresa y tipo
+        // Si ya existe un pago activo (PENDIENTE o QR_GENERADO) para la misma empresa y tipo,
+        // devolver sus datos en lugar de crear uno nuevo (evita pagos duplicados).
         Optional<Payment> pagoActivo = paymentRepository.findActivoByEmpresaAndType(
                 empresaId, request.getType(), ACTIVE_STATUSES);
         if (pagoActivo.isPresent()) {
-            throw new BusinessException("Ya existe un pago activo en estado "
-                    + pagoActivo.get().getStatus() + " para este tipo de operacion");
+            log.info("Ya existe pago activo {} en estado {} para empresa {} y tipo {}, "
+                    + "retornando pago existente en lugar de crear uno nuevo",
+                    pagoActivo.get().getId(), pagoActivo.get().getStatus(), empresaId, request.getType());
+            return toResponse(pagoActivo.get());
         }
 
         // Validar tipo UPGRADE/RENOVACION requiere subscriptionId
