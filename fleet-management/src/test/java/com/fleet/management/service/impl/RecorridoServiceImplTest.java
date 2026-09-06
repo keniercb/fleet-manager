@@ -125,7 +125,7 @@ class RecorridoServiceImplTest {
             // combustibleRestante = 50.00 - 8.50 + 0 = 41.50
             RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
 
-            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
             when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
@@ -161,7 +161,7 @@ class RecorridoServiceImplTest {
 
             RecorridoRequest request = buildRequest(10L, FECHA, 150, null, "Estacion Central");
 
-            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
             when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
@@ -186,7 +186,7 @@ class RecorridoServiceImplTest {
             vehiculo.setCombustible(new BigDecimal("5.00"));
             RecorridoRequest request = buildRequest(10L, FECHA, 100, new BigDecimal("10.00"), "Estacion Central");
 
-            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
             when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
@@ -207,7 +207,7 @@ class RecorridoServiceImplTest {
             vehiculo.setOdometro(BigInteger.valueOf(123456));
             RecorridoRequest request = buildRequest(10L, FECHA, 50, null, "Estacion Central");
 
-            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
             when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
@@ -228,7 +228,7 @@ class RecorridoServiceImplTest {
             BigInteger originalOdometro = vehiculo.getOdometro();
             RecorridoRequest request = buildRequest(10L, FECHA, 250, null, "Estacion Central");
 
-            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
             when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
@@ -246,7 +246,7 @@ class RecorridoServiceImplTest {
         void createShouldTreatNullLitrosAbastecidosAsZero() {
             RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
 
-            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
             when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
@@ -264,7 +264,7 @@ class RecorridoServiceImplTest {
         void createShouldThrowResourceNotFoundExceptionWhenVehiculoNotFound() {
             RecorridoRequest request = buildRequest(99L, FECHA, 100, null, "Estacion Central");
 
-            when(vehiculoRepository.findById(99L)).thenReturn(Optional.empty());
+            when(vehiculoRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
             ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
                     () -> service.create(request));
@@ -277,7 +277,7 @@ class RecorridoServiceImplTest {
         void createShouldThrowBusinessExceptionWhenDuplicateVehiculoFecha() {
             RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
 
-            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(true);
 
             BusinessException ex = assertThrows(BusinessException.class,
@@ -292,7 +292,7 @@ class RecorridoServiceImplTest {
         void createShouldThrowBusinessExceptionWhenFutureDateRecorridoExists() {
             RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
 
-            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
             when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(true);
 
@@ -311,7 +311,7 @@ class RecorridoServiceImplTest {
             vehiculo.setCombustible(new BigDecimal("5.00"));
             RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
 
-            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
             when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
 
@@ -329,7 +329,7 @@ class RecorridoServiceImplTest {
             vehiculo.setCombustible(new BigDecimal("8.50"));
             RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
 
-            when(vehiculoRepository.findById(10L)).thenReturn(Optional.of(vehiculo));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.existsByVehiculoIdAndFecha(10L, FECHA)).thenReturn(false);
             when(repository.existsByVehiculoIdAndFechaAfter(10L, FECHA)).thenReturn(false);
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> {
@@ -365,6 +365,7 @@ class RecorridoServiceImplTest {
             RecorridoRequest request = buildRequest(10L, FECHA, 200, null, "Estacion Central");
 
             when(repository.findById(1L)).thenReturn(Optional.of(existing));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
 
             RecorridoResponse response = service.update(1L, request);
@@ -441,6 +442,7 @@ class RecorridoServiceImplTest {
             RecorridoRequest request = buildRequest(10L, FECHA, 400, null, "Estacion Central");
 
             when(repository.findById(1L)).thenReturn(Optional.of(existing));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
 
             RecorridoResponse response = service.update(1L, request);
@@ -468,6 +470,7 @@ class RecorridoServiceImplTest {
             RecorridoRequest request = buildRequest(10L, FECHA, 1000, null, "Estacion Central");
 
             when(repository.findById(1L)).thenReturn(Optional.of(existing));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
 
             BusinessException ex = assertThrows(BusinessException.class,
                     () -> service.update(1L, request));
@@ -490,6 +493,7 @@ class RecorridoServiceImplTest {
             RecorridoRequest request = buildRequest(10L, FECHA, 100, null, "Estacion Central");
 
             when(repository.findById(1L)).thenReturn(Optional.of(existing));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
 
             RecorridoResponse response = service.update(1L, request);
@@ -510,6 +514,7 @@ class RecorridoServiceImplTest {
             RecorridoRequest request = buildRequest(10L, FECHA, 200, null, "Estacion Central");
 
             when(repository.findById(1L)).thenReturn(Optional.of(existing));
+            when(vehiculoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(vehiculo));
             when(repository.save(any(Recorrido.class))).thenAnswer(inv -> inv.getArgument(0));
 
             service.update(1L, request);
