@@ -1,5 +1,6 @@
 package com.fleet.management.client.enzona;
 
+import com.fleet.management.client.enzona.dto.EnzonaPagosResponse;
 import com.fleet.management.client.enzona.dto.EnzonaQrInfoResponse;
 import com.fleet.management.client.enzona.dto.EnzonaQrMerchantRequest;
 import com.fleet.management.client.enzona.dto.EnzonaQrMerchantResponse;
@@ -33,8 +34,12 @@ public interface EnzonaQrClient {
     /**
      * Consultar pagos asociados a un QR.
      *
+     * <p>Cuando el QR ya fue utilizado (pago confirmado), Enzona devuelve HTTP 400
+     * con fault.code=4078. En ese caso, la respuesta no es null y
+     * {@link EnzonaPagosResponse#isPagoConfirmado()} retorna true.
+     *
      * @param qrCode vendor_identity_code
-     * @return respuesta de la API (estructura variable)
+     * @return respuesta interpretada; null si hubo error de conexion
      */
-    Object consultarPagos(String qrCode);
+    EnzonaPagosResponse consultarPagos(String qrCode);
 }

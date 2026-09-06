@@ -18,4 +18,8 @@ public class PaymentCreateRequest {
     private PaymentType type;
 
     private Long subscriptionId;
+
+    // Si es true, el monto se calcula como facturación anual (con descuento);
+    // si es false (default), se calcula como facturación mensual.
+    private Boolean facturarAnual = false;
 }
