@@ -119,6 +119,12 @@
             <version>5.16.0</version>
         </dependency>
         <!-- ============ TEST dependencies (plan-pruebas-integracion.md) ============ -->
+        <!-- Jackson 3.x (tools.jackson) para JsonMapper personalizado -->
+        <dependency>
+            <groupId>tools.jackson</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>3.0.0</version>
+        </dependency>
         <!-- Testcontainers: BD real para tests de integracion -->
         <dependency>
             <groupId>org.testcontainers</groupId>
