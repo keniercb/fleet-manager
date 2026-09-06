@@ -1,6 +1,7 @@
 package com.fleet.management.service.impl;
 
 import com.fleet.management.client.enzona.EnzonaQrClient;
+import com.fleet.management.client.enzona.dto.EnzonaPagosResponse;
 import com.fleet.management.client.enzona.dto.EnzonaQrMerchantResponse;
 import com.fleet.management.config.PaymentConfig;
 import com.fleet.management.dto.payment.PaymentCreateRequest;
@@ -17,6 +18,7 @@ import com.fleet.management.repository.SubscriptionRepository;
 import com.fleet.management.service.PaymentErrorRecoveryService;
 import com.fleet.management.service.PaymentPostPagoService;
 import com.fleet.management.service.PaymentService;
+import com.fleet.management.service.PlanService;
 import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +50,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final EnzonaQrClient enzonaQrClient;
     private final PaymentConfig paymentConfig;
     private final SubscriptionService subscriptionService;
+    // Calculo de importe de facturacion (mensual/anual con descuento)
+    private final PlanService planService;
     // FX-05: servicio separado para ejecutar la accion post-pago en REQUIRES_NEW
     private final PaymentPostPagoService paymentPostPagoService;
     // FX-21: servicio separado para persistir estado FALLIDO en REQUIRES_NEW
@@ -88,11 +92,15 @@ public class PaymentServiceImpl implements PaymentService {
 
         String description = "Fleet Management - Suscripcion " + plan.getNombre() + " - Empresa " + empresa.getNombre();
 
+        // Calcular monto segun facturacion mensual o anual (con descuento si aplica)
+        boolean facturarAnual = Boolean.TRUE.equals(request.getFacturarAnual());
+        java.math.BigDecimal amount = planService.calcularImporteFacturacion(request.getPlanId(), facturarAnual);
+
         Payment payment = Payment.builder()
                 .empresa(empresa)
                 .plan(plan)
                 .subscription(subscription)
-                .amount(plan.getPrecioMensual())
+                .amount(amount)
                 .currency(paymentConfig.getCurrency())
                 .description(description)
                 .status(PaymentStatus.PENDIENTE)
@@ -107,7 +115,7 @@ public class PaymentServiceImpl implements PaymentService {
         // Generar QR con Enzona
         try {
             EnzonaQrMerchantResponse qrResponse = enzonaQrClient.crearQrMerchant(
-                    plan.getPrecioMensual(), description);
+                    amount, description);
 
             payment.setQrCode(qrResponse.getVendorIdentityCode());
             payment.setQrImageBase64(qrResponse.getImage());
@@ -319,8 +327,10 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         try {
-            Object pagos = enzonaQrClient.consultarPagos(payment.getQrCode());
-            boolean pagadoEnzona = pagos != null;
+            EnzonaPagosResponse pagos = enzonaQrClient.consultarPagos(payment.getQrCode());
+            // Pago confirmado si Enzona responde con fault.code=4078 ("QR ya fue utilizado")
+            // o si la respuesta 200 contiene datos de pago.
+            boolean pagadoEnzona = pagos != null && pagos.isPagoConfirmado();
 
             // FX-24: si Enzona confirma el pago y el estado local no es PAGADO,
             // persistir la actualización y ejecutar acción post-pago.
@@ -375,12 +385,13 @@ public class PaymentServiceImpl implements PaymentService {
                 PaymentStatus.QR_GENERADO, LocalDateTime.now());
         for (Payment p : pendientes) {
             try {
-                Object pagos = enzonaQrClient.consultarPagos(p.getQrCode());
-                if (pagos != null) {
+                EnzonaPagosResponse pagos = enzonaQrClient.consultarPagos(p.getQrCode());
+                // Pago confirmado si fault.code=4078 ("QR ya fue utilizado")
+                if (pagos != null && pagos.isPagoConfirmado()) {
                     p.setStatus(PaymentStatus.PAGADO);
                     p.setPaidAt(LocalDateTime.now());
                     paymentRepository.save(p);
-                    log.info("Pago {} confirmado via polling", p.getId());
+                    log.info("Pago {} confirmado via polling (fault.code=4078)", p.getId());
                     // FX-05: ejecutar accion post-pago en tx nueva
                     paymentPostPagoService.ejecutar(p);
                 }

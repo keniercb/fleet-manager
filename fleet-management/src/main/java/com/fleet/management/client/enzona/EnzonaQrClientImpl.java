@@ -1,5 +1,6 @@
 package com.fleet.management.client.enzona;
 
+import com.fleet.management.client.enzona.dto.EnzonaPagosResponse;
 import com.fleet.management.client.enzona.dto.EnzonaQrInfoResponse;
 import com.fleet.management.client.enzona.dto.EnzonaQrMerchantRequest;
 import com.fleet.management.client.enzona.dto.EnzonaQrMerchantResponse;
@@ -165,7 +166,7 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
     }
 
     @Override
-    public Object consultarPagos(String qrCode) {
+    public EnzonaPagosResponse consultarPagos(String qrCode) {
         String token = obtenerToken();
 
         String url = config.getBaseUrl() + config.getQrBasePath() + "/qr/payments/" + qrCode;
@@ -177,14 +178,37 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
 
             HttpEntity<Void> request = new HttpEntity<>(headers);
 
-            ResponseEntity<Object> response = enzonaRestTemplate.exchange(
-                    url, HttpMethod.GET, request, Object.class);
+            // Cuando el QR ya fue utilizado (pago confirmado), Enzona devuelve HTTP 400
+            // con body { "fault": { "code": 4078, "message": "..." } }.
+            // HttpClientErrorException captura el 4xx para que podamos interpretar el body.
+            try {
+                ResponseEntity<EnzonaPagosResponse> response = enzonaRestTemplate.exchange(
+                        url, HttpMethod.GET, request, EnzonaPagosResponse.class);
 
-            if (response.getStatusCode().is2xxSuccessful()) {
-                return response.getBody();
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    return response.getBody();
+                }
+                return new EnzonaPagosResponse();
+            } catch (HttpClientErrorException e) {
+                // HTTP 4xx: interpretar fault.code 4078 como pago confirmado
+                if (e.getStatusCode().value() == 400 && e.getResponseBodyAsString() != null) {
+                    try {
+                        EnzonaPagosResponse resp = new com.fasterxml.jackson.databind.ObjectMapper()
+                                .readValue(e.getResponseBodyAsString(), EnzonaPagosResponse.class);
+                        if (resp.isPagoConfirmado()) {
+                            log.info("QR {} ya fue utilizado (fault.code=4078) - pago confirmado", qrCode);
+                        }
+                        return resp;
+                    } catch (Exception parseEx) {
+                        log.warn("No se pudo parsear fault de Enzona (400): {}",
+                                e.getResponseBodyAsString());
+                        return new EnzonaPagosResponse();
+                    }
+                }
+                log.warn("HTTP {} al consultar pagos del QR {}: {}",
+                        e.getStatusCode().value(), qrCode, e.getResponseBodyAsString());
+                return new EnzonaPagosResponse();
             }
-
-            return null;
         } catch (Exception e) {
             log.error("Error al consultar pagos del QR {} en Enzona", qrCode, e);
             return null;
