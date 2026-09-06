@@ -2,6 +2,7 @@ package com.fleet.management.controller;
 import com.fleet.management.util.PaginationUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import com.fleet.management.dto.recorrido.RecorridoRequest;
 import com.fleet.management.dto.recorrido.RecorridoResponse;
@@ -10,6 +11,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,11 +23,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RestController
 @RequestMapping("/api/recorridos")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class RecorridoController {
 
     private final RecorridoService service;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<Page<RecorridoResponse>> findAll(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "20") Integer perPage, @RequestParam(defaultValue = "id") String sort, @RequestParam(defaultValue = "ASC") String sortOrder) {
         Pageable pageable = PaginationUtils.of(PaginationUtils.params(page, perPage, sort, sortOrder));
 
@@ -46,19 +51,40 @@ public class RecorridoController {
         return ResponseEntity.ok(service.findByVehiculoId(vehiculoId, pageable));
     }
 
+    @GetMapping("/vehiculo/{vehiculoId}/reporte-mensual")
+    public ResponseEntity<?> reporteMovimientoMensual(@PathVariable Long vehiculoId,
+                                                         @RequestParam Integer mes,
+                                                         @RequestParam Integer anio) {
+        return ResponseEntity.ok(service.reporteMovimientoMensual(vehiculoId, mes, anio));
+    }
+
+    @GetMapping("/vehiculo/{vehiculoId}/reporte-mensual/pdf")
+    public ResponseEntity<byte[]> exportarReporteMovimientoMensualPdf(@PathVariable Long vehiculoId,
+                                                                       @RequestParam Integer mes,
+                                                                       @RequestParam Integer anio) {
+        byte[] pdf = service.exportarReporteMovimientoMensualPdf(vehiculoId, mes, anio);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=reporte-movimiento-" + vehiculoId + "-" + anio + "-" + String.format("%02d", mes) + ".pdf")
+                .body(pdf);
+    }
+
     @PostMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<RecorridoResponse> create(@Valid @RequestBody RecorridoRequest request) {
         RecorridoResponse response = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<RecorridoResponse> update(@PathVariable Long id,
                                                     @Valid @RequestBody RecorridoRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

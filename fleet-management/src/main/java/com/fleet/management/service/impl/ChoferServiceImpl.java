@@ -2,13 +2,11 @@ package com.fleet.management.service.impl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
-import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
 import com.fleet.management.dto.chofer.ChoferRequest;
 import com.fleet.management.dto.chofer.ChoferResponse;
-import com.fleet.management.dto.chofercategoria.ChoferCategoriaEmbeddedResponse;
-import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.ChoferMapper;
 import com.fleet.management.model.CategoriaLicencia;
 import com.fleet.management.model.Chofer;
 import com.fleet.management.model.ChoferCategoria;
@@ -18,13 +16,11 @@ import com.fleet.management.repository.ChoferCategoriaRepository;
 import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.service.ChoferService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -34,16 +30,17 @@ public class ChoferServiceImpl implements ChoferService {
     private final CategoriaLicenciaRepository categoriaLicenciaRepository;
     private final ChoferCategoriaRepository choferCategoriaRepository;
     private final EmpresaRepository empresaRepository;
+    private final ChoferMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<ChoferResponse> findAll(String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
             return choferRepository.findAllByActivoTrue(pageable)
-                    .map(this::toResponse);
+                    .map(mapper::toResponse);
         }
         return choferRepository.findAllByActivoTrueAndNombreOrCarneIdentidad(filter, pageable)
-                    .map(this::toResponse);
+                    .map(mapper::toResponse);
     }
 
     @Override
@@ -51,7 +48,7 @@ public class ChoferServiceImpl implements ChoferService {
     public ChoferResponse findById(Long id) {
         Chofer entity = choferRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Chofer", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -59,10 +56,10 @@ public class ChoferServiceImpl implements ChoferService {
     public Page<ChoferResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
             return choferRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
-                    .map(this::toResponse);
+                    .map(mapper::toResponse);
         }
         return choferRepository.findByEmpresaIdAndActivoTrueAndNombreOrCarneIdentidad(empresaId, filter, pageable)
-                    .map(this::toResponse);
+                    .map(mapper::toResponse);
     }
 
     @Override
@@ -92,7 +89,7 @@ public class ChoferServiceImpl implements ChoferService {
             }
         }
 
-        return toResponse(choferRepository.save(entity));
+        return mapper.toResponse(choferRepository.save(entity));
     }
 
     @Override
@@ -122,7 +119,7 @@ public class ChoferServiceImpl implements ChoferService {
             }
         }
 
-        return toResponse(choferRepository.save(entity));
+        return mapper.toResponse(choferRepository.save(entity));
     }
 
     @Override
@@ -169,66 +166,5 @@ public class ChoferServiceImpl implements ChoferService {
                 }
             });
         }
-    }
-
-    private EmpresaResponse toEmpresaResponse(Empresa empresa) {
-        return EmpresaResponse.builder()
-                .id(empresa.getId())
-                .codigo(empresa.getCodigo())
-                .nombre(empresa.getNombre())
-                .direccion(empresa.getDireccion())
-                .telefono(empresa.getTelefono())
-                .email(empresa.getEmail())
-                .activo(empresa.getActivo())
-                .fechaCreacion(empresa.getFechaCreacion())
-                .fechaActualizacion(empresa.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(empresa.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(empresa.getModificadoPor()))
-                .build();
-    }
-
-    private ChoferResponse toResponse(Chofer entity) {
-        List<ChoferCategoriaEmbeddedResponse> categoriasResponse = entity.getCategorias().stream()
-                .map(cc -> {
-                    CategoriaLicencia cat = cc.getCategoriaLicencia();
-                    CategoriaLicenciaResponse catResp = CategoriaLicenciaResponse.builder()
-                            .id(cat.getId())
-                            .codigo(cat.getCodigo())
-                            .denominacion(cat.getDenominacion())
-                            .descripcion(cat.getDescripcion())
-                            .activo(cat.getActivo())
-                            .fechaCreacion(cat.getFechaCreacion())
-                            .fechaActualizacion(cat.getFechaActualizacion())
-                            .creadoPor(AuditMapper.toAuditResponse(cat.getCreadoPor()))
-                            .modificadoPor(AuditMapper.toAuditResponse(cat.getModificadoPor()))
-                            .build();
-                    return ChoferCategoriaEmbeddedResponse.builder()
-                            .id(cc.getId())
-                            .categoriaLicencia(catResp)
-                            .fechaEmision(cc.getFechaEmision())
-                            .activo(cc.getActivo())
-                            .fechaCreacion(cc.getFechaCreacion())
-                            .fechaActualizacion(cc.getFechaActualizacion())
-                            .creadoPor(AuditMapper.toAuditResponse(cc.getCreadoPor()))
-                            .modificadoPor(AuditMapper.toAuditResponse(cc.getModificadoPor()))
-                            .build();
-                })
-                .toList();
-
-        return ChoferResponse.builder()
-                .id(entity.getId())
-                .empresa(toEmpresaResponse(entity.getEmpresa()))
-                .nombre(entity.getNombre())
-                .apellidos(entity.getApellidos())
-                .carneIdentidad(entity.getCarneIdentidad())
-                .numeroLicencia(entity.getNumeroLicencia())
-                .fechaNacimiento(entity.getFechaNacimiento())
-                .categorias(categoriasResponse)
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }

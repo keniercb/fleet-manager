@@ -6,29 +6,28 @@ import com.fleet.management.dto.marca.MarcaRequest;
 import com.fleet.management.dto.marca.MarcaResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.MarcaMapper;
 import com.fleet.management.model.Marca;
 import com.fleet.management.repository.MarcaRepository;
 import com.fleet.management.service.MarcaService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class MarcaServiceImpl implements MarcaService {
 
     private final MarcaRepository repository;
+    private final MarcaMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<MarcaResponse> findAll(String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
-            return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+            return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
         }
-        return repository.findAllByActivoTrueAndNombreContainingIgnoreCase(filter, pageable).map(this::toResponse);
+        return repository.findAllByActivoTrueAndNombreContainingIgnoreCase(filter, pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -36,7 +35,7 @@ public class MarcaServiceImpl implements MarcaService {
     public MarcaResponse findById(Long id) {
         Marca entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Marca", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -51,7 +50,7 @@ public class MarcaServiceImpl implements MarcaService {
                 .paisOrigen(request.getPaisOrigen())
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -67,7 +66,7 @@ public class MarcaServiceImpl implements MarcaService {
         entity.setNombre(request.getNombre());
         entity.setDescripcion(request.getDescripcion());
         entity.setPaisOrigen(request.getPaisOrigen());
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -77,19 +76,5 @@ public class MarcaServiceImpl implements MarcaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Marca", "id", id));
         entity.setActivo(false);
         repository.save(entity);
-    }
-
-    private MarcaResponse toResponse(Marca entity) {
-        return MarcaResponse.builder()
-                .id(entity.getId())
-                .nombre(entity.getNombre())
-                .descripcion(entity.getDescripcion())
-                .paisOrigen(entity.getPaisOrigen())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }

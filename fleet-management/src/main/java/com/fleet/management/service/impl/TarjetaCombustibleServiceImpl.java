@@ -1,18 +1,16 @@
 package com.fleet.management.service.impl;
 
-import com.fleet.management.dto.currency.CurrencyResponse;
-import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.tarjetacombustible.TarjetaCombustibleRequest;
 import com.fleet.management.dto.tarjetacombustible.TarjetaCombustibleResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.TarjetaCombustibleMapper;
 import com.fleet.management.model.Empresa;
 import com.fleet.management.model.TarjetaCombustible;
 import com.fleet.management.repository.CurrencyRepository;
 import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.TarjetaCombustibleRepository;
 import com.fleet.management.service.TarjetaCombustibleService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,14 +24,15 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
     private final TarjetaCombustibleRepository repository;
     private final CurrencyRepository currencyRepository;
     private final EmpresaRepository empresaRepository;
+    private final TarjetaCombustibleMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<TarjetaCombustibleResponse> findAll(String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
-            return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+            return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
         }
-        return repository.findAllByActivoTrueAndNumeroContainingIgnoreCase(filter, pageable).map(this::toResponse);
+        return repository.findAllByActivoTrueAndNumeroContainingIgnoreCase(filter, pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -41,7 +40,7 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
     public TarjetaCombustibleResponse findById(Long id) {
         TarjetaCombustible entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -49,16 +48,16 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
     public TarjetaCombustibleResponse findByNumero(String numero) {
         TarjetaCombustible entity = repository.findByNumero(numero)
                 .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "numero", numero));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<TarjetaCombustibleResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
-            return repository.findByEmpresaIdAndActivoTrue(empresaId, pageable).map(this::toResponse);
+            return repository.findByEmpresaIdAndActivoTrue(empresaId, pageable).map(mapper::toResponse);
         }
-        return repository.findByEmpresaIdAndActivoTrueAndNumeroContainingIgnoreCase(empresaId, filter, pageable).map(this::toResponse);
+        return repository.findByEmpresaIdAndActivoTrueAndNumeroContainingIgnoreCase(empresaId, filter, pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -81,7 +80,7 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
                 .empresa(empresa)
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -104,7 +103,7 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
         entity.setSaldo(request.getSaldo());
         entity.setCurrency(currency);
         entity.setEmpresa(empresa);
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -114,38 +113,5 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
                 .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "id", id));
         entity.setActivo(false);
         repository.save(entity);
-    }
-
-    private TarjetaCombustibleResponse toResponse(TarjetaCombustible entity) {
-        return TarjetaCombustibleResponse.builder()
-                .id(entity.getId())
-                .numero(entity.getNumero())
-                .saldo(entity.getSaldo())
-                .currency(toCurrencyResponse(entity.getCurrency()))
-                .empresa(toEmpresaResponse(entity.getEmpresa()))
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
-    }
-
-    private CurrencyResponse toCurrencyResponse(com.fleet.management.model.Currency currency) {
-        return CurrencyResponse.builder()
-                .id(currency.getId())
-                .isoCode(currency.getIsoCode())
-                .descripcion(currency.getDescripcion())
-                .activo(currency.getActivo())
-                .build();
-    }
-
-    private EmpresaResponse toEmpresaResponse(Empresa empresa) {
-        return EmpresaResponse.builder()
-                .id(empresa.getId())
-                .codigo(empresa.getCodigo())
-                .nombre(empresa.getNombre())
-                .activo(empresa.getActivo())
-                .build();
     }
 }

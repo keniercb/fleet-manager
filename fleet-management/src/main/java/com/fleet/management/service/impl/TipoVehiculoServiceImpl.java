@@ -6,26 +6,25 @@ import com.fleet.management.dto.tipovehiculo.TipoVehiculoRequest;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.TipoVehiculoMapper;
 import com.fleet.management.model.TipoVehiculo;
 import com.fleet.management.repository.TipoVehiculoRepository;
 import com.fleet.management.service.TipoVehiculoService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class TipoVehiculoServiceImpl implements TipoVehiculoService {
 
     private final TipoVehiculoRepository repository;
+    private final TipoVehiculoMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<TipoVehiculoResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -33,7 +32,7 @@ public class TipoVehiculoServiceImpl implements TipoVehiculoService {
     public TipoVehiculoResponse findById(Long id) {
         TipoVehiculo entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TipoVehiculo", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -47,7 +46,7 @@ public class TipoVehiculoServiceImpl implements TipoVehiculoService {
                 .descripcion(request.getDescripcion())
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -62,7 +61,7 @@ public class TipoVehiculoServiceImpl implements TipoVehiculoService {
 
         entity.setNombre(request.getNombre());
         entity.setDescripcion(request.getDescripcion());
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -72,18 +71,5 @@ public class TipoVehiculoServiceImpl implements TipoVehiculoService {
                 .orElseThrow(() -> new ResourceNotFoundException("TipoVehiculo", "id", id));
         entity.setActivo(false);
         repository.save(entity);
-    }
-
-    private TipoVehiculoResponse toResponse(TipoVehiculo entity) {
-        return TipoVehiculoResponse.builder()
-                .id(entity.getId())
-                .nombre(entity.getNombre())
-                .descripcion(entity.getDescripcion())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }

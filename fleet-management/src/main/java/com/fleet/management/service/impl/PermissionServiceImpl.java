@@ -4,10 +4,10 @@ import com.fleet.management.dto.permission.PermissionRequest;
 import com.fleet.management.dto.permission.PermissionResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.PermissionMapper;
 import com.fleet.management.model.Permission;
 import com.fleet.management.repository.PermissionRepository;
 import com.fleet.management.service.PermissionService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,12 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class PermissionServiceImpl implements PermissionService {
 
     private final PermissionRepository permissionRepository;
+    private final PermissionMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<PermissionResponse> findAll(Pageable pageable) {
         return permissionRepository.findAllByActivoTrue(pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
@@ -32,7 +33,7 @@ public class PermissionServiceImpl implements PermissionService {
     public PermissionResponse findById(Long id) {
         Permission entity = permissionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Permission", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -40,7 +41,7 @@ public class PermissionServiceImpl implements PermissionService {
     public PermissionResponse findByName(String name) {
         Permission entity = permissionRepository.findByName(name)
                 .orElseThrow(() -> new ResourceNotFoundException("Permission", "name", name));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
@@ -55,7 +56,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .description(request.getDescription())
                 .activo(true)
                 .build();
-        return toResponse(permissionRepository.save(entity));
+        return mapper.toResponse(permissionRepository.save(entity));
     }
 
     @Override
@@ -72,7 +73,7 @@ public class PermissionServiceImpl implements PermissionService {
 
         entity.setName(request.getName());
         entity.setDescription(request.getDescription());
-        return toResponse(permissionRepository.save(entity));
+        return mapper.toResponse(permissionRepository.save(entity));
     }
 
     @Override
@@ -82,18 +83,5 @@ public class PermissionServiceImpl implements PermissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Permission", "id", id));
         entity.setActivo(false);
         permissionRepository.save(entity);
-    }
-
-    private PermissionResponse toResponse(Permission entity) {
-        return PermissionResponse.builder()
-                .id(entity.getId())
-                .name(entity.getName())
-                .description(entity.getDescription())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }

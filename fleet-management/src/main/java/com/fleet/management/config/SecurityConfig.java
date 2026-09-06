@@ -1,7 +1,9 @@
 package com.fleet.management.config;
 
 import com.fleet.management.security.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -31,6 +34,16 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    @Value("${fleet.security.rate-limit.max-attempts:5}")
+    private int rateLimitMaxAttempts;
+
+    @Value("${fleet.security.rate-limit.window-seconds:60}")
+    private int rateLimitWindowSeconds;
+
+    // FX-20: si es true, se confia en X-Forwarded-For; default false para evitar bypass
+    @Value("${fleet.security.rate-limit.trust-forwarded-for:false}")
+    private boolean rateLimitTrustForwardedFor;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -44,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/plans/**").hasRole("SUPER_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/plans/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payments/webhook/enzona").permitAll()
                         .requestMatchers("/api/users/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/roles/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/roles/**").hasRole("SUPER_ADMIN")
@@ -55,6 +69,20 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Registra el RateLimitFilter solo para los endpoints de autenticacion sensibles.
+     * Aplica a POST /api/auth/login y PUT /api/auth/cambiar-password.
+     */
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration() {
+        FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(new RateLimitFilter(rateLimitMaxAttempts, rateLimitWindowSeconds, rateLimitTrustForwardedFor));
+        registration.addUrlPatterns("/api/auth/login", "/api/auth/cambiar-password");
+        registration.setOrder(1);
+        registration.setName("rateLimitFilter");
+        return registration;
     }
 
     @Bean

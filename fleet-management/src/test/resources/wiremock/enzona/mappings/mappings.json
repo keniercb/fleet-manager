@@ -1,0 +1,88 @@
+{
+  "mappings": [
+    {
+      "name": "token-success",
+      "request": {
+        "method": "POST",
+        "url": "/token",
+        "headers": {
+          "Authorization": { "matches": "Basic .*" }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "access_token": "test-access-token-1234567890",
+          "token_type": "bearer",
+          "expires_in": 3600
+        }
+      }
+    },
+    {
+      "name": "qr-merchant-success",
+      "request": {
+        "method": "POST",
+        "url": "/qr/v1.0.0/qr/merchant",
+        "headers": {
+          "Authorization": { "matches": "Bearer test-access-token.*" }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "vendor_identity_code": "test-qr-code-abc123def456",
+          "create_at": "2026-09-05T14:30:00Z",
+          "update_at": "2026-09-05T14:30:00Z",
+          "image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        }
+      }
+    },
+    {
+      "name": "qr-merchant-500",
+      "request": {
+        "method": "POST",
+        "url": "/qr/v1.0.0/qr/merchant",
+        "headers": {
+          "Authorization": { "matches": "Bearer failing-token.*" }
+        }
+      },
+      "response": {
+        "status": 500,
+        "body": "Internal Server Error"
+      }
+    },
+    {
+      "name": "qr-payments-completed",
+      "request": {
+        "method": "GET",
+        "url": "/qr/v1.0.0/qr/payments/test-qr-code-abc123def456"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": [
+          {
+            "transaction_id": "txn-test-001",
+            "status": "completed",
+            "amount": "500.00",
+            "currency": "CUP"
+          }
+        ]
+      }
+    },
+    {
+      "name": "qr-payments-empty",
+      "request": {
+        "method": "GET",
+        "url": "/qr/v1.0.0/qr/payments/unknown-qr-code"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": []
+      }
+    }
+  ]
+}

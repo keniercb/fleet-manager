@@ -26,4 +26,9 @@ public interface VehiculoService {
     VehiculoResponse update(Long id, VehiculoRequest request);
 
     void delete(Long id);
+
+    /**
+     * Genera el reporte PDF del listado de vehiculos de la empresa del usuario autenticado.
+     */
+    byte[] generarReportePdf();
 }

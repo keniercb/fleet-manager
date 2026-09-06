@@ -21,8 +21,11 @@ public class SubscriptionResponse {
     private LocalDate startDate;
     private LocalDate endDate;
     private SubscriptionStatus status;
+    private Integer maxVehiculos;
+    private Integer maxUsuarios;
     private Integer currentVehicleCount;
     private Integer currentUserCount;
+    private BigDecimal porcientoDescuentoAnual;
     private Long version;
     private Boolean activo;
     private LocalDateTime fechaCreacion;

@@ -2,27 +2,21 @@ package com.fleet.management.service.impl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
-import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
-import com.fleet.management.dto.chofer.ChoferResponse;
-import com.fleet.management.dto.empresa.EmpresaResponse;
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaRequest;
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaResponse;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
+import com.fleet.management.mapper.ChoferCategoriaMapper;
 import com.fleet.management.model.CategoriaLicencia;
 import com.fleet.management.model.Chofer;
 import com.fleet.management.model.ChoferCategoria;
-import com.fleet.management.model.Empresa;
 import com.fleet.management.repository.CategoriaLicenciaRepository;
 import com.fleet.management.repository.ChoferCategoriaRepository;
 import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.service.ChoferCategoriaService;
-import com.fleet.management.util.AuditMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -31,11 +25,12 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
     private final ChoferCategoriaRepository repository;
     private final ChoferRepository choferRepository;
     private final CategoriaLicenciaRepository categoriaLicenciaRepository;
+    private final ChoferCategoriaMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<ChoferCategoriaResponse> findAll(Pageable pageable) {
-        return repository.findAllByActivoTrue(pageable).map(this::toResponse);
+        return repository.findAllByActivoTrue(pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -43,19 +38,19 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
     public ChoferCategoriaResponse findById(Long id) {
         ChoferCategoria entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ChoferCategoria", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ChoferCategoriaResponse> findByChoferId(Long choferId, Pageable pageable) {
-        return repository.findByChoferId(choferId, pageable).map(this::toResponse);
+        return repository.findByChoferId(choferId, pageable).map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ChoferCategoriaResponse> findByCategoriaLicenciaId(Long categoriaLicenciaId, Pageable pageable) {
-        return repository.findByCategoriaLicenciaId(categoriaLicenciaId, pageable).map(this::toResponse);
+        return repository.findByCategoriaLicenciaId(categoriaLicenciaId, pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -78,7 +73,7 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
                 .fechaEmision(request.getFechaEmision())
                 .activo(true)
                 .build();
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -105,7 +100,7 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
         entity.setChofer(chofer);
         entity.setCategoriaLicencia(categoria);
         entity.setFechaEmision(request.getFechaEmision());
-        return toResponse(repository.save(entity));
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
@@ -115,63 +110,5 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
                 .orElseThrow(() -> new ResourceNotFoundException("ChoferCategoria", "id", id));
         entity.setActivo(false);
         repository.save(entity);
-    }
-
-    private ChoferCategoriaResponse toResponse(ChoferCategoria entity) {
-        Chofer chofer = entity.getChofer();
-        Empresa emp = chofer.getEmpresa();
-        EmpresaResponse empresaResp = EmpresaResponse.builder()
-                .id(emp.getId())
-                .codigo(emp.getCodigo())
-                .nombre(emp.getNombre())
-                .direccion(emp.getDireccion())
-                .telefono(emp.getTelefono())
-                .email(emp.getEmail())
-                .activo(emp.getActivo())
-                .fechaCreacion(emp.getFechaCreacion())
-                .fechaActualizacion(emp.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(emp.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(emp.getModificadoPor()))
-                .build();
-
-        ChoferResponse choferResponse = ChoferResponse.builder()
-                .id(chofer.getId())
-                .empresa(empresaResp)
-                .nombre(chofer.getNombre())
-                .apellidos(chofer.getApellidos())
-                .carneIdentidad(chofer.getCarneIdentidad())
-                .numeroLicencia(chofer.getNumeroLicencia())
-                .fechaNacimiento(chofer.getFechaNacimiento())
-                .activo(chofer.getActivo())
-                .fechaCreacion(chofer.getFechaCreacion())
-                .fechaActualizacion(chofer.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(chofer.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(chofer.getModificadoPor()))
-                .build();
-
-        CategoriaLicencia cat = entity.getCategoriaLicencia();
-        CategoriaLicenciaResponse categoriaResponse = CategoriaLicenciaResponse.builder()
-                .id(cat.getId())
-                .codigo(cat.getCodigo())
-                .denominacion(cat.getDenominacion())
-                .descripcion(cat.getDescripcion())
-                .activo(cat.getActivo())
-                .fechaCreacion(cat.getFechaCreacion())
-                .fechaActualizacion(cat.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(cat.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(cat.getModificadoPor()))
-                .build();
-
-        return ChoferCategoriaResponse.builder()
-                .id(entity.getId())
-                .chofer(choferResponse)
-                .categoriaLicencia(categoriaResponse)
-                .fechaEmision(entity.getFechaEmision())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
     }
 }

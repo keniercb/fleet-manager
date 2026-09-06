@@ -2,13 +2,10 @@ package com.fleet.management.service.impl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
-import com.fleet.management.dto.chofer.ChoferResponse;
-import com.fleet.management.dto.empresa.EmpresaResponse;
-import com.fleet.management.dto.marca.MarcaResponse;
-import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
-import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
 import com.fleet.management.dto.vehiculo.VehiculoRequest;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
+import com.fleet.management.dto.reporte.EmpresaReporteDto;
+import com.fleet.management.dto.reporte.VehiculoFilaReporteDto;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.Chofer;
@@ -17,17 +14,30 @@ import com.fleet.management.model.Marca;
 import com.fleet.management.model.TipoCombustible;
 import com.fleet.management.model.TipoVehiculo;
 import com.fleet.management.model.Vehiculo;
+import com.fleet.management.model.Subscription;
 import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.MarcaRepository;
 import com.fleet.management.repository.TipoCombustibleRepository;
 import com.fleet.management.repository.TipoVehiculoRepository;
 import com.fleet.management.repository.VehiculoRepository;
+import com.fleet.management.security.AuthenticatedUser;
+import com.fleet.management.service.PdfGenerationService;
+import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.service.VehiculoService;
-import com.fleet.management.util.AuditMapper;
+import com.fleet.management.mapper.VehiculoMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -40,16 +50,19 @@ public class VehiculoServiceImpl implements VehiculoService {
     private final MarcaRepository marcaRepository;
     private final TipoCombustibleRepository tipoCombustibleRepository;
     private final ChoferRepository choferRepository;
+    private final SubscriptionService subscriptionService;
+    private final PdfGenerationService pdfGenerationService;
+    private final VehiculoMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findAll(String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
             return vehiculoRepository.findAllByActivoTrue(pageable)
-                    .map(this::toResponse);
+                    .map(mapper::toResponse);
         }
         return vehiculoRepository.findAllByActivoTrueAndMatriculaOrNumeroMotor(filter, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
@@ -57,35 +70,35 @@ public class VehiculoServiceImpl implements VehiculoService {
     public VehiculoResponse findById(Long id) {
         Vehiculo entity = vehiculoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehiculo", "id", id));
-        return toResponse(entity);
+        return mapper.toResponse(entity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findByChoferId(Long choferId, Pageable pageable) {
         return vehiculoRepository.findByChoferId(choferId, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findByTipoVehiculoId(Long tipoVehiculoId, Pageable pageable) {
         return vehiculoRepository.findByTipoVehiculoId(tipoVehiculoId, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findByTipoCombustibleId(Long tipoCombustibleId, Pageable pageable) {
         return vehiculoRepository.findByTipoCombustibleId(tipoCombustibleId, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehiculoResponse> findSinChoferAsignado(Pageable pageable) {
         return vehiculoRepository.findSinChoferAsignado(pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
@@ -93,15 +106,24 @@ public class VehiculoServiceImpl implements VehiculoService {
     public Page<VehiculoResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable) {
         if (filter == null || filter.isBlank()) {
             return vehiculoRepository.findByEmpresaIdAndActivoTrue(empresaId, pageable)
-                    .map(this::toResponse);
+                    .map(mapper::toResponse);
         }
         return vehiculoRepository.findByEmpresaIdAndActivoTrueAndMatriculaOrNumeroMotor(empresaId, filter, pageable)
-                .map(this::toResponse);
+                .map(mapper::toResponse);
     }
 
     @Override
     @Transactional
     public VehiculoResponse create(VehiculoRequest request) {
+        Subscription activeSubscription = subscriptionService.getActiveSubscriptionEntity(request.getEmpresaId())
+                .orElseThrow(() -> new BusinessException("La empresa no tiene una suscripcion activa"));
+
+        Integer maxVehiculos = activeSubscription.getMaxVehiculos();
+        if (maxVehiculos != null && activeSubscription.getCurrentVehicleCount() >= maxVehiculos) {
+            throw new BusinessException("No se puede crear el vehiculo. Se ha alcanzado el limite de "
+                    + maxVehiculos + " vehiculos");
+        }
+
         validateUniqueFields(request, null);
 
         Empresa empresa = empresaRepository.findById(request.getEmpresaId())
@@ -138,7 +160,9 @@ public class VehiculoServiceImpl implements VehiculoService {
                 .indiceConsumo(request.getIndiceConsumo())
                 .activo(true)
                 .build();
-        return toResponse(vehiculoRepository.save(entity));
+        Vehiculo saved = vehiculoRepository.save(entity);
+        subscriptionService.incrementVehicleCount(activeSubscription.getId());
+        return mapper.toResponse(saved);
     }
 
     @Override
@@ -175,12 +199,25 @@ public class VehiculoServiceImpl implements VehiculoService {
         entity.setMatricula(request.getMatricula());
         entity.setModelo(request.getModelo());
         entity.setNumeroMotor(request.getNumeroMotor());
-        entity.setOdometro(request.getOdometro());
-        entity.setCombustible(request.getCombustible());
+        // FX-11: odometro y combustible son calculados por RecorridoServiceImpl.
+        // No se permiten cambios directos desde el endpoint de update porque
+        // corrompen la trazabilidad de la flota.
+        if (request.getOdometro() != null
+                && entity.getOdometro() != null
+                && !request.getOdometro().equals(entity.getOdometro())) {
+            throw new BusinessException("El odometro no se puede modificar directamente; "
+                    + "se actualiza automaticamente al registrar recorridos.");
+        }
+        if (request.getCombustible() != null
+                && entity.getCombustible() != null
+                && request.getCombustible().compareTo(entity.getCombustible()) != 0) {
+            throw new BusinessException("El combustible no se puede modificar directamente; "
+                    + "se actualiza automaticamente al registrar recorridos.");
+        }
         entity.setUltimoMantenimiento(request.getUltimoMantenimiento());
         entity.setOdometroUltimoMantenimiento(request.getOdometroUltimoMantenimiento());
         entity.setIndiceConsumo(request.getIndiceConsumo());
-        return toResponse(vehiculoRepository.save(entity));
+        return mapper.toResponse(vehiculoRepository.save(entity));
     }
 
     @Override
@@ -209,102 +246,62 @@ public class VehiculoServiceImpl implements VehiculoService {
         }
     }
 
-    private EmpresaResponse toEmpresaResponse(Empresa empresa) {
-        return EmpresaResponse.builder()
-                .id(empresa.getId())
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generarReportePdf() {
+        // 1. Obtener la empresa del usuario autenticado
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authUser)) {
+            throw new BusinessException("No se pudo determinar la empresa del usuario autenticado");
+        }
+        Empresa empresaRef = authUser.getUser().getEmpresa();
+        if (empresaRef == null) {
+            throw new BusinessException("El usuario no tiene una empresa asociada");
+        }
+
+        // Fetch empresa dentro de la sesion actual para evitar LazyInitializationException
+        // (el proxy del AuthenticatedUser pertenece a la sesion del filtro de autenticacion)
+        Empresa empresa = empresaRepository.findById(empresaRef.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", empresaRef.getId()));
+
+        // 2. Obtener vehiculos activos de la empresa
+        List<Vehiculo> vehiculos = vehiculoRepository.findForReporteByEmpresaId(empresa.getId());
+
+        // 3. Mapear datos del encabezado
+        EmpresaReporteDto empresaDto = EmpresaReporteDto.builder()
                 .codigo(empresa.getCodigo())
                 .nombre(empresa.getNombre())
                 .direccion(empresa.getDireccion())
                 .telefono(empresa.getTelefono())
                 .email(empresa.getEmail())
-                .activo(empresa.getActivo())
-                .fechaCreacion(empresa.getFechaCreacion())
-                .fechaActualizacion(empresa.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(empresa.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(empresa.getModificadoPor()))
-                .build();
-    }
-
-    private VehiculoResponse toResponse(Vehiculo entity) {
-        EmpresaResponse empresaResp = toEmpresaResponse(entity.getEmpresa());
-
-        TipoVehiculo tv = entity.getTipoVehiculo();
-        TipoVehiculoResponse tipoVehiculoResp = TipoVehiculoResponse.builder()
-                .id(tv.getId())
-                .nombre(tv.getNombre())
-                .descripcion(tv.getDescripcion())
-                .activo(tv.getActivo())
-                .fechaCreacion(tv.getFechaCreacion())
-                .fechaActualizacion(tv.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(tv.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(tv.getModificadoPor()))
+                .provincia(empresa.getProvincia() != null ? empresa.getProvincia().getNombre() : null)
+                .municipio(empresa.getMunicipio() != null ? empresa.getMunicipio().getNombre() : null)
                 .build();
 
-        Marca m = entity.getMarca();
-        MarcaResponse marcaResp = MarcaResponse.builder()
-                .id(m.getId())
-                .nombre(m.getNombre())
-                .descripcion(m.getDescripcion())
-                .paisOrigen(m.getPaisOrigen())
-                .activo(m.getActivo())
-                .fechaCreacion(m.getFechaCreacion())
-                .fechaActualizacion(m.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(m.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(m.getModificadoPor()))
-                .build();
+        // 4. Mapear datos de vehiculos
+        List<VehiculoFilaReporteDto> vehiculosDto = vehiculos.stream()
+                .map(v -> VehiculoFilaReporteDto.builder()
+                        .tipoVehiculo(v.getTipoVehiculo().getNombre())
+                        .matricula(v.getMatricula())
+                        .marca(v.getMarca().getNombre())
+                        .modelo(v.getModelo())
+                        .numeroMotor(v.getNumeroMotor())
+                        .odometro(v.getOdometro() != null ? v.getOdometro().toString() : "0")
+                        .combustibleLitros(v.getCombustible() != null ? v.getCombustible().toPlainString() : "0.00")
+                        .build())
+                .collect(Collectors.toList());
 
-        TipoCombustible tc = entity.getTipoCombustible();
-        TipoCombustibleResponse tipoCombustibleResp = TipoCombustibleResponse.builder()
-                .id(tc.getId())
-                .codigo(tc.getCodigo())
-                .denominacion(tc.getDenominacion())
-                .descripcion(tc.getDescripcion())
-                .activo(tc.getActivo())
-                .fechaCreacion(tc.getFechaCreacion())
-                .fechaActualizacion(tc.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(tc.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(tc.getModificadoPor()))
-                .build();
+        // 5. Fecha de impresion
+        String fechaImpresion = LocalDateTime.now().format(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
 
-        ChoferResponse choferResp = null;
-        if (entity.getChofer() != null) {
-            Chofer c = entity.getChofer();
-            choferResp = ChoferResponse.builder()
-                    .id(c.getId())
-                    .empresa(toEmpresaResponse(c.getEmpresa()))
-                    .nombre(c.getNombre())
-                    .apellidos(c.getApellidos())
-                    .carneIdentidad(c.getCarneIdentidad())
-                    .numeroLicencia(c.getNumeroLicencia())
-                    .fechaNacimiento(c.getFechaNacimiento())
-                    .activo(c.getActivo())
-                    .fechaCreacion(c.getFechaCreacion())
-                    .fechaActualizacion(c.getFechaActualizacion())
-                    .creadoPor(AuditMapper.toAuditResponse(c.getCreadoPor()))
-                    .modificadoPor(AuditMapper.toAuditResponse(c.getModificadoPor()))
-                    .build();
-        }
+        // 6. Construir modelo para Thymeleaf
+        Map<String, Object> model = new HashMap<>();
+        model.put("empresa", empresaDto);
+        model.put("vehiculos", vehiculosDto);
+        model.put("fechaImpresion", fechaImpresion);
 
-        return VehiculoResponse.builder()
-                .id(entity.getId())
-                .empresa(empresaResp)
-                .tipoVehiculo(tipoVehiculoResp)
-                .marca(marcaResp)
-                .chofer(choferResp)
-                .tipoCombustible(tipoCombustibleResp)
-                .matricula(entity.getMatricula())
-                .modelo(entity.getModelo())
-                .numeroMotor(entity.getNumeroMotor())
-                .odometro(entity.getOdometro())
-                .combustible(entity.getCombustible())
-                .ultimoMantenimiento(entity.getUltimoMantenimiento())
-                .odometroUltimoMantenimiento(entity.getOdometroUltimoMantenimiento())
-                .indiceConsumo(entity.getIndiceConsumo())
-                .activo(entity.getActivo())
-                .fechaCreacion(entity.getFechaCreacion())
-                .fechaActualizacion(entity.getFechaActualizacion())
-                .creadoPor(AuditMapper.toAuditResponse(entity.getCreadoPor()))
-                .modificadoPor(AuditMapper.toAuditResponse(entity.getModificadoPor()))
-                .build();
+        // 7. Generar PDF
+        return pdfGenerationService.generatePdf("reports/vehiculos-listado", model);
     }
 }

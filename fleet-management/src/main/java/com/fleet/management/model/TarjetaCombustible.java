@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "tarjetas_combustible", uniqueConstraints = {
         @UniqueConstraint(name = "uk_tarjeta_combustible_numero", columnNames = "numero")
@@ -24,10 +26,11 @@ public class TarjetaCombustible extends BaseEntity {
     @Column(name = "numero", nullable = false, length = 50)
     private String numero;
 
+    // FX-13: migrado de Double a BigDecimal para precision monetaria.
     @NotNull(message = "El saldo es obligatorio")
     @Positive(message = "El saldo debe ser mayor a cero")
-    @Column(name = "saldo", nullable = false)
-    private Double saldo;
+    @Column(name = "saldo", nullable = false, precision = 12, scale = 2)
+    private BigDecimal saldo;
 
     @NotNull(message = "La moneda es obligatoria")
     @ManyToOne(fetch = FetchType.LAZY)

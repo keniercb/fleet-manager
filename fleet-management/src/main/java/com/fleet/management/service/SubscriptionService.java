@@ -1,10 +1,14 @@
 package com.fleet.management.service;
 
+import com.fleet.management.dto.subscription.SubscriptionCreateRequest;
 import com.fleet.management.dto.subscription.SubscriptionRequest;
 import com.fleet.management.dto.subscription.SubscriptionResponse;
 import com.fleet.management.model.Empresa;
+import com.fleet.management.model.Subscription;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.util.Optional;
 
 public interface SubscriptionService {
 
@@ -12,7 +16,7 @@ public interface SubscriptionService {
 
     SubscriptionResponse findById(Long id);
 
-    SubscriptionResponse create(SubscriptionRequest request);
+    SubscriptionResponse create(SubscriptionCreateRequest request);
 
     SubscriptionResponse createTrialSubscription(Empresa empresa);
 
@@ -25,6 +29,8 @@ public interface SubscriptionService {
     Page<SubscriptionResponse> findByPlan(Long planId, Pageable pageable);
 
     SubscriptionResponse findActiveByEmpresa(Long empresaId);
+
+    Optional<Subscription> getActiveSubscriptionEntity(Long empresaId);
 
     void incrementVehicleCount(Long subscriptionId);
 

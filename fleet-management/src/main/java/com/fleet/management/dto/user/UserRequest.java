@@ -26,4 +26,6 @@ public class UserRequest {
     private String password;
 
     private Set<Long> roleIds;
+
+    private Long empresaId;
 }

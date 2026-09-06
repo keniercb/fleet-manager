@@ -41,6 +41,11 @@ public class Plan extends BaseEntity {
     @Column(name = "duracion", nullable = false)
     private Integer duracion;
 
+    @DecimalMin(value = "0.00", message = "El porciento de descuento anual no puede ser negativo")
+    @DecimalMax(value = "100.00", message = "El porciento de descuento anual no puede superar 100")
+    @Column(name = "porciento_descuento_anual", precision = 5, scale = 2)
+    private BigDecimal porcientoDescuentoAnual;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "sub_plan_features",

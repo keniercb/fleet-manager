@@ -1,5 +1,7 @@
 package com.fleet.management.dto.empresa;
 
+import com.fleet.management.dto.municipio.MunicipioResponse;
+import com.fleet.management.dto.provincia.ProvinciaResponse;
 import com.fleet.management.dto.user.UserAuditResponse;
 import lombok.*;
 
@@ -18,6 +20,8 @@ public class EmpresaResponse {
     private String direccion;
     private String telefono;
     private String email;
+    private ProvinciaResponse provincia;
+    private MunicipioResponse municipio;
     private Boolean activo;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
