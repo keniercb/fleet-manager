@@ -1,23 +1,31 @@
 # ============================================================================
 # Dockerfile — Fleet Management Backend
-# Multi-stage build con Eclipse Temurin JDK 17
+# Multi-stage build con Eclipse Temurin JDK 25 (LTS)
 #
-# Stage 1 (builder): compila con Maven + JDK 17, genera el JAR
-# Stage 2 (runtime): JRE 17 ligero, solo runtime (sin compiladores)
+# Stage 1 (builder): compila con Maven + JDK 25, genera el JAR
+# Stage 2 (runtime): JRE 25 ligero, solo runtime (sin compiladores)
 #
-# Imagen final: ~220 MB (vs ~500 MB con JDK completo)
+# Imagen final: ~230 MB (vs ~520 MB con JDK completo)
+#
+# Nota de compatibilidad:
+#   Spring Boot 3.5.5 tiene soporte oficial para Java 17, 21 y 25 LTS.
+#   Java 25 LTS (publicado septiembre 2025) es el baseline recomendado.
 # ============================================================================
 
 # ---------------------------------------------------------------------------
 # Stage 1: Builder — compila con Maven usando un cache de dependencias
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:17-jdk-jammy AS builder
+FROM eclipse-temurin:25-jdk-noble AS builder
 
 WORKDIR /workspace
 
+# Instalar Maven (la imagen JDK de Temurin no lo incluye)
+RUN apt-get update && apt-get install -y --no-install-recommends maven \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copiar primero solo el pom.xml para cache de dependencias (acelera builds
 # repetitivos: si el pom no cambia, Docker reutiliza la capa de descarga).
-COPY fleet-management/pom.xml ./
+COPY pom.xml ./
 
 # Descargar dependencias (se cachea si pom.xml no cambia)
 # --no-transfer-progress: silencia el progreso de descarga (logs más limpios)
@@ -25,7 +33,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     mvn -B -q dependency:go-offline || true
 
 # Copiar el resto del código fuente
-COPY fleet-management/src ./src
+COPY src ./src
 
 # Compilar y empaquetar, omitiendo tests (se ejecutan en CI separado)
 # -DskipTests: no compila ni ejecuta tests
@@ -42,16 +50,16 @@ RUN mkdir -p target/extracted && \
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime — JRE ligero, solo lo necesario para ejecutar
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:17-jre-jammy AS runtime
+FROM eclipse-temurin:25-jre-noble AS runtime
 
 # Metadatos OCI para trazabilidad
 LABEL org.opencontainers.image.title="fleet-management-backend" \
-      org.opencontainers.image.description="Sistema de Gestión del Parque de Vehículos — Spring Boot 3.3.5" \
+      org.opencontainers.image.description="Sistema de Gestión del Parque de Vehículos — Spring Boot 3.5.5 / JDK 25" \
       org.opencontainers.image.source="https://github.com/keniercb/fleet-manager" \
       org.opencontainers.image.licenses="MIT"
 
-# Usuario no-root por seguridad (Evitaarus attackers que obtengan shell
-# no puedan escalar a root en el host)
+# Usuario no-root por seguridad (evita que attackers que obtengan shell
+# puedan escalar a root en el host)
 RUN groupadd -r fleet && useradd -r -g fleet -d /app -s /sbin/nologin fleet
 
 WORKDIR /app
@@ -83,17 +91,19 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     --header='Content-Type: application/json' \
     http://localhost:8080/api/auth/login > /dev/null 2>&1 || exit 1
 
-# Configuración JVM para contenedores:
+# Configuración JVM para contenedores (JDK 25):
 # -XX:+UseContainerSupport: respeta limits de cgroup (default desde JDK 10)
 # -XX:MaxRAMPercentage=75.0: usa 75% de la memoria del contenedor para heap
 #   (deja 25% para metaspace, threads, off-heap)
-# -XX:+UseG1GC: garbage collector G1 (buen balance throughput/latencia)
+# -XX:+UseZGC: ZGC es el GC por defecto recomendado en JDK 25 para
+#   contenedores (mejor latencia que G1 en heaps grandes; JEP 457)
+#   Alternativa: -XX:+UseG1GC si prefieres estabilidad probada
 # -Djava.security.egd=file:/dev/./urandom: más rápido que /dev/random
 #   (importante para Spring Security y JWT en contenedores)
 # -Dspring.profiles.active=prod: perfil de producción obligatorio
 ENV JAVA_OPTS="-XX:+UseContainerSupport \
     -XX:MaxRAMPercentage=75.0 \
-    -XX:+UseG1GC \
+    -XX:+UseZGC \
     -Djava.security.egd=file:/dev/./urandom" \
     SPRING_PROFILES_ACTIVE=prod
 
