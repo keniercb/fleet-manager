@@ -57,8 +57,8 @@ El sistema está diseñado como un microservicio backend que puede ser consumido
 
 | Componente | Tecnología | Versión | Observaciones |
 |---|---|---|---|
-| Lenguaje | Java | 17 | LTS |
-| Framework | Spring Boot | 3.3.5 | |
+| Lenguaje | Java | 25 | LTS |
+| Framework | Spring Boot | 3.5.5 | |
 | Build Tool | Maven | — | `pom.xml` |
 | ORM | Spring Data JPA / Hibernate | (managed by Spring Boot) | `ddl-auto=update` |
 | Base de datos (desarrollo) | H2 | (in-memory) | Consola habilitada en `/h2-console` |
