@@ -1,0 +1,100 @@
+# ============================================================================
+# docker-compose.yml — Despliegue local completo (PostgreSQL + Backend)
+# ============================================================================
+# Uso:
+#   1. Copiar .env.example a .env y completar los secretos
+#   2. docker-compose up -d
+#   3. docker-compose logs -f fleet-backend
+#
+# Salud:
+#   docker-compose ps
+#   curl http://localhost:8080/api/auth/login -d '{"email":"x","password":"x"}'
+# ============================================================================
+
+services:
+  # --------------------------------------------------------------------------
+  # Base de datos PostgreSQL 16
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: fleet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fleetdb}
+      POSTGRES_USER: ${POSTGRES_USER:-fleet_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      # Persistencia de datos
+      - postgres-data:/var/lib/postgresql/data
+      # Script de inicialización (crea tabla shedlock si existe)
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"  # Solo para debugging local; quitar en producción
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fleet_user} -d ${POSTGRES_DB:-fleetdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - fleet-network
+
+  # --------------------------------------------------------------------------
+  # Backend Spring Boot (Fleet Management)
+  # --------------------------------------------------------------------------
+  fleet-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fleet-management:latest
+    container_name: fleet-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Perfil de Spring (obligatorio prod)
+      SPRING_PROFILES_ACTIVE: prod
+
+      # Conexión a PostgreSQL (usa el nombre del servicio 'postgres' como host)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-fleetdb}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-fleet_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+
+      # Secretos obligatorios (sin defaults; la app no arranca sin ellos)
+      JWT_SECRET: ${JWT_SECRET}
+      FLEET_DEFAULT_ADMIN_PASSWORD: ${FLEET_DEFAULT_ADMIN_PASSWORD}
+
+      # Enzona (pagos QR)
+      ENZONA_CLIENT_ID: ${ENZONA_CLIENT_ID:-}
+      ENZONA_CLIENT_SECRET: ${ENZONA_CLIENT_SECRET:-}
+      ENZONA_MERCHANT_UUID: ${ENZONA_MERCHANT_UUID:-}
+      ENZONA_NOTIFY_URL: ${ENZONA_NOTIFY_URL:-}
+      ENZONA_RETURN_URL: ${ENZONA_RETURN_URL:-}
+      ENZONA_ALLOWED_IPS: ${ENZONA_ALLOWED_IPS:-}
+      ENZONA_WEBHOOK_SECRET: ${ENZONA_WEBHOOK_SECRET:-}
+
+      # Timezone (importante para schedulers y auditoría)
+      TZ: America/Havana
+      JAVA_TOOL_OPTIONS: "-Duser.timezone=America/Havana"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--post-data={\"email\":\"x\",\"password\":\"x\"}",
+             "--header=Content-Type: application/json",
+             "http://localhost:8080/api/auth/login"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    networks:
+      - fleet-network
+
+volumes:
+  postgres-data:
+    name: fleet-postgres-data
+
+networks:
+  fleet-network:
+    name: fleet-network
+    driver: bridge

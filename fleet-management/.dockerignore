@@ -1,0 +1,57 @@
+# ============================================================================
+# .dockerignore — Reduce contexto de build y acelera builds
+# ============================================================================
+# Todo lo listado aquí NO se envía al daemon de Docker al hacer `docker build`.
+# Esto reduce el tiempo de build y el tamaño del contexto enviado.
+
+# Build artifacts
+**/target/
+**/build/
+**/out/
+**/bin/
+
+# Tests (no se necesitan en la imagen de runtime)
+**/src/test/
+
+# IDE y editores
+**/.idea/
+**/.vscode/
+**/.eclipse/
+**/.settings/
+**/.project
+**/.classpath
+**/*.iml
+
+# Sistema operativo
+**/.DS_Store
+**/Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker (evita recursividad en builds)
+**/Dockerfile*
+**/docker-compose*.yml
+**/.dockerignore
+
+# Documentación y artefactos
+**/*.md
+**/docs/
+**/download/
+**/upload/
+**/tool-results/
+**/scripts/
+
+# Logs
+**/*.log
+**/logs/
+
+# Datos temporales
+**/tmp/
+**/temp/
+
+# Node (si se agrega frontend en el futuro)
+**/node_modules/
+**/npm-debug.log*
