@@ -2,6 +2,7 @@ package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.currency.CurrencyRequest;
 import com.fleet.management.dto.currency.CurrencyResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.CurrencyMapper;
@@ -47,7 +48,7 @@ public class CurrencyServiceImpl implements CurrencyService {
     @Transactional
     public CurrencyResponse create(CurrencyRequest request) {
         if (repository.existsByIsoCode(request.getIsoCode())) {
-            throw new BusinessException("Ya existe una moneda con el codigo ISO: " + request.getIsoCode());
+            throw BusinessError.currencyYaExisteIso(request.getIsoCode());
         }
         Currency entity = Currency.builder()
                 .isoCode(request.getIsoCode())
@@ -64,7 +65,7 @@ public class CurrencyServiceImpl implements CurrencyService {
                 .orElseThrow(() -> new ResourceNotFoundException("Currency", "id", id));
 
         if (!entity.getIsoCode().equals(request.getIsoCode()) && repository.existsByIsoCode(request.getIsoCode())) {
-            throw new BusinessException("Ya existe una moneda con el codigo ISO: " + request.getIsoCode());
+            throw BusinessError.currencyYaExisteIso(request.getIsoCode());
         }
 
         entity.setIsoCode(request.getIsoCode());

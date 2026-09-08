@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.empresa.EmpresaRequest;
 import com.fleet.management.dto.empresa.EmpresaResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.EmpresaMapper;
@@ -62,7 +63,7 @@ public class EmpresaServiceImpl implements EmpresaService {
     @Transactional
     public EmpresaResponse create(EmpresaRequest request) {
         if (repository.existsByCodigo(request.getCodigo())) {
-            throw new BusinessException("Ya existe una empresa con el codigo: " + request.getCodigo());
+            throw BusinessError.empresaYaExisteCodigo(request.getCodigo());
         }
 
         Provincia provincia = null;
@@ -75,7 +76,7 @@ public class EmpresaServiceImpl implements EmpresaService {
             municipio = municipioRepository.findById(request.getMunicipioId())
                     .orElseThrow(() -> new ResourceNotFoundException("Municipio", "id", request.getMunicipioId()));
             if (provincia != null && !municipio.getProvincia().getId().equals(provincia.getId())) {
-                throw new BusinessException("El municipio no pertenece a la provincia seleccionada");
+                throw BusinessError.empresaMunicipioProvinciaIncompatible();
             }
         }
 
@@ -106,7 +107,7 @@ public class EmpresaServiceImpl implements EmpresaService {
         validarEmpresaAdmin(entity);
 
         if (!entity.getCodigo().equals(request.getCodigo()) && repository.existsByCodigo(request.getCodigo())) {
-            throw new BusinessException("Ya existe una empresa con el codigo: " + request.getCodigo());
+            throw BusinessError.empresaYaExisteCodigo(request.getCodigo());
         }
 
         Provincia provincia = null;
@@ -119,7 +120,7 @@ public class EmpresaServiceImpl implements EmpresaService {
             municipio = municipioRepository.findById(request.getMunicipioId())
                     .orElseThrow(() -> new ResourceNotFoundException("Municipio", "id", request.getMunicipioId()));
             if (provincia != null && !municipio.getProvincia().getId().equals(provincia.getId())) {
-                throw new BusinessException("El municipio no pertenece a la provincia seleccionada");
+                throw BusinessError.empresaMunicipioProvinciaIncompatible();
             }
         }
 
@@ -147,7 +148,7 @@ public class EmpresaServiceImpl implements EmpresaService {
 
     private void validarEmpresaAdmin(Empresa entity) {
         if (EMPRESA_ADMIN_CODIGO.equals(entity.getCodigo())) {
-            throw new BusinessException("La empresa de administracion no puede ser modificada ni eliminada");
+            throw BusinessError.empresaAdminNoModificable();
         }
     }
 }

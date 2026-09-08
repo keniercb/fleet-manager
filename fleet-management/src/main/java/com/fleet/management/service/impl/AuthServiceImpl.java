@@ -3,6 +3,7 @@ package com.fleet.management.service.impl;
 import com.fleet.management.dto.auth.AuthResponseDto;
 import com.fleet.management.dto.auth.CambioPasswordRequest;
 import com.fleet.management.dto.auth.LoginRequestDto;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.User;
@@ -40,7 +41,7 @@ public class AuthServiceImpl implements AuthService {
         );
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BusinessException("Usuario no encontrado"));
+                .orElseThrow(() -> BusinessError.usuarioNoEncontrado(request.getEmail()));
 
         String token = jwtService.generateToken(
                 customUserDetailsService.loadUserByUsername(request.getEmail())
@@ -59,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new BusinessException("No hay un usuario autenticado");
+            throw BusinessError.noHayUsuarioAutenticado();
         }
 
         Object principal = authentication.getPrincipal();
@@ -67,8 +68,7 @@ public class AuthServiceImpl implements AuthService {
         // FX-fix: detectar principal anonimo (Spring Security usa "anonymousUser"
         // cuando el JWT fue rechazado por el filtro).
         if ("anonymousUser".equals(principal)) {
-            throw new BusinessException(
-                    "Token JWT invalido o expirado. No se pudo autenticar al usuario.");
+            throw BusinessError.tokenInvalidoOExpirado();
         }
 
         String email;
@@ -79,8 +79,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessException(
-                        "Usuario autenticado no encontrado en la base de datos: " + email));
+                .orElseThrow(() -> BusinessError.usuarioAutenticadoNoEncontrado(email));
     }
 
     @Override
@@ -90,19 +89,19 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
 
         if (!user.getActivo()) {
-            throw new BusinessException("El usuario esta inactivo");
+            throw BusinessError.usuarioInactivo(user.getEmail());
         }
 
         if (!passwordEncoder.matches(request.getPasswordAnterior(), user.getPassword())) {
-            throw new BusinessException("La contrasena anterior es incorrecta");
+            throw BusinessError.contrasenaAnteriorIncorrecta();
         }
 
         if (!request.getNuevaPassword().equals(request.getConfirmacionPassword())) {
-            throw new BusinessException("La nueva contrasena y la confirmacion no coinciden");
+            throw BusinessError.contrasenasNoCoinciden();
         }
 
         if (passwordEncoder.matches(request.getNuevaPassword(), user.getPassword())) {
-            throw new BusinessException("La nueva contrasena debe ser diferente a la actual");
+            throw BusinessError.contrasenaIgualActual();
         }
 
         user.setPassword(passwordEncoder.encode(request.getNuevaPassword()));

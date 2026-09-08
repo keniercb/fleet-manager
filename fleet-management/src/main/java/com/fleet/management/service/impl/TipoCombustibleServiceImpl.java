@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.tipocombustible.TipoCombustibleRequest;
 import com.fleet.management.dto.tipocombustible.TipoCombustibleResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.TipoCombustibleMapper;
@@ -47,7 +48,7 @@ public class TipoCombustibleServiceImpl implements TipoCombustibleService {
     @Transactional
     public TipoCombustibleResponse create(TipoCombustibleRequest request) {
         if (repository.existsByCodigo(request.getCodigo())) {
-            throw new BusinessException("Ya existe un tipo de combustible con el codigo: " + request.getCodigo());
+            throw BusinessError.tipoCombustibleYaExisteCodigo(request.getCodigo());
         }
         TipoCombustible entity = TipoCombustible.builder()
                 .codigo(request.getCodigo())
@@ -65,7 +66,7 @@ public class TipoCombustibleServiceImpl implements TipoCombustibleService {
                 .orElseThrow(() -> new ResourceNotFoundException("TipoCombustible", "id", id));
 
         if (!entity.getCodigo().equals(request.getCodigo()) && repository.existsByCodigo(request.getCodigo())) {
-            throw new BusinessException("Ya existe un tipo de combustible con el codigo: " + request.getCodigo());
+            throw BusinessError.tipoCombustibleYaExisteCodigo(request.getCodigo());
         }
 
         entity.setCodigo(request.getCodigo());

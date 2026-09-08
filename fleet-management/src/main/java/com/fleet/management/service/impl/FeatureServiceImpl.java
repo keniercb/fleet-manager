@@ -2,6 +2,7 @@ package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.feature.FeatureRequest;
 import com.fleet.management.dto.feature.FeatureResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.FeatureMapper;
@@ -39,7 +40,7 @@ public class FeatureServiceImpl implements FeatureService {
     @Transactional
     public FeatureResponse create(FeatureRequest request) {
         if (repository.existsByName(request.getName())) {
-            throw new BusinessException("Ya existe un feature con el nombre: " + request.getName());
+            throw BusinessError.featureYaExisteNombre(request.getName());
         }
         Feature entity = Feature.builder()
                 .name(request.getName())
@@ -56,7 +57,7 @@ public class FeatureServiceImpl implements FeatureService {
                 .orElseThrow(() -> new ResourceNotFoundException("Feature", "id", id));
 
         if (!entity.getName().equals(request.getName()) && repository.existsByName(request.getName())) {
-            throw new BusinessException("Ya existe un feature con el nombre: " + request.getName());
+            throw BusinessError.featureYaExisteNombre(request.getName());
         }
 
         entity.setName(request.getName());

@@ -2,6 +2,7 @@ package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.plan.PlanRequest;
 import com.fleet.management.dto.plan.PlanResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.PlanMapper;
@@ -48,7 +49,7 @@ public class PlanServiceImpl implements PlanService {
     @Transactional
     public PlanResponse create(PlanRequest request) {
         if (repository.existsByNombre(request.getNombre())) {
-            throw new BusinessException("Ya existe un plan con el nombre: " + request.getNombre());
+            throw BusinessError.planYaExisteNombre(request.getNombre());
         }
 
         Set<Feature> features = resolveFeatures(request.getFeatureIds());
@@ -73,7 +74,7 @@ public class PlanServiceImpl implements PlanService {
                 .orElseThrow(() -> new ResourceNotFoundException("Plan", "id", id));
 
         if (!entity.getNombre().equals(request.getNombre()) && repository.existsByNombre(request.getNombre())) {
-            throw new BusinessException("Ya existe un plan con el nombre: " + request.getNombre());
+            throw BusinessError.planYaExisteNombre(request.getNombre());
         }
 
         Set<Feature> features = resolveFeatures(request.getFeatureIds());

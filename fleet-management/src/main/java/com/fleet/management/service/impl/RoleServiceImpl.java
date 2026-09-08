@@ -2,6 +2,7 @@ package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.role.RoleRequest;
 import com.fleet.management.dto.role.RoleResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.RoleMapper;
@@ -61,7 +62,7 @@ public class RoleServiceImpl implements RoleService {
     @Transactional
     public RoleResponse create(RoleRequest request) {
         if (roleRepository.existsByName(request.getName())) {
-            throw new BusinessException("Ya existe un rol con el nombre: " + request.getName());
+            throw BusinessError.rolYaExisteNombre(request.getName());
         }
 
         Set<Permission> permissions = resolvePermissions(request.getPermissionIds());
@@ -83,7 +84,7 @@ public class RoleServiceImpl implements RoleService {
 
         roleRepository.findByName(request.getName()).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
-                throw new BusinessException("Ya existe un rol con el nombre: " + request.getName());
+                throw BusinessError.rolYaExisteNombre(request.getName());
             }
         });
 

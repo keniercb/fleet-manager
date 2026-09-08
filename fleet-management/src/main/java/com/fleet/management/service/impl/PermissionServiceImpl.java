@@ -2,6 +2,7 @@ package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.permission.PermissionRequest;
 import com.fleet.management.dto.permission.PermissionResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.PermissionMapper;
@@ -48,7 +49,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public PermissionResponse create(PermissionRequest request) {
         if (permissionRepository.existsByName(request.getName())) {
-            throw new BusinessException("Ya existe un permiso con el nombre: " + request.getName());
+            throw BusinessError.permissionYaExisteNombre(request.getName());
         }
 
         Permission entity = Permission.builder()
@@ -67,7 +68,7 @@ public class PermissionServiceImpl implements PermissionService {
 
         permissionRepository.findByName(request.getName()).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
-                throw new BusinessException("Ya existe un permiso con el nombre: " + request.getName());
+                throw BusinessError.permissionYaExisteNombre(request.getName());
             }
         });
 
