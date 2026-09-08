@@ -139,7 +139,7 @@ public class ChoferServiceImpl implements ChoferService {
                 .orElseThrow(() -> new ResourceNotFoundException("CategoriaLicencia", "id", catReq.getCategoriaLicenciaId()));
 
         if (choferCategoriaRepository.existsByChoferIdAndCategoriaLicenciaId(chofer.getId(), categoria.getId())) {
-            throw BusinessError.choferCategoriaYaAsignada(request.getCategorias().get(0).getCategoriaLicenciaId()) + " - " + categoria.getDenominacion());
+            throw BusinessError.choferCategoriaYaAsignada(categoria.getCodigo(), categoria.getDenominacion());
         }
 
         ChoferCategoria cc = ChoferCategoria.builder()

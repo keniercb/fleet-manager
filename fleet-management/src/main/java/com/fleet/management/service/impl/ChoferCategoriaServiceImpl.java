@@ -64,7 +64,7 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
                 .orElseThrow(() -> new ResourceNotFoundException("CategoriaLicencia", "id", request.getCategoriaLicenciaId()));
 
         if (repository.existsByChoferIdAndCategoriaLicenciaId(request.getChoferId(), request.getCategoriaLicenciaId())) {
-            throw BusinessError.choferCategoriaYaAsignada(request.getCategoriaLicenciaId()));
+            throw BusinessError.choferCategoriaYaAsignada(request.getCategoriaLicenciaId());
         }
 
         ChoferCategoria entity = ChoferCategoria.builder()
@@ -92,7 +92,7 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
         if (!entity.getChofer().getId().equals(request.getChoferId())
                 || !entity.getCategoriaLicencia().getId().equals(request.getCategoriaLicenciaId())) {
             if (repository.existsByChoferIdAndCategoriaLicenciaId(request.getChoferId(), request.getCategoriaLicenciaId())) {
-                throw BusinessError.choferCategoriaYaAsignada(request.getCategoriaLicenciaId()));
+                throw BusinessError.choferCategoriaYaAsignada(request.getCategoriaLicenciaId());
             }
         }
 
