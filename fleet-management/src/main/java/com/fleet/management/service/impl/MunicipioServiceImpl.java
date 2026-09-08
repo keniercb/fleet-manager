@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.municipio.MunicipioRequest;
 import com.fleet.management.dto.municipio.MunicipioResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.MunicipioMapper;
@@ -62,8 +63,7 @@ public class MunicipioServiceImpl implements MunicipioService {
                 .orElseThrow(() -> new ResourceNotFoundException("Provincia", "id", request.getProvinciaId()));
 
         if (repository.existsByProvinciaIdAndCodigo(request.getProvinciaId(), request.getCodigo())) {
-            throw new BusinessException("Ya existe un municipio con el codigo " + request.getCodigo()
-                    + " en la provincia " + provincia.getNombre());
+            throw BusinessError.municipioYaExisteCodigo(request.getCodigo()));
         }
 
         Municipio entity = Municipio.builder()
@@ -87,8 +87,7 @@ public class MunicipioServiceImpl implements MunicipioService {
         boolean codigoCambiado = !entity.getCodigo().equals(request.getCodigo())
                 || !entity.getProvincia().getId().equals(request.getProvinciaId());
         if (codigoCambiado && repository.existsByProvinciaIdAndCodigo(request.getProvinciaId(), request.getCodigo())) {
-            throw new BusinessException("Ya existe un municipio con el codigo " + request.getCodigo()
-                    + " en la provincia " + provincia.getNombre());
+            throw BusinessError.municipioYaExisteCodigo(request.getCodigo()));
         }
 
         entity.setProvincia(provincia);

@@ -8,6 +8,7 @@ import com.fleet.management.dto.payment.PaymentCreateRequest;
 import com.fleet.management.dto.payment.PaymentNotificationDto;
 import com.fleet.management.dto.payment.PaymentResponse;
 import com.fleet.management.dto.subscription.SubscriptionCreateRequest;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.*;
@@ -76,8 +77,7 @@ public class PaymentServiceImpl implements PaymentService {
         // Validar tipo UPGRADE/RENOVACION requiere subscriptionId
         if ((request.getType() == PaymentType.RENOVACION || request.getType() == PaymentType.UPGRADE)
                 && request.getSubscriptionId() == null) {
-            throw new BusinessException("El tipo " + request.getType()
-                    + " requiere una suscripcion existente");
+            throw BusinessError.pagoTipoRequiereSuscripcion(String.valueOf(request.getType()));
         }
 
         Plan plan = planRepository.findById(request.getPlanId())
@@ -163,7 +163,7 @@ public class PaymentServiceImpl implements PaymentService {
         // ADMIN/USER solo pueden consultar los de su propia empresa.
         Long currentUserEmpresaId = SecurityUtils.resolveEmpresaId();
         if (!empresaId.equals(currentUserEmpresaId) && !isSuperAdmin()) {
-            throw new BusinessException("No tiene permisos para consultar pagos de otra empresa");
+            throw BusinessError.pagoConsultaEmpresaAjena();
         }
         Page<Payment> page;
         if (status != null && !status.isBlank()) {
@@ -187,13 +187,13 @@ public class PaymentServiceImpl implements PaymentService {
 
             if (payment.getStatus() != PaymentStatus.PENDIENTE
                     && payment.getStatus() != PaymentStatus.QR_GENERADO) {
-                throw new BusinessException("Solo se pueden cancelar pagos en estado PENDIENTE o QR_GENERADO");
+                throw BusinessError.pagoCancelarEstadoInvalido(String.valueOf(payment.getStatus()));
             }
 
             payment.setStatus(PaymentStatus.CANCELADO);
             return toResponse(paymentRepository.save(payment));
         } catch (OptimisticLockingFailureException ex) {
-            throw new BusinessException("El pago fue modificado por otro proceso. Intente nuevamente.");
+            throw BusinessError.pagoModificadoConcurrente();
         }
     }
 
@@ -206,11 +206,11 @@ public class PaymentServiceImpl implements PaymentService {
             validateOwnership(payment);
 
             if (payment.getStatus() != PaymentStatus.FALLIDO) {
-                throw new BusinessException("Solo se pueden reintentar pagos en estado FALLIDO");
+                throw BusinessError.pagoReintentarEstadoInvalido(String.valueOf(payment.getStatus()));
             }
 
             if (payment.getRetryCount() >= MAX_RETRIES) {
-                throw new BusinessException("Se ha alcanzado el maximo de " + MAX_RETRIES + " reintentos permitidos");
+                throw BusinessError.pagoMaxReintentosAlcanzados(MAX_RETRIES);
             }
 
             payment.setRetryCount(payment.getRetryCount() + 1);
@@ -232,14 +232,14 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (BusinessException e) {
             throw e;
         } catch (OptimisticLockingFailureException ex) {
-            throw new BusinessException("El pago fue modificado por otro proceso. Intente nuevamente.");
+            throw BusinessError.pagoModificadoConcurrente();
         } catch (Exception e) {
             log.error("Error al reintentar pago {}: {}", id, e.getMessage());
             // FX-21: persistir estado FALLIDO en tx nueva (REQUIRES_NEW) para
             // evitar que el rollback de la tx original deje el pago en estado
             // intermedio. El bean separado evita el problema de self-invocation.
             paymentErrorRecoveryService.markAsFailed(id, e.getMessage());
-            throw new BusinessException("Error al reintentar la generacion del QR: " + e.getMessage());
+            throw BusinessError.pagoReintentarErrorQR(e.getMessage());
         }
     }
 
@@ -417,7 +417,7 @@ public class PaymentServiceImpl implements PaymentService {
         Long currentUserEmpresaId = SecurityUtils.resolveEmpresaId();
         if (payment.getEmpresa() == null
                 || !currentUserEmpresaId.equals(payment.getEmpresa().getId())) {
-            throw new BusinessException("No tiene permisos para operar sobre este pago");
+            throw BusinessError.pagoOperacionAjena();
         }
     }
 

@@ -2,6 +2,7 @@ package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.tarjetacombustible.TarjetaCombustibleRequest;
 import com.fleet.management.dto.tarjetacombustible.TarjetaCombustibleResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.TarjetaCombustibleMapper;
@@ -64,7 +65,7 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
     @Transactional
     public TarjetaCombustibleResponse create(TarjetaCombustibleRequest request) {
         if (repository.existsByNumero(request.getNumero())) {
-            throw new BusinessException("Ya existe una tarjeta de combustible con el numero: " + request.getNumero());
+            throw BusinessError.tarjetaYaExisteNumero(request.getNumero());
         }
 
         var currency = currencyRepository.findById(request.getCurrencyId())
@@ -90,7 +91,7 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
                 .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "id", id));
 
         if (!entity.getNumero().equals(request.getNumero()) && repository.existsByNumero(request.getNumero())) {
-            throw new BusinessException("Ya existe una tarjeta de combustible con el numero: " + request.getNumero());
+            throw BusinessError.tarjetaYaExisteNumero(request.getNumero());
         }
 
         var currency = currencyRepository.findById(request.getCurrencyId())

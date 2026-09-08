@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.provincia.ProvinciaRequest;
 import com.fleet.management.dto.provincia.ProvinciaResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.ProvinciaMapper;
@@ -39,7 +40,7 @@ public class ProvinciaServiceImpl implements ProvinciaService {
     @Transactional
     public ProvinciaResponse create(ProvinciaRequest request) {
         if (repository.existsByCodigo(request.getCodigo())) {
-            throw new BusinessException("Ya existe una provincia con el codigo: " + request.getCodigo());
+            throw BusinessError.provinciaYaExisteCodigo(request.getCodigo());
         }
         Provincia entity = Provincia.builder()
                 .codigo(request.getCodigo())
@@ -56,7 +57,7 @@ public class ProvinciaServiceImpl implements ProvinciaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Provincia", "id", id));
 
         if (!entity.getCodigo().equals(request.getCodigo()) && repository.existsByCodigo(request.getCodigo())) {
-            throw new BusinessException("Ya existe una provincia con el codigo: " + request.getCodigo());
+            throw BusinessError.provinciaYaExisteCodigo(request.getCodigo());
         }
 
         entity.setCodigo(request.getCodigo());

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.marca.MarcaRequest;
 import com.fleet.management.dto.marca.MarcaResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.MarcaMapper;
@@ -42,7 +43,7 @@ public class MarcaServiceImpl implements MarcaService {
     @Transactional
     public MarcaResponse create(MarcaRequest request) {
         if (repository.existsByNombre(request.getNombre())) {
-            throw new BusinessException("Ya existe una marca con el nombre: " + request.getNombre());
+            throw BusinessError.marcaYaExisteNombre(request.getNombre());
         }
         Marca entity = Marca.builder()
                 .nombre(request.getNombre())
@@ -60,7 +61,7 @@ public class MarcaServiceImpl implements MarcaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Marca", "id", id));
 
         if (!entity.getNombre().equals(request.getNombre()) && repository.existsByNombre(request.getNombre())) {
-            throw new BusinessException("Ya existe una marca con el nombre: " + request.getNombre());
+            throw BusinessError.marcaYaExisteNombre(request.getNombre());
         }
 
         entity.setNombre(request.getNombre());

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.categorialicencia.CategoriaLicenciaRequest;
 import com.fleet.management.dto.categorialicencia.CategoriaLicenciaResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.CategoriaLicenciaMapper;
@@ -47,7 +48,7 @@ public class CategoriaLicenciaServiceImpl implements CategoriaLicenciaService {
     @Transactional
     public CategoriaLicenciaResponse create(CategoriaLicenciaRequest request) {
         if (repository.existsByCodigo(request.getCodigo())) {
-            throw new BusinessException("Ya existe una categoria de licencia con el codigo: " + request.getCodigo());
+            throw BusinessError.categoriaLicenciaYaExisteCodigo(request.getCodigo());
         }
         CategoriaLicencia entity = CategoriaLicencia.builder()
                 .codigo(request.getCodigo().toUpperCase())
@@ -66,7 +67,7 @@ public class CategoriaLicenciaServiceImpl implements CategoriaLicenciaService {
 
         String codigoUpper = request.getCodigo().toUpperCase();
         if (!entity.getCodigo().equals(codigoUpper) && repository.existsByCodigo(codigoUpper)) {
-            throw new BusinessException("Ya existe una categoria de licencia con el codigo: " + codigoUpper);
+            throw BusinessError.categoriaLicenciaYaExisteCodigo(codigoUpper);
         }
 
         entity.setCodigo(codigoUpper);

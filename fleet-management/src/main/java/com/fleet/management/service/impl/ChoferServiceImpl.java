@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.chofer.ChoferRequest;
 import com.fleet.management.dto.chofer.ChoferResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.ChoferMapper;
@@ -138,8 +139,7 @@ public class ChoferServiceImpl implements ChoferService {
                 .orElseThrow(() -> new ResourceNotFoundException("CategoriaLicencia", "id", catReq.getCategoriaLicenciaId()));
 
         if (choferCategoriaRepository.existsByChoferIdAndCategoriaLicenciaId(chofer.getId(), categoria.getId())) {
-            throw new BusinessException("El chofer ya tiene asignada la categoria de licencia: "
-                    + categoria.getCodigo() + " - " + categoria.getDenominacion());
+            throw BusinessError.choferCategoriaYaAsignada(request.getCategorias().get(0).getCategoriaLicenciaId()) + " - " + categoria.getDenominacion());
         }
 
         ChoferCategoria cc = ChoferCategoria.builder()
@@ -155,14 +155,14 @@ public class ChoferServiceImpl implements ChoferService {
         if (choferRepository.existsByCarneIdentidad(request.getCarneIdentidad())) {
             choferRepository.findByCarneIdentidad(request.getCarneIdentidad()).ifPresent(existing -> {
                 if (!existing.getId().equals(excludeId)) {
-                    throw new BusinessException("Ya existe un chofer con el carne de identidad: " + request.getCarneIdentidad());
+                    throw BusinessError.choferYaExisteCarne(request.getCarneIdentidad());
                 }
             });
         }
         if (choferRepository.existsByNumeroLicencia(request.getNumeroLicencia())) {
             choferRepository.findByNumeroLicencia(request.getNumeroLicencia()).ifPresent(existing -> {
                 if (!existing.getId().equals(excludeId)) {
-                    throw new BusinessException("Ya existe un chofer con el numero de licencia: " + request.getNumeroLicencia());
+                    throw BusinessError.choferYaExisteLicencia(request.getNumeroLicencia());
                 }
             });
         }

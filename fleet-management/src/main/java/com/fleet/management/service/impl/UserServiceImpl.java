@@ -2,6 +2,7 @@ package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.user.UserRequest;
 import com.fleet.management.dto.user.UserResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.UserMapper;
@@ -71,16 +72,15 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse create(UserRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BusinessException("Ya existe un usuario con el email: " + request.getEmail());
+            throw BusinessError.usuarioYaExisteEmail(request.getEmail());
         }
 
         Subscription activeSubscription = subscriptionService.getActiveSubscriptionEntity(request.getEmpresaId())
-                .orElseThrow(() -> new BusinessException("La empresa no tiene una suscripcion activa"));
+                .orElseThrow(() -> BusinessError.empresaSinSuscripcionActiva());
 
         Integer maxUsuarios = activeSubscription.getPlan().getMaxUsuarios();
         if (maxUsuarios != null && activeSubscription.getCurrentUserCount() >= maxUsuarios) {
-            throw new BusinessException("No se puede crear el usuario. Se ha alcanzado el limite de "
-                    + maxUsuarios + " usuarios del plan " + activeSubscription.getPlan().getNombre());
+            throw BusinessError.limiteUsuariosCreacionAlcanzado(maxUsuarios);
         }
 
         Empresa empresa = empresaRepository.findById(request.getEmpresaId())
@@ -104,11 +104,11 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse createAdminUser(Empresa empresa) {
         if (empresa.getEmail() == null || empresa.getEmail().isBlank()) {
-            throw new BusinessException("La empresa debe tener un email para crear el usuario administrador");
+            throw BusinessError.empresaEmailRequeridoParaAdmin();
         }
 
         if (userRepository.existsByEmail(empresa.getEmail())) {
-            throw new BusinessException("Ya existe un usuario con el email: " + empresa.getEmail());
+            throw BusinessError.empresaEmailYaRegistrado(empresa.getEmail());
         }
 
         Role adminRole = roleRepository.findByName("ADMIN")

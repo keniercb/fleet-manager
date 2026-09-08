@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoRequest;
 import com.fleet.management.dto.tipovehiculo.TipoVehiculoResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.TipoVehiculoMapper;
@@ -39,7 +40,7 @@ public class TipoVehiculoServiceImpl implements TipoVehiculoService {
     @Transactional
     public TipoVehiculoResponse create(TipoVehiculoRequest request) {
         if (repository.existsByNombre(request.getNombre())) {
-            throw new BusinessException("Ya existe un tipo de vehiculo con el nombre: " + request.getNombre());
+            throw BusinessError.tipoVehiculoYaExisteNombre(request.getNombre());
         }
         TipoVehiculo entity = TipoVehiculo.builder()
                 .nombre(request.getNombre())
@@ -56,7 +57,7 @@ public class TipoVehiculoServiceImpl implements TipoVehiculoService {
                 .orElseThrow(() -> new ResourceNotFoundException("TipoVehiculo", "id", id));
 
         if (!entity.getNombre().equals(request.getNombre()) && repository.existsByNombre(request.getNombre())) {
-            throw new BusinessException("Ya existe un tipo de vehiculo con el nombre: " + request.getNombre());
+            throw BusinessError.tipoVehiculoYaExisteNombre(request.getNombre());
         }
 
         entity.setNombre(request.getNombre());
