@@ -254,7 +254,7 @@ public final class BusinessError {
     // Provincias
     // =========================================================================
 
-    public static BusinessException provinciaYaExisteCodigo(String codigo) {
+    public static BusinessException provinciaYaExisteCodigo(Integer codigo) {
         return new BusinessException("Ya existe una provincia con el código '" + codigo + "'");
     }
 
@@ -351,7 +351,7 @@ public final class BusinessError {
         return new BusinessException("Ya existe un permiso con el nombre '" + nombre + "'");
     }
 
-    public static BusinessException municipioYaExisteCodigo(String codigo) {
+    public static BusinessException municipioYaExisteCodigo(Integer codigo) {
         return new BusinessException("Ya existe un municipio con el código '" + codigo + "'");
     }
 
