@@ -15,11 +15,19 @@ import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.MunicipioRepository;
 import com.fleet.management.repository.ProvinciaRepository;
 import com.fleet.management.service.EmpresaService;
+import com.fleet.management.service.PdfGenerationService;
 import com.fleet.management.service.SubscriptionService;
 import com.fleet.management.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +39,7 @@ public class EmpresaServiceImpl implements EmpresaService {
     private final SubscriptionService subscriptionService;
     private final UserService userService;
     private final EmpresaMapper mapper;
+    private final PdfGenerationService pdfGenerationService;
 
     private static final String EMPRESA_ADMIN_CODIGO = "EMP-ADMIN";
 
@@ -150,5 +159,40 @@ public class EmpresaServiceImpl implements EmpresaService {
         if (EMPRESA_ADMIN_CODIGO.equals(entity.getCodigo())) {
             throw BusinessError.empresaAdminNoModificable();
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generarReportePdf() {
+        // 1. Obtener todas las empresas activas
+        List<Empresa> empresas = repository.findAllByActivoTrueOrderByNombreAsc();
+
+        // 2. Mapear datos para la plantilla
+        List<Map<String, Object>> empresasDto = empresas.stream()
+                .map(e -> {
+                    Map<String, Object> emp = new HashMap<>();
+                    emp.put("codigo", e.getCodigo());
+                    emp.put("nombre", e.getNombre());
+                    emp.put("direccion", e.getDireccion() != null ? e.getDireccion() : "-");
+                    emp.put("telefono", e.getTelefono() != null ? e.getTelefono() : "-");
+                    emp.put("email", e.getEmail() != null ? e.getEmail() : "-");
+                    emp.put("provincia", e.getProvincia() != null ? e.getProvincia().getNombre() : "-");
+                    emp.put("municipio", e.getMunicipio() != null ? e.getMunicipio().getNombre() : "-");
+                    return emp;
+                })
+                .collect(Collectors.toList());
+
+        // 3. Fecha de impresión
+        String fechaImpresion = LocalDateTime.now().format(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+
+        // 4. Construir modelo para Thymeleaf
+        Map<String, Object> model = new HashMap<>();
+        model.put("empresas", empresasDto);
+        model.put("fechaImpresion", fechaImpresion);
+        model.put("totalEmpresas", empresasDto.size());
+
+        // 5. Generar PDF
+        return pdfGenerationService.generatePdf("reports/empresas-listado", model);
     }
 }

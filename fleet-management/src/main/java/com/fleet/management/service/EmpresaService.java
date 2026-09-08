@@ -20,4 +20,9 @@ public interface EmpresaService {
     EmpresaResponse update(Long id, EmpresaRequest request);
 
     void delete(Long id);
+
+    /**
+     * Genera un PDF con el listado de todas las empresas activas.
+     */
+    byte[] generarReportePdf();
 }
