@@ -3,6 +3,7 @@ package com.fleet.management.service.impl;
 import com.fleet.management.dto.subscription.SubscriptionCreateRequest;
 import com.fleet.management.dto.subscription.SubscriptionRequest;
 import com.fleet.management.dto.subscription.SubscriptionResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.SubscriptionMapper;
@@ -104,24 +105,20 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
             if (request.getMaxVehiculos() != null) {
                 if (entity.getMaxVehiculos() != null && request.getMaxVehiculos() <= entity.getMaxVehiculos()) {
-                    throw new BusinessException("La cantidad maxima de vehiculos solo puede ser mayor que la actual: "
-                            + entity.getMaxVehiculos());
+                    throw BusinessError.maxVehiculosSoloMayor(entity.getMaxVehiculos());
                 }
                 if (entity.getCurrentVehicleCount() != null && request.getMaxVehiculos() < entity.getCurrentVehicleCount()) {
-                    throw new BusinessException("La cantidad maxima de vehiculos no puede ser menor que los vehiculos actuales: "
-                            + entity.getCurrentVehicleCount());
+                    throw BusinessError.maxVehiculosMenorActual(entity.getCurrentVehicleCount());
                 }
                 entity.setMaxVehiculos(request.getMaxVehiculos());
             }
 
             if (request.getMaxUsuarios() != null) {
                 if (entity.getMaxUsuarios() != null && request.getMaxUsuarios() <= entity.getMaxUsuarios()) {
-                    throw new BusinessException("La cantidad maxima de usuarios solo puede ser mayor que la actual: "
-                            + entity.getMaxUsuarios());
+                    throw BusinessError.maxUsuariosSoloMayor(entity.getMaxUsuarios());
                 }
                 if (entity.getCurrentUserCount() != null && request.getMaxUsuarios() < entity.getCurrentUserCount()) {
-                    throw new BusinessException("La cantidad maxima de usuarios no puede ser menor que los usuarios actuales: "
-                            + entity.getCurrentUserCount());
+                    throw BusinessError.maxUsuariosMenorActual(entity.getCurrentUserCount());
                 }
                 entity.setMaxUsuarios(request.getMaxUsuarios());
             }
@@ -132,7 +129,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
             return mapper.toResponse(repository.save(entity));
         } catch (OptimisticLockingFailureException ex) {
-            throw new BusinessException("La suscripcion fue modificada por otro usuario. Intente nuevamente.");
+            throw BusinessError.suscripcionModificadaConcurrente();
         }
     }
 
@@ -177,8 +174,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Subscription subscription = findAndLock(subscriptionId);
         Integer max = subscription.getMaxVehiculos();
         if (max != null && subscription.getCurrentVehicleCount() + 1 > max) {
-            throw new BusinessException("No se puede agregar el vehiculo. Se ha alcanzado el limite de "
-                    + max + " vehiculos de la suscripcion");
+            throw BusinessError.limiteVehiculosAlcanzado(max);
         }
         subscription.setCurrentVehicleCount(subscription.getCurrentVehicleCount() + 1);
         repository.save(subscription);
@@ -189,7 +185,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public void decrementVehicleCount(Long subscriptionId) {
         Subscription subscription = findAndLock(subscriptionId);
         if (subscription.getCurrentVehicleCount() <= 0) {
-            throw new BusinessException("El conteo de vehiculos no puede ser negativo");
+            throw BusinessError.conteoVehiculosNegativo();
         }
         subscription.setCurrentVehicleCount(subscription.getCurrentVehicleCount() - 1);
         repository.save(subscription);
@@ -201,8 +197,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Subscription subscription = findAndLock(subscriptionId);
         Integer max = subscription.getMaxUsuarios();
         if (max != null && subscription.getCurrentUserCount() + 1 > max) {
-            throw new BusinessException("No se puede agregar el usuario. Se ha alcanzado el limite de "
-                    + max + " usuarios de la suscripcion");
+            throw BusinessError.limiteUsuariosAlcanzado(max);
         }
         subscription.setCurrentUserCount(subscription.getCurrentUserCount() + 1);
         repository.save(subscription);
@@ -213,7 +208,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public void decrementUserCount(Long subscriptionId) {
         Subscription subscription = findAndLock(subscriptionId);
         if (subscription.getCurrentUserCount() <= 0) {
-            throw new BusinessException("El conteo de usuarios no puede ser negativo");
+            throw BusinessError.conteoUsuariosNegativo();
         }
         subscription.setCurrentUserCount(subscription.getCurrentUserCount() - 1);
         repository.save(subscription);

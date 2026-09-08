@@ -3,6 +3,7 @@ package com.fleet.management.service.impl;
 import com.fleet.management.dto.reporte.ConsumoCombustibleResponse;
 import com.fleet.management.dto.reporte.ConsumoCombustibleResponse.DetalleTipoCombustible;
 import com.fleet.management.dto.reporte.ConsumoCombustibleResponse.ResumenEjecutivo;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.repository.ConsumoPorCombustibleProjection;
 import com.fleet.management.repository.RecorridoRepository;
@@ -31,10 +32,10 @@ public class ReporteConsumoCombustibleServiceImpl implements ReporteConsumoCombu
     public ConsumoCombustibleResponse generarReporte(LocalDate fechaDesde, LocalDate fechaHasta,
                                                       Long tipoVehiculoId) {
         if (fechaDesde == null || fechaHasta == null) {
-            throw new BusinessException("Las fechas fechaDesde y fechaHasta son obligatorias");
+            throw BusinessError.reporteFechasObligatorias();
         }
         if (fechaDesde.isAfter(fechaHasta)) {
-            throw new BusinessException("fechaDesde no puede ser mayor que fechaHasta");
+            throw BusinessError.reporteFechaDesdeMayorHasta();
         }
 
         Long empresaId = SecurityUtils.resolveEmpresaId();

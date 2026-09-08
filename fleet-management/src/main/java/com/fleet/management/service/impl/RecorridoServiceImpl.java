@@ -6,6 +6,7 @@ import com.fleet.management.dto.chofer.ChoferResponse;
 import com.fleet.management.dto.recorrido.RecorridoRequest;
 import com.fleet.management.dto.recorrido.RecorridoResponse;
 import com.fleet.management.dto.reporte.*;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.RecorridoMapper;
@@ -78,7 +79,7 @@ public class RecorridoServiceImpl implements RecorridoService {
     @Transactional(readOnly = true)
     public ReporteMovimientoMensualResponse reporteMovimientoMensual(Long vehiculoId, Integer mes, Integer anio) {
         if (mes < 1 || mes > 12) {
-            throw new BusinessException("El mes debe estar entre 1 y 12");
+            throw BusinessError.mesInvalido(mes);
         }
 
         Vehiculo vehiculo = vehiculoRepository.findById(vehiculoId)
@@ -211,15 +212,12 @@ public class RecorridoServiceImpl implements RecorridoService {
 
         // Validar unicidad: solo un recorrido por vehiculo por fecha
         if (repository.existsByVehiculoIdAndFecha(request.getVehiculoId(), request.getFecha())) {
-            throw new BusinessException("Ya existe un recorrido para el vehiculo con id "
-                    + request.getVehiculoId() + " en la fecha " + request.getFecha());
+            throw BusinessError.recorridoYaExiste(request.getVehiculoId(), String.valueOf(request.getFecha()));
         }
 
         // Validar que no exista un recorrido con fecha posterior para el mismo vehiculo
         if (repository.existsByVehiculoIdAndFechaAfter(request.getVehiculoId(), request.getFecha())) {
-            throw new BusinessException("No se puede insertar el recorrido en la fecha "
-                    + request.getFecha() + " porque ya existe un recorrido con fecha posterior para el vehiculo con id "
-                    + request.getVehiculoId());
+            throw BusinessError.recorridoFechaAnterior(request.getVehiculoId(), String.valueOf(request.getFecha()));
         }
 
         // Calcular consumo: (indiceConsumo * kilometros) / 100, redondeado a 2 decimales
@@ -235,8 +233,7 @@ public class RecorridoServiceImpl implements RecorridoService {
         // Validar que el vehiculo tenga suficiente combustible (sumando litros abastecidos)
         BigDecimal combustibleRestante = vehiculo.getCombustible().subtract(consumo).add(litrosAbastecidos);
         if (combustibleRestante.compareTo(BigDecimal.ZERO) < 0) {
-            throw new BusinessException("El recorrido no puede ser insertado porque se consume mas combustible ("
-                    + consumo + ") que el disponible en el vehiculo (" + vehiculo.getCombustible() + ")");
+            throw BusinessError.recorridoCombustibleInsuficiente(consumo);
         }
 
         // Resolver chofer: si no se envia, usar el chofer asignado al vehiculo
@@ -248,17 +245,17 @@ public class RecorridoServiceImpl implements RecorridoService {
             // FX-13: usar BigDecimal para comparaciones y aritmetica monetaria.
             if (request.getImporteAbastecido() == null
                     || request.getImporteAbastecido().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new BusinessException("Si se envia tarjeta de combustible, el importe abastecido es obligatorio y debe ser mayor a cero");
+                throw BusinessError.tarjetaImporteObligatorio();
             }
             tarjetaCombustible = tarjetaCombustibleRepository.findById(request.getTarjetaCombustibleId())
                     .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "id", request.getTarjetaCombustibleId()));
             if (tarjetaCombustible.getSaldo().compareTo(request.getImporteAbastecido()) <= 0) {
-                throw new BusinessException("El saldo de la tarjeta no puede quedar en cero o negativo tras el descuento");
+                throw BusinessError.tarjetaSaldoInsuficiente();
             }
             tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo().subtract(request.getImporteAbastecido()));
             tarjetaCombustibleRepository.save(tarjetaCombustible);
         } else if (request.getImporteAbastecido() != null) {
-            throw new BusinessException("Si se envia importe abastecido, debe enviarse la tarjeta de combustible");
+            throw BusinessError.importeSinTarjeta();
         }
 
         // OdometroInicial es el odometro actual del vehiculo antes de sumar kilometros
@@ -302,12 +299,12 @@ public class RecorridoServiceImpl implements RecorridoService {
 
         // No se permite cambiar el vehiculo
         if (!entity.getVehiculo().getId().equals(request.getVehiculoId())) {
-            throw new BusinessException("No se permite cambiar el vehiculo del recorrido");
+            throw BusinessError.recorridoNoCambiarVehiculo();
         }
 
         // No se permite cambiar la fecha
         if (!entity.getFecha().equals(request.getFecha())) {
-            throw new BusinessException("No se permite cambiar la fecha del recorrido");
+            throw BusinessError.recorridoNoCambiarFecha();
         }
 
         // FX-12: lock pesimista sobre el vehiculo para evitar race conditions
@@ -316,8 +313,7 @@ public class RecorridoServiceImpl implements RecorridoService {
 
         // No se permite modificar si existe un recorrido con fecha posterior
         if (repository.existsByVehiculoIdAndFechaAfter(vehiculo.getId(), entity.getFecha())) {
-            throw new BusinessException("No se puede modificar el recorrido porque existe un recorrido con fecha posterior para el vehiculo con id "
-                    + vehiculo.getId());
+            throw BusinessError.recorridoModificarConPosterior(vehiculo.getId());
         }
 
         // Calcular el nuevo consumo, redondeado a 2 decimales
@@ -329,9 +325,7 @@ public class RecorridoServiceImpl implements RecorridoService {
         BigDecimal consumoAntiguo = entity.getConsumo() != null ? entity.getConsumo() : CERO;
         BigDecimal combustibleDisponible = vehiculo.getCombustible().add(consumoAntiguo).subtract(nuevoConsumo);
         if (combustibleDisponible.compareTo(BigDecimal.ZERO) < 0) {
-            throw new BusinessException("El recorrido no puede ser actualizado porque se consume mas combustible ("
-                    + nuevoConsumo + ") que el disponible en el vehiculo ("
-                    + vehiculo.getCombustible().add(consumoAntiguo) + ")");
+            throw BusinessError.recorridoCombustibleInsuficiente(nuevoConsumo);
         }
 
         // Restaurar odometro y combustible del vehiculo
@@ -352,7 +346,7 @@ public class RecorridoServiceImpl implements RecorridoService {
         if (request.getTarjetaCombustibleId() != null) {
             if (request.getImporteAbastecido() == null
                     || request.getImporteAbastecido().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new BusinessException("Si se envia tarjeta de combustible, el importe abastecido es obligatorio y debe ser mayor a cero");
+                throw BusinessError.tarjetaImporteObligatorio();
             }
             tarjetaCombustible = tarjetaCombustibleRepository.findById(request.getTarjetaCombustibleId())
                     .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "id", request.getTarjetaCombustibleId()));
@@ -373,12 +367,12 @@ public class RecorridoServiceImpl implements RecorridoService {
 
             // Validar y restar nuevo importe
             if (tarjetaCombustible.getSaldo().compareTo(nuevoImporte) <= 0) {
-                throw new BusinessException("El saldo de la tarjeta no puede quedar en cero o negativo tras el descuento");
+                throw BusinessError.tarjetaSaldoInsuficiente();
             }
             tarjetaCombustible.setSaldo(tarjetaCombustible.getSaldo().subtract(nuevoImporte));
             tarjetaCombustibleRepository.save(tarjetaCombustible);
         } else if (request.getImporteAbastecido() != null) {
-            throw new BusinessException("Si se envia importe abastecido, debe enviarse la tarjeta de combustible");
+            throw BusinessError.importeSinTarjeta();
         } else if (tarjetaAnterior != null) {
             // Se elimino la tarjeta: restablecer saldo de la tarjeta anterior
             tarjetaAnterior.setSaldo(tarjetaAnterior.getSaldo().add(importeAnterior));
@@ -419,8 +413,7 @@ public class RecorridoServiceImpl implements RecorridoService {
 
         // No se permite eliminar si existe un recorrido con fecha posterior
         if (repository.existsByVehiculoIdAndFechaAfter(vehiculo.getId(), entity.getFecha())) {
-            throw new BusinessException("No se puede eliminar el recorrido porque existe un recorrido con fecha posterior para el vehiculo con id "
-                    + vehiculo.getId());
+            throw BusinessError.recorridoEliminarConPosterior(vehiculo.getId());
         }
 
         // Restar los kilometros al odometro del vehiculo
@@ -456,11 +449,11 @@ public class RecorridoServiceImpl implements RecorridoService {
         // 2. Obtener empresa del usuario autenticado
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authUser)) {
-            throw new BusinessException("No se pudo determinar la empresa del usuario autenticado");
+            throw BusinessError.empresaUsuarioNoDeterminada();
         }
         Empresa empresaRef = authUser.getUser().getEmpresa();
         if (empresaRef == null) {
-            throw new BusinessException("El usuario no tiene una empresa asociada");
+            throw BusinessError.usuarioSinEmpresa();
         }
 
         // Fetch empresa dentro de la sesion actual para evitar LazyInitializationException

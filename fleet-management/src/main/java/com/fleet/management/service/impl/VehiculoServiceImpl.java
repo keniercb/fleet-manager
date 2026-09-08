@@ -6,6 +6,7 @@ import com.fleet.management.dto.vehiculo.VehiculoRequest;
 import com.fleet.management.dto.vehiculo.VehiculoResponse;
 import com.fleet.management.dto.reporte.EmpresaReporteDto;
 import com.fleet.management.dto.reporte.VehiculoFilaReporteDto;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.model.Chofer;
@@ -116,12 +117,11 @@ public class VehiculoServiceImpl implements VehiculoService {
     @Transactional
     public VehiculoResponse create(VehiculoRequest request) {
         Subscription activeSubscription = subscriptionService.getActiveSubscriptionEntity(request.getEmpresaId())
-                .orElseThrow(() -> new BusinessException("La empresa no tiene una suscripcion activa"));
+                .orElseThrow(() -> BusinessError.empresaSinSuscripcionActiva());
 
         Integer maxVehiculos = activeSubscription.getMaxVehiculos();
         if (maxVehiculos != null && activeSubscription.getCurrentVehicleCount() >= maxVehiculos) {
-            throw new BusinessException("No se puede crear el vehiculo. Se ha alcanzado el limite de "
-                    + maxVehiculos + " vehiculos");
+            throw BusinessError.vehiculoLimiteAlcanzado(maxVehiculos);
         }
 
         validateUniqueFields(request, null);
@@ -205,14 +205,12 @@ public class VehiculoServiceImpl implements VehiculoService {
         if (request.getOdometro() != null
                 && entity.getOdometro() != null
                 && !request.getOdometro().equals(entity.getOdometro())) {
-            throw new BusinessException("El odometro no se puede modificar directamente; "
-                    + "se actualiza automaticamente al registrar recorridos.");
+            throw BusinessError.vehiculoOdometroNoModificable();
         }
         if (request.getCombustible() != null
                 && entity.getCombustible() != null
                 && request.getCombustible().compareTo(entity.getCombustible()) != 0) {
-            throw new BusinessException("El combustible no se puede modificar directamente; "
-                    + "se actualiza automaticamente al registrar recorridos.");
+            throw BusinessError.vehiculoCombustibleNoModificable();
         }
         entity.setUltimoMantenimiento(request.getUltimoMantenimiento());
         entity.setOdometroUltimoMantenimiento(request.getOdometroUltimoMantenimiento());
@@ -233,14 +231,14 @@ public class VehiculoServiceImpl implements VehiculoService {
         if (vehiculoRepository.existsByMatricula(request.getMatricula())) {
             vehiculoRepository.findByMatricula(request.getMatricula()).ifPresent(existing -> {
                 if (!existing.getId().equals(excludeId)) {
-                    throw new BusinessException("Ya existe un vehiculo con la matricula: " + request.getMatricula());
+                    throw BusinessError.vehiculoYaExisteMatricula(request.getMatricula());
                 }
             });
         }
         if (vehiculoRepository.existsByNumeroMotor(request.getNumeroMotor())) {
             vehiculoRepository.findByNumeroMotor(request.getNumeroMotor()).ifPresent(existing -> {
                 if (!existing.getId().equals(excludeId)) {
-                    throw new BusinessException("Ya existe un vehiculo con el numero de motor: " + request.getNumeroMotor());
+                    throw BusinessError.vehiculoYaExisteMotor(request.getNumeroMotor());
                 }
             });
         }
@@ -252,11 +250,11 @@ public class VehiculoServiceImpl implements VehiculoService {
         // 1. Obtener la empresa del usuario autenticado
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authUser)) {
-            throw new BusinessException("No se pudo determinar la empresa del usuario autenticado");
+            throw BusinessError.empresaUsuarioNoDeterminada();
         }
         Empresa empresaRef = authUser.getUser().getEmpresa();
         if (empresaRef == null) {
-            throw new BusinessException("El usuario no tiene una empresa asociada");
+            throw BusinessError.usuarioSinEmpresa();
         }
 
         // Fetch empresa dentro de la sesion actual para evitar LazyInitializationException

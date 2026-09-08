@@ -1,6 +1,7 @@
 package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.reporte.DashboardEjecutivoResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.model.Recorrido;
 import com.fleet.management.repository.RecorridoRepository;
@@ -35,10 +36,10 @@ public class ReporteDashboardEjecutivoServiceImpl implements ReporteDashboardEje
     @Cacheable(value = "dashboardEjecutivo", key = "#empresaId + '_' + #mes + '_' + #anio")
     public DashboardEjecutivoResponse generarDashboard(Integer mes, Integer anio) {
         if (mes == null || mes < 1 || mes > 12) {
-            throw new BusinessException("El mes debe estar entre 1 y 12");
+            throw BusinessError.mesInvalido(mes);
         }
         if (anio == null || anio < 2000) {
-            throw new BusinessException("El anio debe ser un valor valido");
+            throw BusinessError.anioInvalido(anio);
         }
 
         Long empresaId = SecurityUtils.resolveEmpresaId();

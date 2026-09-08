@@ -2,6 +2,7 @@ package com.fleet.management.service.impl;
 
 import com.fleet.management.dto.reporte.AbastecimientoReporteResponse;
 import com.fleet.management.dto.reporte.VehiculoConsumoReporteDTO;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.repository.AbastecimientoLugarProjection;
 import com.fleet.management.repository.AbastecimientoVehiculoProjection;
@@ -41,10 +42,10 @@ public class ReporteTransporteServiceImpl implements ReporteTransporteService {
                                                               Pageable pageable) {
         // 1. Validar fechas
         if (fechaDesde == null || fechaHasta == null) {
-            throw new BusinessException("Las fechas desde y hasta son obligatorias");
+            throw BusinessError.reporteFechasObligatorias();
         }
         if (fechaDesde.isAfter(fechaHasta)) {
-            throw new BusinessException("fechaDesde no puede ser mayor que fechaHasta");
+            throw BusinessError.reporteFechaDesdeMayorHasta();
         }
 
         // 2. Obtener empresa del usuario autenticado
@@ -149,10 +150,10 @@ public class ReporteTransporteServiceImpl implements ReporteTransporteService {
                                                                         Long vehiculoId, String lugarAbastecimiento,
                                                                         Pageable pageable) {
         if (desde == null || hasta == null) {
-            throw new BusinessException("Las fechas desde y hasta son obligatorias");
+            throw BusinessError.reporteFechasObligatorias();
         }
         if (desde.isAfter(hasta)) {
-            throw new BusinessException("La fecha desde no puede ser mayor que la fecha hasta");
+            throw BusinessError.reporteFechaDesdeMayorHasta();
         }
 
         Long empresaId = SecurityUtils.resolveEmpresaId();

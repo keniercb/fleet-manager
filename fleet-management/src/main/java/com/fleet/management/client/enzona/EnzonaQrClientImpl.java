@@ -6,6 +6,7 @@ import com.fleet.management.client.enzona.dto.EnzonaQrMerchantRequest;
 import com.fleet.management.client.enzona.dto.EnzonaQrMerchantResponse;
 import com.fleet.management.client.enzona.dto.EnzonaTokenResponse;
 import com.fleet.management.config.PaymentConfig;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -72,7 +73,7 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
                     EnzonaTokenResponse.class);
 
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new BusinessException("Error al obtener token de Enzona: " + response.getStatusCode());
+                throw BusinessError.enzonaErrorToken(String.valueOf(response.getStatusCode()));
             }
 
             EnzonaTokenResponse tokenResponse = response.getBody();
@@ -84,10 +85,10 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
             throw e;
         } catch (ResourceAccessException e) {
             log.error("Timeout o error de conexion al obtener token de Enzona", e);
-            throw new BusinessException("No se pudo conectar con el servicio de pagos de Enzona (timeout)");
+            throw BusinessError.enzonaTimeoutConexion();
         } catch (Exception e) {
             log.error("Error de conexion al obtener token de Enzona", e);
-            throw new BusinessException("No se pudo conectar con el servicio de pagos de Enzona");
+            throw BusinessError.enzonaErrorConexion();
         }
     }
 
@@ -123,18 +124,18 @@ public class EnzonaQrClientImpl implements EnzonaQrClient {
                 return response.getBody();
             }
 
-            throw new BusinessException("Error al crear QR en Enzona: " + response.getStatusCode());
+            throw BusinessError.enzonaErrorCrearQR(String.valueOf(response.getStatusCode()));
         } catch (BusinessException e) {
             throw e;
         } catch (HttpClientErrorException e) {
             log.error("Error 4xx de Enzona al crear QR: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new BusinessException("Error al crear QR en Enzona: " + e.getStatusCode());
+            throw BusinessError.enzonaErrorCrearQR(String.valueOf(e.getStatusCode()));
         } catch (HttpServerErrorException | ResourceAccessException e) {
             log.error("Error de conexion / 5xx de Enzona al crear QR", e);
-            throw new BusinessException("No se pudo generar el codigo QR de pago");
+            throw BusinessError.enzonaErrorGenerarQR();
         } catch (Exception e) {
             log.error("Error al crear QR de comercio en Enzona", e);
-            throw new BusinessException("No se pudo generar el codigo QR de pago");
+            throw BusinessError.enzonaErrorGenerarQR();
         }
     }
 

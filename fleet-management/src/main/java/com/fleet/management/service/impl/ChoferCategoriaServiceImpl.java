@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaRequest;
 import com.fleet.management.dto.chofercategoria.ChoferCategoriaResponse;
+import com.fleet.management.exception.BusinessError;
 import com.fleet.management.exception.BusinessException;
 import com.fleet.management.exception.ResourceNotFoundException;
 import com.fleet.management.mapper.ChoferCategoriaMapper;
@@ -63,8 +64,7 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
                 .orElseThrow(() -> new ResourceNotFoundException("CategoriaLicencia", "id", request.getCategoriaLicenciaId()));
 
         if (repository.existsByChoferIdAndCategoriaLicenciaId(request.getChoferId(), request.getCategoriaLicenciaId())) {
-            throw new BusinessException("El chofer ya tiene asignada la categoria de licencia con id: "
-                    + request.getCategoriaLicenciaId());
+            throw BusinessError.choferCategoriaYaAsignada(request.getCategoriaLicenciaId()));
         }
 
         ChoferCategoria entity = ChoferCategoria.builder()
@@ -92,8 +92,7 @@ public class ChoferCategoriaServiceImpl implements ChoferCategoriaService {
         if (!entity.getChofer().getId().equals(request.getChoferId())
                 || !entity.getCategoriaLicencia().getId().equals(request.getCategoriaLicenciaId())) {
             if (repository.existsByChoferIdAndCategoriaLicenciaId(request.getChoferId(), request.getCategoriaLicenciaId())) {
-                throw new BusinessException("El chofer ya tiene asignada la categoria de licencia con id: "
-                        + request.getCategoriaLicenciaId());
+                throw BusinessError.choferCategoriaYaAsignada(request.getCategoriaLicenciaId()));
             }
         }
 
