@@ -63,7 +63,7 @@ public class MunicipioServiceImpl implements MunicipioService {
                 .orElseThrow(() -> new ResourceNotFoundException("Provincia", "id", request.getProvinciaId()));
 
         if (repository.existsByProvinciaIdAndCodigo(request.getProvinciaId(), request.getCodigo())) {
-            throw BusinessError.municipioYaExisteCodigo(request.getCodigo()));
+            throw BusinessError.municipioYaExisteCodigo(request.getCodigo());
         }
 
         Municipio entity = Municipio.builder()
@@ -87,7 +87,7 @@ public class MunicipioServiceImpl implements MunicipioService {
         boolean codigoCambiado = !entity.getCodigo().equals(request.getCodigo())
                 || !entity.getProvincia().getId().equals(request.getProvinciaId());
         if (codigoCambiado && repository.existsByProvinciaIdAndCodigo(request.getProvinciaId(), request.getCodigo())) {
-            throw BusinessError.municipioYaExisteCodigo(request.getCodigo()));
+            throw BusinessError.municipioYaExisteCodigo(request.getCodigo());
         }
 
         entity.setProvincia(provincia);

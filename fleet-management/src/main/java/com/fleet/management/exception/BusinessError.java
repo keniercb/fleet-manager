@@ -310,6 +310,11 @@ public final class BusinessError {
         return new BusinessException("El chofer ya tiene asignada la categoría de licencia con id " + categoriaId);
     }
 
+    public static BusinessException choferCategoriaYaAsignada(String codigo, String denominacion) {
+        return new BusinessException("El chofer ya tiene asignada la categoría de licencia '"
+                + codigo + " - " + denominacion + "'");
+    }
+
     // =========================================================================
     // Catálogos maestros (unicidad)
     // =========================================================================
