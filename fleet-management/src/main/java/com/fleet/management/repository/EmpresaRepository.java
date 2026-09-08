@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -18,4 +19,9 @@ public interface EmpresaRepository extends JpaRepository<Empresa, Long> {
     Page<Empresa> findAllByActivoTrue(Pageable pageable);
 
     Page<Empresa> findAllByActivoTrueAndNombreContainingIgnoreCase(String nombre, Pageable pageable);
+
+    /**
+     * Todas las empresas activas ordenadas por nombre (para reporte PDF).
+     */
+    List<Empresa> findAllByActivoTrueOrderByNombreAsc();
 }

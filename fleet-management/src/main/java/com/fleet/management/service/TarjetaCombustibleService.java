@@ -20,4 +20,9 @@ public interface TarjetaCombustibleService {
     void delete(Long id);
 
     Page<TarjetaCombustibleResponse> findByEmpresaId(Long empresaId, String filter, Pageable pageable);
+
+    /**
+     * Genera un PDF con el listado de tarjetas de combustible activas de la empresa del usuario autenticado.
+     */
+    byte[] generarReportePdf();
 }

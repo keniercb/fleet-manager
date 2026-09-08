@@ -17,11 +17,23 @@ import com.fleet.management.repository.ChoferCategoriaRepository;
 import com.fleet.management.repository.ChoferRepository;
 import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.service.ChoferService;
+import com.fleet.management.service.PdfGenerationService;
+import com.fleet.management.security.AuthenticatedUser;
+import com.fleet.management.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +44,7 @@ public class ChoferServiceImpl implements ChoferService {
     private final ChoferCategoriaRepository choferCategoriaRepository;
     private final EmpresaRepository empresaRepository;
     private final ChoferMapper mapper;
+    private final PdfGenerationService pdfGenerationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -166,5 +179,64 @@ public class ChoferServiceImpl implements ChoferService {
                 }
             });
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generarReportePdf() {
+        // 1. Obtener la empresa del usuario autenticado
+        Long empresaId = SecurityUtils.resolveEmpresaId();
+        Empresa empresa = empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", empresaId));
+
+        // 2. Obtener choferes activos de la empresa
+        List<Chofer> choferes = choferRepository.findByEmpresaIdAndActivoTrueOrderByIdAsc(empresaId);
+
+        // 3. Mapear datos para la plantilla
+        List<Map<String, Object>> choferesDto = choferes.stream()
+                .map(c -> {
+                    Map<String, Object> ch = new HashMap<>();
+                    ch.put("nombre", c.getNombre());
+                    ch.put("apellidos", c.getApellidos());
+                    ch.put("carneIdentidad", c.getCarneIdentidad());
+                    ch.put("numeroLicencia", c.getNumeroLicencia());
+                    ch.put("fechaNacimiento", c.getFechaNacimiento() != null
+                            ? c.getFechaNacimiento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                            : "-");
+                    // Categorías de licencia
+                    String categorias = c.getCategorias() != null
+                            ? c.getCategorias().stream()
+                                    .filter(cc -> cc.getActivo() != null && cc.getActivo())
+                                    .map(cc -> cc.getCategoriaLicencia() != null
+                                            ? cc.getCategoriaLicencia().getCodigo()
+                                            : "")
+                                    .collect(Collectors.joining(", "))
+                            : "-";
+                    ch.put("categorias", categorias.isEmpty() ? "-" : categorias);
+                    return ch;
+                })
+                .collect(Collectors.toList());
+
+        // 4. Datos de la empresa para el encabezado
+        Map<String, Object> empresaDto = new HashMap<>();
+        empresaDto.put("codigo", empresa.getCodigo());
+        empresaDto.put("nombre", empresa.getNombre());
+        empresaDto.put("email", empresa.getEmail() != null ? empresa.getEmail() : "-");
+        empresaDto.put("provincia", empresa.getProvincia() != null ? empresa.getProvincia().getNombre() : "-");
+        empresaDto.put("municipio", empresa.getMunicipio() != null ? empresa.getMunicipio().getNombre() : "-");
+
+        // 5. Fecha de impresión
+        String fechaImpresion = LocalDateTime.now().format(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+
+        // 6. Construir modelo para Thymeleaf
+        Map<String, Object> model = new HashMap<>();
+        model.put("empresa", empresaDto);
+        model.put("choferes", choferesDto);
+        model.put("fechaImpresion", fechaImpresion);
+        model.put("totalChoferes", choferesDto.size());
+
+        // 7. Generar PDF
+        return pdfGenerationService.generatePdf("reports/choferes-listado", model);
     }
 }

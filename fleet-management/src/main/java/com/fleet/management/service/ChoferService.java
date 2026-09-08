@@ -20,4 +20,9 @@ public interface ChoferService {
     ChoferResponse update(Long id, ChoferRequest request);
 
     void delete(Long id);
+
+    /**
+     * Genera un PDF con el listado de choferes activos de la empresa del usuario autenticado.
+     */
+    byte[] generarReportePdf();
 }

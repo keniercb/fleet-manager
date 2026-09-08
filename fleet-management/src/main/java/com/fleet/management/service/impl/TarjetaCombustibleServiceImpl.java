@@ -11,12 +11,21 @@ import com.fleet.management.model.TarjetaCombustible;
 import com.fleet.management.repository.CurrencyRepository;
 import com.fleet.management.repository.EmpresaRepository;
 import com.fleet.management.repository.TarjetaCombustibleRepository;
+import com.fleet.management.service.PdfGenerationService;
 import com.fleet.management.service.TarjetaCombustibleService;
+import com.fleet.management.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +35,7 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
     private final CurrencyRepository currencyRepository;
     private final EmpresaRepository empresaRepository;
     private final TarjetaCombustibleMapper mapper;
+    private final PdfGenerationService pdfGenerationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -114,5 +124,53 @@ public class TarjetaCombustibleServiceImpl implements TarjetaCombustibleService 
                 .orElseThrow(() -> new ResourceNotFoundException("TarjetaCombustible", "id", id));
         entity.setActivo(false);
         repository.save(entity);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generarReportePdf() {
+        // 1. Obtener la empresa del usuario autenticado
+        Long empresaId = SecurityUtils.resolveEmpresaId();
+        Empresa empresa = empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", "id", empresaId));
+
+        // 2. Obtener tarjetas activas de la empresa
+        List<TarjetaCombustible> tarjetas = repository.findByEmpresaIdAndActivoTrueOrderByIdAsc(empresaId);
+
+        // 3. Mapear datos para la plantilla
+        List<Map<String, Object>> tarjetasDto = tarjetas.stream()
+                .map(t -> {
+                    Map<String, Object> tar = new HashMap<>();
+                    tar.put("numero", t.getNumero());
+                    tar.put("saldo", t.getSaldo() != null ? t.getSaldo().toPlainString() : "0.00");
+                    tar.put("currency", t.getCurrency() != null
+                            ? t.getCurrency().getIsoCode() + " - " + t.getCurrency().getDescripcion()
+                            : "-");
+                    tar.put("empresa", t.getEmpresa() != null ? t.getEmpresa().getNombre() : "-");
+                    return tar;
+                })
+                .collect(Collectors.toList());
+
+        // 4. Datos de la empresa para el encabezado
+        Map<String, Object> empresaDto = new HashMap<>();
+        empresaDto.put("codigo", empresa.getCodigo());
+        empresaDto.put("nombre", empresa.getNombre());
+        empresaDto.put("email", empresa.getEmail() != null ? empresa.getEmail() : "-");
+        empresaDto.put("provincia", empresa.getProvincia() != null ? empresa.getProvincia().getNombre() : "-");
+        empresaDto.put("municipio", empresa.getMunicipio() != null ? empresa.getMunicipio().getNombre() : "-");
+
+        // 5. Fecha de impresión
+        String fechaImpresion = LocalDateTime.now().format(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+
+        // 6. Construir modelo para Thymeleaf
+        Map<String, Object> model = new HashMap<>();
+        model.put("empresa", empresaDto);
+        model.put("tarjetas", tarjetasDto);
+        model.put("fechaImpresion", fechaImpresion);
+        model.put("totalTarjetas", tarjetasDto.size());
+
+        // 7. Generar PDF
+        return pdfGenerationService.generatePdf("reports/tarjetas-listado", model);
     }
 }

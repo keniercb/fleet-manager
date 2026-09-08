@@ -3,11 +3,13 @@ package com.fleet.management.repository;
 import com.fleet.management.model.Chofer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -34,4 +36,11 @@ public interface ChoferRepository extends JpaRepository<Chofer, Long> {
             "(LOWER(c.nombre) LIKE LOWER(CONCAT('%', :filter, '%')) OR " +
             "LOWER(c.carneIdentidad) LIKE LOWER(CONCAT('%', :filter, '%')))")
     Page<Chofer> findByEmpresaIdAndActivoTrueAndNombreOrCarneIdentidad(@Param("empresaId") Long empresaId, @Param("filter") String filter, Pageable pageable);
+
+    /**
+     * Choferes activos de una empresa ordenados por nombre (para reporte PDF).
+     * Carga categorias con EntityGraph para evitar N+1.
+     */
+    @EntityGraph(attributePaths = {"categorias", "categorias.categoriaLicencia", "empresa"})
+    List<Chofer> findByEmpresaIdAndActivoTrueOrderByIdAsc(Long empresaId);
 }
