@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class EnzonaQrMerchantResponse {
 
-    @JsonProperty("vendor_identity_code")
+    @JsonProperty("qr_code")
     private String vendorIdentityCode;
 
     @JsonProperty("create_at")

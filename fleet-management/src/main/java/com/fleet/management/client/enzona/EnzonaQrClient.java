@@ -19,14 +19,14 @@ public interface EnzonaQrClient {
      *
      * @param amount      monto a cobrar
      * @param description descripcion del pago
-     * @return respuesta con vendor_identity_code e imagen base64
+     * @return respuesta con qr_code e imagen base64
      */
     EnzonaQrMerchantResponse crearQrMerchant(BigDecimal amount, String description);
 
     /**
      * Consultar informacion de un QR creado.
      *
-     * @param qrCode vendor_identity_code
+     * @param qrCode qr_code retornado por Enzona
      * @return informacion del QR
      */
     EnzonaQrInfoResponse consultarQr(String qrCode);
@@ -38,7 +38,7 @@ public interface EnzonaQrClient {
      * con fault.code=4078. En ese caso, la respuesta no es null y
      * {@link EnzonaPagosResponse#isPagoConfirmado()} retorna true.
      *
-     * @param qrCode vendor_identity_code
+     * @param qrCode qr_code retornado por Enzona
      * @return respuesta interpretada; null si hubo error de conexion
      */
     EnzonaPagosResponse consultarPagos(String qrCode);
