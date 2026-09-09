@@ -74,6 +74,9 @@ services:
       ENZONA_ALLOWED_IPS: ${ENZONA_ALLOWED_IPS:-}
       ENZONA_WEBHOOK_SECRET: ${ENZONA_WEBHOOK_SECRET:-}
 
+      # CORS — orígenes permitidos del frontend (separados por coma)
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:3000,http://localhost:5173}
+
       # Timezone (importante para schedulers y auditoría)
       TZ: America/Havana
       JAVA_TOOL_OPTIONS: "-Duser.timezone=America/Havana"
