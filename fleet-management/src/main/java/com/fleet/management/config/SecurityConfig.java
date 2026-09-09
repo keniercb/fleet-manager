@@ -44,6 +44,11 @@ public class SecurityConfig {
     @Value("${fleet.security.rate-limit.trust-forwarded-for:false}")
     private boolean rateLimitTrustForwardedFor;
 
+    // CORS allowed origins: lista separada por comas via variable de entorno.
+    // Default: localhost para desarrollo (Angular 4200, React 3000, Vite 5173).
+    @Value("${fleet.security.cors.allowed-origins:http://localhost:4200,http://localhost:3000,http://localhost:5173}")
+    private String corsAllowedOrigins;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -98,7 +103,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200", "http://localhost:3000", "http://localhost:5173"));
+        // Orígenes desde variable de entorno (lista separada por comas)
+        List<String> origins = Arrays.stream(corsAllowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
